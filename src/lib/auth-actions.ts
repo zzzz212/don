@@ -3,6 +3,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { signIn } from "@/lib/auth";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -32,7 +33,6 @@ export async function registerUser(formData: FormData) {
     },
   });
 
-  // Auto sign-in after registration
   try {
     await signIn("credentials", {
       email,
@@ -40,8 +40,10 @@ export async function registerUser(formData: FormData) {
       redirectTo: "/dashboard",
     });
   } catch (error) {
-    // signIn redirects, which throws NEXT_REDIRECT — this is expected
-    throw error;
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    return { error: "Ошибка при входе после регистрации" };
   }
 
   return { success: true };
@@ -62,8 +64,7 @@ export async function loginUser(formData: FormData) {
       redirectTo: "/dashboard",
     });
   } catch (error) {
-    // NEXT_REDIRECT is expected from signIn
-    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+    if (isRedirectError(error)) {
       throw error;
     }
     return { error: "Неверный email или пароль" };
