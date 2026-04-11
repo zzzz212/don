@@ -11,6 +11,9 @@ import {
   Handshake,
   Briefcase,
   Users,
+  Truck,
+  Wallet,
+  Hammer,
   ArrowRight,
   Clock,
   Sparkles,
@@ -22,12 +25,16 @@ const iconMap: Record<string, typeof Shield> = {
   handshake: Handshake,
   briefcase: Briefcase,
   users: Users,
+  truck: Truck,
+  wallet: Wallet,
+  hammer: Hammer,
 };
 
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
   "Конфиденциальность": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
   "Недвижимость": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
   "Торговля": { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  "Финансы": { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
   "Услуги": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
   "Кадры": { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
 };
@@ -109,8 +116,8 @@ export default function TemplatesPage() {
               Скоро добавим ещё
             </p>
             <p className="mt-1 text-sm text-muted">
-              Договор подряда, агентский договор, договор займа, лицензионный
-              договор и другие
+              Лицензионный договор, договор цессии, корпоративный договор,
+              соглашение о задатке и другие
             </p>
           </div>
         </div>
