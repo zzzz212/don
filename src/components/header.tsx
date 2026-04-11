@@ -77,7 +77,7 @@ export function Header() {
           )}
 
           <div className="flex items-center gap-3">
-            {isLanding ? (
+            {isLanding && !user ? (
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
@@ -90,6 +90,21 @@ export function Header() {
                   className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
                 >
                   Регистрация
+                </Link>
+              </div>
+            ) : isLanding && user ? (
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline text-sm text-muted">
+                  {user.name || user.email}
+                </span>
+                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {initials}
+                </div>
+                <Link
+                  href="/dashboard"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                >
+                  В кабинет
                 </Link>
               </div>
             ) : (
