@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   Scale,
@@ -12,6 +13,7 @@ import {
   MessageCircle,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
 
 const navigation = [
@@ -25,6 +27,17 @@ export function Header() {
   const pathname = usePathname();
   const isLanding = pathname === "/";
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session } = useSession();
+
+  const user = session?.user;
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email?.[0]?.toUpperCase() || "U";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-white/80 backdrop-blur-md">
@@ -65,20 +78,35 @@ export function Header() {
 
           <div className="flex items-center gap-3">
             {isLanding ? (
-              <Link
-                href="/dashboard"
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-              >
-                Войти
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                >
+                  Войти
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                >
+                  Регистрация
+                </Link>
+              </div>
             ) : (
               <>
                 <span className="hidden sm:inline text-sm text-muted">
-                  Бесплатный тариф
+                  {user?.name || user?.email || "Бесплатный тариф"}
                 </span>
-                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-                  U
+                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {initials}
                 </div>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
+                  title="Выйти"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
                 {/* Mobile hamburger */}
                 <button
                   onClick={() => setMobileOpen(!mobileOpen)}
@@ -119,11 +147,22 @@ export function Header() {
                 </Link>
               );
             })}
-            <div className="border-t border-border pt-3 mt-2 flex items-center gap-3 px-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-                U
+            <div className="border-t border-border pt-3 mt-2">
+              <div className="flex items-center gap-3 px-3 mb-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                  {initials}
+                </div>
+                <span className="text-sm text-foreground truncate">
+                  {user?.name || user?.email || "Пользователь"}
+                </span>
               </div>
-              <span className="text-sm text-muted">Бесплатный тариф</span>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted hover:bg-surface hover:text-foreground transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Выйти
+              </button>
             </div>
           </div>
         </div>
