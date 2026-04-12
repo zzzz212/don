@@ -1,4 +1,4 @@
-import { PDFParse } from "pdf-parse";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import mammoth from "mammoth";
 
 export interface ParseResult {
@@ -27,12 +27,16 @@ export async function parseDocument(file: File): Promise<ParseResult> {
 }
 
 async function parsePDF(buffer: Buffer): Promise<ParseResult> {
-  const pdf = new PDFParse({ data: buffer });
-  const textResult = await pdf.getText();
-  await pdf.destroy();
+  // Import inner module directly to avoid pdf-parse auto-run issue
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const pdfParse = require("pdf-parse/lib/pdf-parse") as (
+    buf: Buffer
+  ) => Promise<{ text: string; numpages: number }>;
+
+  const data = await pdfParse(buffer);
   return {
-    text: textResult.text,
-    pages: textResult.total,
+    text: data.text,
+    pages: data.numpages,
   };
 }
 
