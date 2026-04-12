@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
@@ -7,70 +8,118 @@ import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import {
   ArrowLeft,
-  Download,
   FileText,
   AlertTriangle,
   AlertCircle,
   CheckCircle,
+  Loader2,
+  Info,
 } from "lucide-react";
 
-const mockAnalysis = {
-  fileName: "Договор аренды — ООО Весна.pdf",
-  score: 5,
-  summary:
-    "Договор содержит несколько существенных рисков, требующих внимания. Обнаружены пункты, которые могут привести к финансовым потерям и ограничению ваших прав как арендатора. Рекомендуется внести правки до подписания.",
-  risks: [
-    {
-      clause: "П. 3.2 — Односторонний отказ от договора",
-      level: "critical" as const,
-      description:
-        "Арендодатель может расторгнуть договор в одностороннем порядке с уведомлением за 15 дней. При этом арендатор такого права лишён. Это создаёт существенный дисбаланс прав сторон.",
-      recommendation:
-        "Добавить симметричное право арендатора на односторонний отказ. Увеличить срок уведомления до 60 дней для обеих сторон.",
-    },
-    {
-      clause: "П. 5.1 — Автоматическое повышение арендной платы",
-      level: "critical" as const,
-      description:
-        'Арендная плата может быть увеличена арендодателем ежегодно "с учётом рыночных условий" без указания максимального процента. Это позволяет неограниченное повышение.',
-      recommendation:
-        "Установить максимальный процент годового повышения (например, не более 10% или привязка к индексу ИПЦ). Добавить право арендатора отказаться при повышении сверх лимита.",
-    },
-    {
-      clause: "П. 7.3 — Ответственность за скрытые дефекты",
-      level: "medium" as const,
-      description:
-        "Арендатор принимает помещение «как есть» и берёт на себя расходы по устранению любых недостатков, обнаруженных после подписания акта приёмки.",
-      recommendation:
-        "Добавить гарантийный период (30-90 дней) для выявления скрытых дефектов. Расходы на устранение скрытых дефектов должны нести арендодатель.",
-    },
-    {
-      clause: "П. 8.2 — Штрафные санкции",
-      level: "medium" as const,
-      description:
-        "Неустойка за просрочку арендной платы составляет 1% в день, что эквивалентно 365% годовых. Это существенно превышает рыночные ставки.",
-      recommendation:
-        "Снизить размер неустойки до 0.1% в день (36.5% годовых) или привязать к ключевой ставке ЦБ РФ.",
-    },
-    {
-      clause: "П. 10.1 — Подсудность",
-      level: "low" as const,
-      description:
-        "Споры рассматриваются в арбитражном суде по месту нахождения арендодателя. Стандартное условие, но может быть неудобно при разных регионах.",
-      recommendation:
-        "Если стороны в разных регионах, рассмотреть вариант подсудности по месту нахождения предмета аренды.",
-    },
-  ] as RiskItem[],
-};
+interface AnalysisData {
+  fileName: string;
+  score: number;
+  summary: string;
+  risks: RiskItem[];
+  isDemo?: boolean;
+  documentId?: string;
+}
 
-export default function ReportPage() {
-  const criticalCount = mockAnalysis.risks.filter(
+export default function ReportPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadAnalysis() {
+      // First try sessionStorage (just analyzed)
+      const stored = sessionStorage.getItem("analysisResult");
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          setAnalysis(data);
+          setLoading(false);
+          // Clear after reading so refreshing loads from DB
+          sessionStorage.removeItem("analysisResult");
+          return;
+        } catch {
+          // Fall through to DB fetch
+        }
+      }
+
+      // Try loading from DB
+      if (id !== "latest") {
+        try {
+          const response = await fetch(`/api/documents/${id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setAnalysis(data);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Fall through to error
+        }
+      }
+
+      setError("Результат анализа не найден. Загрузите документ заново.");
+      setLoading(false);
+    }
+
+    loadAnalysis();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-full flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted">Загружаем отчёт...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !analysis) {
+    return (
+      <div className="flex min-h-full flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
+            <h2 className="text-lg font-bold text-foreground mb-2">
+              Отчёт не найден
+            </h2>
+            <p className="text-muted mb-6">
+              {error || "Результат анализа не найден."}
+            </p>
+            <Link
+              href="/analyze"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+            >
+              Загрузить документ
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const criticalCount = analysis.risks.filter(
     (r) => r.level === "critical"
   ).length;
-  const mediumCount = mockAnalysis.risks.filter(
+  const mediumCount = analysis.risks.filter(
     (r) => r.level === "medium"
   ).length;
-  const lowCount = mockAnalysis.risks.filter((r) => r.level === "low").length;
+  const lowCount = analysis.risks.filter((r) => r.level === "low").length;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -87,25 +136,43 @@ export default function ReportPage() {
               <ArrowLeft className="h-4 w-4" />
               К дашборду
             </Link>
-            <button className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface">
-              <Download className="h-4 w-4" />
-              Скачать отчёт PDF
-            </button>
+            <Link
+              href="/analyze"
+              className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+            >
+              Анализировать ещё
+            </Link>
           </div>
+
+          {/* Demo banner */}
+          {analysis.isDemo && (
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 animate-fade-in">
+              <Info className="h-5 w-5 shrink-0 text-blue-500 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-blue-800">
+                  Демо-анализ
+                </p>
+                <p className="text-sm text-blue-700 mt-0.5">
+                  Это автоматический анализ по ключевым словам. Для полноценного
+                  AI-анализа добавьте ANTHROPIC_API_KEY в файл .env.local
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Report header */}
           <div className="animate-fade-in rounded-2xl border border-border bg-card p-6 sm:p-8">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-              <ScoreRing score={mockAnalysis.score} />
+              <ScoreRing score={analysis.score} />
               <div className="flex-1 text-center sm:text-left">
                 <div className="mb-2 flex items-center justify-center gap-2 sm:justify-start">
                   <FileText className="h-5 w-5 text-muted" />
                   <h1 className="text-lg font-bold text-foreground">
-                    {mockAnalysis.fileName}
+                    {analysis.fileName}
                   </h1>
                 </div>
                 <p className="text-sm leading-relaxed text-muted">
-                  {mockAnalysis.summary}
+                  {analysis.summary}
                 </p>
 
                 {/* Risk counters */}
@@ -141,7 +208,7 @@ export default function ReportPage() {
             <h2 className="text-lg font-bold text-foreground">
               Обнаруженные риски
             </h2>
-            {mockAnalysis.risks.map((risk, i) => (
+            {analysis.risks.map((risk, i) => (
               <AnalysisCard key={i} risk={risk} index={i} />
             ))}
           </div>
@@ -150,9 +217,6 @@ export default function ReportPage() {
           <div className="mt-8 rounded-2xl border border-primary/20 bg-primary-light/30 p-6 text-center">
             <p className="font-semibold text-foreground">
               Хотите проверить ещё один договор?
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              У вас осталось 2 бесплатных анализа в этом месяце
             </p>
             <Link
               href="/analyze"

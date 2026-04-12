@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { UploadZone } from "@/components/upload-zone";
-import { FileSearch, Loader2, CheckCircle, Scale } from "lucide-react";
+import {
+  FileSearch,
+  Loader2,
+  CheckCircle,
+  Scale,
+  AlertTriangle,
+} from "lucide-react";
 
 const stages = [
   "Извлекаем текст из документа...",
@@ -21,9 +27,11 @@ export default function AnalyzePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
+    setError(null);
   };
 
   const handleAnalyze = async () => {
@@ -31,15 +39,55 @@ export default function AnalyzePage() {
 
     setIsAnalyzing(true);
     setCurrentStage(0);
+    setError(null);
 
-    // Simulate analysis stages
-    for (let i = 0; i < stages.length; i++) {
-      setCurrentStage(i);
-      await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 600));
+    // Start stage animation in parallel with actual request
+    const stageInterval = setInterval(() => {
+      setCurrentStage((prev) => {
+        if (prev < stages.length - 2) return prev + 1;
+        clearInterval(stageInterval);
+        return prev;
+      });
+    }, 800 + Math.random() * 400);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      clearInterval(stageInterval);
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Ошибка при анализе");
+      }
+
+      const result = await response.json();
+
+      // Show final stages
+      setCurrentStage(stages.length - 1);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Store result in sessionStorage for the report page
+      sessionStorage.setItem("analysisResult", JSON.stringify(result));
+
+      // Navigate to report
+      if (result.documentId) {
+        router.push(`/report/${result.documentId}`);
+      } else {
+        router.push("/report/latest");
+      }
+    } catch (err) {
+      clearInterval(stageInterval);
+      setIsAnalyzing(false);
+      setError(
+        err instanceof Error ? err.message : "Ошибка при анализе документа"
+      );
     }
-
-    // Navigate to report page
-    router.push("/report/demo");
   };
 
   return (
@@ -65,6 +113,14 @@ export default function AnalyzePage() {
 
               {/* Upload zone */}
               <UploadZone onFileSelect={handleFileSelect} />
+
+              {/* Error message */}
+              {error && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 animate-fade-in">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
 
               {/* Analyze button */}
               {selectedFile && (
