@@ -55,23 +55,36 @@ export async function POST(request: NextRequest) {
     // Save to DB if user is authenticated
     let documentId: string | null = null;
     if (userId) {
-      const document = await prisma.document.create({
-        data: {
-          userId,
-          fileName: file.name,
-          fileSize: file.size,
-          rawText: truncatedText,
-          analysis: {
-            create: {
-              score: analysis.score,
-              summary: analysis.summary,
-              risks: JSON.stringify(analysis.risks),
+      try {
+        // Verify user exists in DB (JWT may reference a deleted user)
+        const userExists = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true },
+        });
+
+        if (userExists) {
+          const document = await prisma.document.create({
+            data: {
+              userId,
+              fileName: file.name,
+              fileSize: file.size,
+              rawText: truncatedText,
+              analysis: {
+                create: {
+                  score: analysis.score,
+                  summary: analysis.summary,
+                  risks: JSON.stringify(analysis.risks),
+                },
+              },
             },
-          },
-        },
-        include: { analysis: true },
-      });
-      documentId = document.id;
+            include: { analysis: true },
+          });
+          documentId = document.id;
+        }
+      } catch (dbError) {
+        // DB save failed — still return the analysis result
+        console.error("Failed to save document:", dbError);
+      }
     }
 
     return NextResponse.json({
