@@ -3,6 +3,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GENERATE_DOCUMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { getTemplate } from "@/lib/templates";
 
+function hasApiKey(): boolean {
+  const key = process.env.ANTHROPIC_API_KEY;
+  return !!key && key !== "your-api-key-here";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -14,6 +19,11 @@ export async function POST(request: NextRequest) {
         { error: "Шаблон не найден" },
         { status: 404 }
       );
+    }
+
+    // If no API key — tell frontend to use local generation
+    if (!hasApiKey()) {
+      return NextResponse.json({ demo: true });
     }
 
     // Build a description of what to generate

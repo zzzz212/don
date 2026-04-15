@@ -14,6 +14,11 @@ const SYSTEM_PROMPT = `Ты — опытный юрист-консультант
 
 Отвечай структурированно, используя markdown для форматирования (жирный текст, списки, нумерация).`;
 
+function hasApiKey(): boolean {
+  const key = process.env.ANTHROPIC_API_KEY;
+  return !!key && key !== "your-api-key-here";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { messages } = await request.json();
@@ -23,6 +28,11 @@ export async function POST(request: NextRequest) {
         { error: "Сообщения не предоставлены" },
         { status: 400 }
       );
+    }
+
+    // If no API key — return demo indicator so frontend uses local responses
+    if (!hasApiKey()) {
+      return NextResponse.json({ demo: true });
     }
 
     const client = new Anthropic();

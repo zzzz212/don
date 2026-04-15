@@ -275,6 +275,37 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const getAIResponse = async (
+    allMessages: Message[]
+  ): Promise<string> => {
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: allMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
+
+      if (!response.ok) throw new Error("API error");
+
+      const data = await response.json();
+
+      // If API returns demo flag — use local responses
+      if (data.demo) {
+        return getDemoResponse(allMessages[allMessages.length - 1].content);
+      }
+
+      return data.message;
+    } catch {
+      // Fallback to demo on any error
+      return getDemoResponse(allMessages[allMessages.length - 1].content);
+    }
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isLoading) return;
@@ -286,7 +317,8 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
@@ -295,13 +327,12 @@ export default function ChatPage() {
       inputRef.current.style.height = "auto";
     }
 
-    // Simulate AI response with demo data
-    await new Promise((resolve) => setTimeout(resolve, 1200 + Math.random() * 800));
+    const responseText = await getAIResponse(updatedMessages);
 
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: "assistant",
-      content: getDemoResponse(text),
+      content: responseText,
       timestamp: new Date(),
     };
 
@@ -309,9 +340,8 @@ export default function ChatPage() {
     setIsLoading(false);
   };
 
-  const handleQuestionClick = (question: string) => {
-    setInput(question);
-    // Auto-send
+  const handleQuestionClick = async (question: string) => {
+    setInput("");
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -319,23 +349,21 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setIsLoading(true);
 
-    setTimeout(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 800));
+    const responseText = await getAIResponse(updatedMessages);
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: getDemoResponse(question),
-        timestamp: new Date(),
-      };
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: responseText,
+      timestamp: new Date(),
+    };
 
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-      setInput("");
-    }, 0);
+    setMessages((prev) => [...prev, assistantMessage]);
+    setIsLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

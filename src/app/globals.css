@@ -84,3 +84,30 @@ body {
 .stagger-3 { animation-delay: 0.3s; opacity: 0; }
 .stagger-4 { animation-delay: 0.4s; opacity: 0; }
 .stagger-5 { animation-delay: 0.5s; opacity: 0; }
+
+/* Print styles for PDF export */
+@media print {
+  header, footer {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  main {
+    background: white !important;
+  }
+
+  .animate-fade-in, .animate-slide-up, .animate-scale-in {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+}

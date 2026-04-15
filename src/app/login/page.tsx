@@ -3,19 +3,77 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Scale, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
-import { loginUser, loginWithGoogle } from "@/lib/auth-actions";
+import { loginUser } from "@/lib/auth-actions";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  const validateField = (name: string, value: string) => {
+    const errors: Record<string, string> = { ...fieldErrors };
+
+    switch (name) {
+      case "email":
+        if (!value) {
+          errors.email = "Введите email";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errors.email = "Некорректный формат email";
+        } else {
+          delete errors.email;
+        }
+        break;
+      case "password":
+        if (!value) {
+          errors.password = "Введите пароль";
+        } else {
+          delete errors.password;
+        }
+        break;
+    }
+
+    setFieldErrors(errors);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    validateField(name, value);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (touched[name]) {
+      validateField(name, value);
+    }
+    // Clear server error on typing
+    if (error) setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    // Validate all fields
+    const errors: Record<string, string> = {};
+    if (!email) errors.email = "Введите email";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      errors.email = "Некорректный формат email";
+    if (!password) errors.password = "Введите пароль";
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setTouched({ email: true, password: true });
+      return;
+    }
+
+    setIsLoading(true);
+
     const result = await loginUser(formData);
 
     if (result?.error) {
@@ -24,10 +82,12 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    setIsGoogleLoading(true);
-    await loginWithGoogle();
-  };
+  const inputClass = (field: string) =>
+    `w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
+      touched[field] && fieldErrors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+        : "border-border focus:border-primary focus:ring-primary/20"
+    }`;
 
   return (
     <div className="flex min-h-full items-center justify-center bg-surface/30 px-4 py-12">
@@ -57,47 +117,9 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
-          {/* Google button */}
-          <button
-            onClick={handleGoogle}
-            disabled={isGoogleLoading}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-white py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-          >
-            {isGoogleLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
-            )}
-            Войти через Google
-          </button>
-
-          {/* Divider */}
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted">или</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
           {/* Error */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -116,9 +138,16 @@ export default function LoginPage() {
                   type="email"
                   required
                   placeholder="you@company.ru"
-                  className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  className={inputClass("email")}
                 />
               </div>
+              {touched.email && fieldErrors.email && (
+                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div>
@@ -131,10 +160,17 @@ export default function LoginPage() {
                   name="password"
                   type="password"
                   required
-                  placeholder="Минимум 6 символов"
-                  className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="Введите пароль"
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  className={inputClass("password")}
                 />
               </div>
+              {touched.password && fieldErrors.password && (
+                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <button
@@ -152,6 +188,16 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <p className="mt-4 text-center text-sm text-muted">
+            Нет аккаунта?{" "}
+            <Link
+              href="/register"
+              className="font-semibold text-primary hover:text-primary-dark"
+            >
+              Зарегистрируйтесь
+            </Link>
+          </p>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted">

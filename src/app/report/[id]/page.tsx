@@ -14,6 +14,7 @@ import {
   CheckCircle,
   Loader2,
   Info,
+  Download,
 } from "lucide-react";
 
 interface AnalysisData {
@@ -128,7 +129,7 @@ export default function ReportPage({
       <main className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Top bar */}
-          <div className="mb-8 flex items-center justify-between">
+          <div className="mb-8 flex items-center justify-between print:hidden">
             <Link
               href="/dashboard"
               className="flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
@@ -136,12 +137,21 @@ export default function ReportPage({
               <ArrowLeft className="h-4 w-4" />
               К дашборду
             </Link>
-            <Link
-              href="/analyze"
-              className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-            >
-              Анализировать ещё
-            </Link>
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+              >
+                <Download className="h-4 w-4" />
+                Скачать PDF
+              </button>
+              <Link
+                href="/analyze"
+                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+              >
+                Анализировать ещё
+              </Link>
+            </div>
           </div>
 
           {/* Demo banner */}
@@ -214,7 +224,7 @@ export default function ReportPage({
           </div>
 
           {/* Bottom CTA */}
-          <div className="mt-8 rounded-2xl border border-primary/20 bg-primary-light/30 p-6 text-center">
+          <div className="mt-8 rounded-2xl border border-primary/20 bg-primary-light/30 p-6 text-center print:hidden">
             <p className="font-semibold text-foreground">
               Хотите проверить ещё один договор?
             </p>

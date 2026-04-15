@@ -56,10 +56,26 @@ export default function TemplateFillPage() {
   const handleGenerate = async () => {
     setIsGenerating(true);
 
-    // Simulate AI generation
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id, data: formData }),
+      });
 
-    // Generate mock document based on template type
+      if (response.ok) {
+        const result = await response.json();
+        if (!result.demo && result.document) {
+          setGeneratedDoc(result.document);
+          setIsGenerating(false);
+          return;
+        }
+      }
+    } catch {
+      // Fall through to local generation
+    }
+
+    // Local generation (demo fallback)
     const doc = generateMockDocument(template.id, formData);
     setGeneratedDoc(doc);
     setIsGenerating(false);
