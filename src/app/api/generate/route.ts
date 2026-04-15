@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateAI, getActiveProvider } from "@/lib/ai/client";
 import { GENERATE_DOCUMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { getTemplate } from "@/lib/templates";
-
-function hasApiKey(): boolean {
-  const key = process.env.ANTHROPIC_API_KEY;
-  return !!key && key !== "your-api-key-here";
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +16,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If no API key — tell frontend to use local generation
-    if (!hasApiKey()) {
+    // If no AI provider — tell frontend to use local generation
+    if (getActiveProvider() === "demo") {
       return NextResponse.json({ demo: true });
     }
 
@@ -31,24 +26,13 @@ export async function POST(request: NextRequest) {
       .map((f) => `${f.label}: ${data[f.id] || "не указано"}`)
       .join("\n");
 
-    const client = new Anthropic();
+    const response = await generateAI(
+      GENERATE_DOCUMENT_SYSTEM_PROMPT,
+      `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
+      4096
+    );
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: GENERATE_DOCUMENT_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
-        },
-      ],
-    });
-
-    const documentText =
-      message.content[0].type === "text" ? message.content[0].text : "";
-
-    return NextResponse.json({ document: documentText });
+    return NextResponse.json({ document: response.text });
   } catch (error) {
     console.error("Generation error:", error);
     return NextResponse.json(

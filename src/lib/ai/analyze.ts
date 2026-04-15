@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { generateAI, getActiveProvider } from "./client";
 import { ANALYZE_CONTRACT_SYSTEM_PROMPT } from "./prompts";
 
 export interface AnalysisRisk {
@@ -15,36 +15,20 @@ export interface AnalysisResult {
   isDemo?: boolean;
 }
 
-function hasApiKey(): boolean {
-  const key = process.env.ANTHROPIC_API_KEY;
-  return !!key && key !== "your-api-key-here";
-}
-
 export async function analyzeContract(
   contractText: string
 ): Promise<AnalysisResult> {
-  if (!hasApiKey()) {
+  if (getActiveProvider() === "demo") {
     return generateDemoAnalysis(contractText);
   }
 
-  const client = new Anthropic();
+  const response = await generateAI(
+    ANALYZE_CONTRACT_SYSTEM_PROMPT,
+    `Проанализируй следующий договор и найди все юридические риски:\n\n${contractText}`,
+    4096
+  );
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 4096,
-    system: ANALYZE_CONTRACT_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Проанализируй следующий договор и найди все юридические риски:\n\n${contractText}`,
-      },
-    ],
-  });
-
-  const responseText =
-    message.content[0].type === "text" ? message.content[0].text : "";
-
-  const result: AnalysisResult = JSON.parse(responseText);
+  const result: AnalysisResult = JSON.parse(response.text);
 
   return result;
 }
