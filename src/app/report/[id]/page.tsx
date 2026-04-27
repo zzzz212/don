@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
@@ -35,8 +35,12 @@ export default function ReportPage({
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+
     async function loadAnalysis() {
       // First try sessionStorage (just analyzed)
       const stored = sessionStorage.getItem("analysisResult");
@@ -45,7 +49,6 @@ export default function ReportPage({
           const data = JSON.parse(stored);
           setAnalysis(data);
           setLoading(false);
-          // Clear after reading so refreshing loads from DB
           sessionStorage.removeItem("analysisResult");
           return;
         } catch {
