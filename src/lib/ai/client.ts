@@ -6,16 +6,23 @@ function getGeminiKey(): string | null {
   return key;
 }
 
+function getGroqKey(): string | null {
+  const key = process.env.GROQ_API_KEY;
+  if (!key || key === "your-groq-api-key-here") return null;
+  return key;
+}
+
 function getAnthropicKey(): string | null {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || key === "your-api-key-here") return null;
   return key;
 }
 
-export type AIProvider = "gemini" | "anthropic" | "demo";
+export type AIProvider = "gemini" | "groq" | "anthropic" | "demo";
 
 export function getActiveProvider(): AIProvider {
   if (getGeminiKey()) return "gemini";
+  if (getGroqKey()) return "groq";
   if (getAnthropicKey()) return "anthropic";
   return "demo";
 }
@@ -30,9 +37,6 @@ export interface AIResponse {
   provider: AIProvider;
 }
 
-/**
- * Send a single prompt with a system instruction and get a response.
- */
 export async function generateAI(
   systemPrompt: string,
   userMessage: string,
@@ -44,6 +48,10 @@ export async function generateAI(
     return generateGemini(systemPrompt, userMessage, maxTokens);
   }
 
+  if (provider === "groq") {
+    return generateGroq(systemPrompt, userMessage, maxTokens);
+  }
+
   if (provider === "anthropic") {
     return generateAnthropic(systemPrompt, userMessage, maxTokens);
   }
@@ -51,9 +59,6 @@ export async function generateAI(
   throw new Error("No AI provider configured");
 }
 
-/**
- * Multi-turn chat with system instruction.
- */
 export async function chatAI(
   systemPrompt: string,
   messages: AIMessage[],
@@ -63,6 +68,10 @@ export async function chatAI(
 
   if (provider === "gemini") {
     return chatGemini(systemPrompt, messages, maxTokens);
+  }
+
+  if (provider === "groq") {
+    return chatGroq(systemPrompt, messages, maxTokens);
   }
 
   if (provider === "anthropic") {
@@ -104,7 +113,6 @@ async function chatGemini(
     generationConfig: { maxOutputTokens: maxTokens },
   });
 
-  // Convert messages to Gemini format
   const history = messages.slice(0, -1).map((m) => ({
     role: m.role === "assistant" ? ("model" as const) : ("user" as const),
     parts: [{ text: m.content }],
@@ -116,6 +124,53 @@ async function chatGemini(
   const text = result.response.text();
 
   return { text, provider: "gemini" };
+}
+
+// ── Groq ───────────────────────────────────────────────
+
+async function generateGroq(
+  systemPrompt: string,
+  userMessage: string,
+  maxTokens: number
+): Promise<AIResponse> {
+  const Groq = (await import("groq-sdk")).default;
+  const client = new Groq({ apiKey: getGroqKey()! });
+
+  const response = await client.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    max_tokens: maxTokens,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
+    ],
+  });
+
+  const text = response.choices[0]?.message?.content || "";
+  return { text, provider: "groq" };
+}
+
+async function chatGroq(
+  systemPrompt: string,
+  messages: AIMessage[],
+  maxTokens: number
+): Promise<AIResponse> {
+  const Groq = (await import("groq-sdk")).default;
+  const client = new Groq({ apiKey: getGroqKey()! });
+
+  const response = await client.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    max_tokens: maxTokens,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m) => ({
+        role: (m.role === "model" ? "assistant" : m.role) as "user" | "assistant",
+        content: m.content,
+      })),
+    ],
+  });
+
+  const text = response.choices[0]?.message?.content || "";
+  return { text, provider: "groq" };
 }
 
 // ── Anthropic ───────────────────────────────────────────
