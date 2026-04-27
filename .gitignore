@@ -30,7 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — .env committed with safe defaults, secrets in .env.local
+# env files — все .env кроме .env.example
+.env
 .env.local
 .env.production
 
