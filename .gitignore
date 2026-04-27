@@ -30,8 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — все .env кроме .env.example
-.env
+# env files — .env.local для секретных ключей (не в git)
 .env.local
 .env.production
 
