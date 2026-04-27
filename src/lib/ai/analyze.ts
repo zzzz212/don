@@ -28,7 +28,14 @@ export async function analyzeContract(
     4096
   );
 
-  const result: AnalysisResult = JSON.parse(response.text);
+  // Gemini often wraps JSON in ```json ... ``` markdown blocks
+  let jsonText = response.text.trim();
+  const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    jsonText = fenceMatch[1].trim();
+  }
+
+  const result: AnalysisResult = JSON.parse(jsonText);
 
   return result;
 }

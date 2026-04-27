@@ -26,7 +26,9 @@ export async function POST(request: NextRequest) {
     }
 
     // If no AI provider — return demo indicator
-    if (getActiveProvider() === "demo") {
+    const provider = getActiveProvider();
+    console.log("[chat] Active AI provider:", provider);
+    if (provider === "demo") {
       return NextResponse.json({ demo: true });
     }
 

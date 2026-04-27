@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseDocument } from "@/lib/parsers";
 import { analyzeContract } from "@/lib/ai/analyze";
+import { getActiveProvider } from "@/lib/ai/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest) {
     const truncatedText = contractText.slice(0, 15000);
 
     // Analyze with AI (or demo fallback)
+    const provider = getActiveProvider();
+    console.log("[analyze] Active AI provider:", provider);
     const analysis = await analyzeContract(truncatedText);
 
     // Save to DB if user is authenticated
