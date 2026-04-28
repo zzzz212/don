@@ -2,16 +2,36 @@ import { generateAI, getActiveProvider } from "./client";
 import { ANALYZE_CONTRACT_SYSTEM_PROMPT } from "./prompts";
 
 export interface AnalysisRisk {
-  clause: string;
+  clauseNumber: string;
+  clauseTitle: string;
   level: "critical" | "medium" | "low";
   description: string;
+  legalReference: string;
+  originalText: string;
+  recommendedText: string;
   recommendation: string;
+}
+
+export interface NotarizationInfo {
+  required: boolean;
+  reason: string;
+}
+
+export interface RegistrationInfo {
+  required: boolean;
+  reason: string;
 }
 
 export interface AnalysisResult {
   score: number;
   summary: string;
+  contractType: string;
+  parties: string;
   risks: AnalysisRisk[];
+  notarization: NotarizationInfo;
+  registration: RegistrationInfo;
+  missingClauses: string[];
+  preSigningChecklist: string[];
   isDemo?: boolean;
 }
 
@@ -28,7 +48,6 @@ export async function analyzeContract(
     4096
   );
 
-  // Gemini often wraps JSON in ```json ... ``` markdown blocks
   let jsonText = response.text.trim();
   const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
@@ -36,19 +55,12 @@ export async function analyzeContract(
   }
 
   const result: AnalysisResult = JSON.parse(jsonText);
-
   return result;
 }
 
-/**
- * Generate a realistic demo analysis based on the actual document text.
- * Used when ANTHROPIC_API_KEY is not configured.
- */
 function generateDemoAnalysis(contractText: string): AnalysisResult {
-  const textLower = contractText.toLowerCase();
   const textLength = contractText.length;
 
-  // Detect contract type from text
   const isLease = /аренд|арендатор|арендодатель|помещени/i.test(contractText);
   const isSale = /купл|продаж|покупатель|продавец|товар/i.test(contractText);
   const isEmployment = /трудов|работник|работодатель|зарплат/i.test(contractText);
@@ -57,163 +69,154 @@ function generateDemoAnalysis(contractText: string): AnalysisResult {
 
   const risks: AnalysisRisk[] = [];
 
-  // Check for common risky patterns in the actual text
   if (/одностороnn|в одностороннем порядке/i.test(contractText)) {
     risks.push({
-      clause: "Односторонний отказ от договора",
+      clauseNumber: "Условие об одностороннем расторжении",
+      clauseTitle: "Односторонний отказ",
       level: "critical",
       description:
-        "Обнаружено условие об одностороннем отказе от договора. Это может создавать дисбаланс прав сторон, если право предоставлено только одной стороне.",
+        "Условие об одностороннем отказе от договора без симметричного права у второй стороны создаёт дисбаланс.",
+      legalReference: "ст. 450.1 ГК РФ",
+      originalText: "В тексте договора найдено упоминание одностороннего отказа",
+      recommendedText:
+        "Каждая Сторона вправе в одностороннем внесудебном порядке отказаться от исполнения настоящего Договора, направив другой Стороне письменное уведомление не менее чем за 30 (тридцать) календарных дней до предполагаемой даты расторжения.",
       recommendation:
-        "Убедитесь, что право одностороннего отказа симметрично для обеих сторон. Установите разумный срок уведомления (не менее 30 дней).",
+        "Сделать право на расторжение симметричным с уведомлением за 30 дней.",
     });
   }
 
   if (/штраф|неустойк|пен[яи]/i.test(contractText)) {
     risks.push({
-      clause: "Штрафные санкции",
+      clauseNumber: "Раздел об ответственности",
+      clauseTitle: "Размер неустойки",
       level: "medium",
       description:
-        "Договор содержит условия о штрафных санкциях. Необходимо проверить их соразмерность возможным нарушениям (ст. 333 ГК РФ).",
+        "Договор содержит условия о штрафных санкциях. Размер неустойки может быть признан несоразмерным.",
+      legalReference: "ст. 333 ГК РФ",
+      originalText: "В договоре указан размер неустойки",
+      recommendedText:
+        "За нарушение сроков исполнения обязательств виновная Сторона уплачивает другой Стороне неустойку в размере 0,1% (одной десятой процента) от суммы неисполненного обязательства за каждый день просрочки, но не более 10% от суммы договора.",
       recommendation:
-        "Проверьте, чтобы размер неустойки не превышал разумных пределов. Рекомендуемый максимум — 0.1-0.5% в день.",
+        "Установить неустойку 0,1% в день с потолком 10% от суммы договора.",
     });
   }
 
-  if (/форс-мажор|непреодолим|обстоятельств/i.test(contractText)) {
+  if (isLease && risks.length < 4) {
     risks.push({
-      clause: "Форс-мажорные обстоятельства",
+      clauseNumber: "Раздел об арендной плате",
+      clauseTitle: "Индексация арендной платы",
+      level: "medium",
+      description:
+        "Не определён предельный размер индексации, что позволяет арендодателю произвольно повышать плату.",
+      legalReference: "ст. 614 ГК РФ",
+      originalText: "Условие об индексации в договоре",
+      recommendedText:
+        "Размер арендной платы может быть изменён Арендодателем не чаще одного раза в год путём индексации на размер официального ИПЦ Росстата за предыдущий календарный год, но не более чем на 7% (семь процентов).",
+      recommendation: "Зафиксировать максимум индексации — ИПЦ или 7% в год.",
+    });
+  }
+
+  if (isSale && risks.length < 4) {
+    risks.push({
+      clauseNumber: "Раздел о гарантии",
+      clauseTitle: "Гарантийный срок",
+      level: "medium",
+      description:
+        "Не установлен или не чётко определён гарантийный срок на товар.",
+      legalReference: "ст. 470-477 ГК РФ",
+      originalText: "Условия гарантии в договоре",
+      recommendedText:
+        "Продавец гарантирует качество Товара в течение 12 (двенадцати) месяцев со дня передачи Покупателю. В течение гарантийного срока Продавец обязан безвозмездно устранить недостатки или заменить Товар в течение 14 (четырнадцати) рабочих дней с момента получения письменной претензии.",
+      recommendation: "Установить гарантию 12 месяцев и срок реакции 14 дней.",
+    });
+  }
+
+  if (risks.length < 3) {
+    risks.push({
+      clauseNumber: "Отсутствует",
+      clauseTitle: "Порядок претензионного урегулирования",
       level: "low",
       description:
-        "Договор содержит положения о форс-мажоре. Убедитесь, что перечень обстоятельств достаточно полный и процедура уведомления чётко прописана.",
+        "В договоре не определён обязательный претензионный порядок, что может затянуть разрешение споров.",
+      legalReference: "ст. 4 АПК РФ",
+      originalText: "Пункт в договоре отсутствует",
+      recommendedText:
+        "До обращения в суд Стороны обязуются урегулировать возникшие разногласия путём направления письменной претензии. Срок ответа на претензию — 30 (тридцать) календарных дней с момента её получения. Претензия направляется заказным письмом с уведомлением или нарочно с отметкой о получении.",
       recommendation:
-        "Рекомендуется указать конкретный срок уведомления о форс-мажоре и перечень подтверждающих документов.",
+        "Добавить претензионный порядок со сроком ответа 30 дней.",
     });
   }
 
-  if (/подсудност|арбитраж|суд/i.test(contractText)) {
-    risks.push({
-      clause: "Подсудность споров",
-      level: "low",
-      description:
-        "Установлена договорная подсудность. Проверьте, удобно ли вам рассмотрение споров в указанном суде.",
-      recommendation:
-        "Если контрагент в другом регионе, рассмотрите вариант подсудности по месту исполнения договора.",
-    });
-  }
-
-  // Type-specific risks
-  if (isLease) {
-    if (risks.length < 2) {
-      risks.push({
-        clause: "Условия аренды",
-        level: "medium",
-        description:
-          "В договоре аренды рекомендуется чётко прописать порядок индексации арендной платы, ответственность за текущий и капитальный ремонт, а также условия возврата обеспечительного платежа.",
-        recommendation:
-          "Установите фиксированный максимум индексации (например, не более ИПЦ + 2%). Разграничьте ответственность за ремонт согласно ст. 616 ГК РФ.",
-      });
-    }
-  }
-
-  if (isSale) {
-    if (risks.length < 2) {
-      risks.push({
-        clause: "Гарантийные обязательства",
-        level: "medium",
-        description:
-          "Проверьте наличие и условия гарантийного срока на товар (ст. 470-477 ГК РФ). Отсутствие гарантии может ограничить ваши права при обнаружении недостатков.",
-        recommendation:
-          "Установите гарантийный срок не менее 12 месяцев. Пропишите порядок рекламации и сроки замены/ремонта.",
-      });
-    }
-  }
-
-  if (isEmployment) {
-    if (risks.length < 2) {
-      risks.push({
-        clause: "Условия трудового договора",
-        level: "medium",
-        description:
-          "Убедитесь, что трудовой договор содержит все обязательные условия по ст. 57 ТК РФ: место работы, трудовая функция, дата начала, условия оплаты, режим рабочего времени.",
-        recommendation:
-          "Проверьте соответствие всем обязательным требованиям ст. 57 ТК РФ. Убедитесь, что условия оплаты не ниже МРОТ.",
-      });
-    }
-  }
-
-  if (isService) {
-    if (risks.length < 2) {
-      risks.push({
-        clause: "Приёмка работ/услуг",
-        level: "medium",
-        description:
-          "Проверьте порядок и сроки приёмки оказанных услуг. Отсутствие чётких критериев приёмки может привести к спорам.",
-        recommendation:
-          "Пропишите конкретные критерии приёмки, срок рассмотрения акта (5-10 рабочих дней) и порядок мотивированного отказа.",
-      });
-    }
-  }
-
-  if (isNda) {
-    if (risks.length < 2) {
-      risks.push({
-        clause: "Срок конфиденциальности",
-        level: "medium",
-        description:
-          "Убедитесь, что установлен разумный срок действия обязательств конфиденциальности и чётко определён перечень конфиденциальной информации.",
-        recommendation:
-          "Рекомендуемый срок — 3-5 лет после прекращения договора. Укажите исчерпывающий перечень исключений из конфиденциальности.",
-      });
-    }
-  }
-
-  // Always add at least one risk if none found
   if (risks.length === 0) {
     risks.push({
-      clause: "Общая оценка",
+      clauseNumber: "Общая оценка",
+      clauseTitle: "Демо-режим",
       level: "low",
       description:
-        "Автоматический анализ не обнаружил явных рисковых паттернов в тексте. Для полноценного юридического анализа рекомендуется подключить AI-модель.",
-      recommendation:
-        "Добавьте API-ключ Anthropic в файл .env.local для получения детального AI-анализа каждого пункта договора.",
+        "Автоматический анализ не обнаружил явных рисков. Для полноценного анализа подключите AI-модель.",
+      legalReference: "—",
+      originalText: "—",
+      recommendedText: "—",
+      recommendation: "Добавьте GROQ_API_KEY или GEMINI_API_KEY в .env.",
     });
   }
 
-  // Calculate score based on risks
   const criticalCount = risks.filter((r) => r.level === "critical").length;
   const mediumCount = risks.filter((r) => r.level === "medium").length;
-  const score = Math.max(1, Math.min(10, 10 - criticalCount * 3 - mediumCount * 1));
+  const lowCount = risks.filter((r) => r.level === "low").length;
+  const score = Math.max(
+    1,
+    Math.min(10, Math.round(10 - criticalCount * 2 - mediumCount * 1 - lowCount * 0.5))
+  );
 
-  // Generate summary
   const contractType = isLease
-    ? "аренды"
+    ? "Договор аренды"
     : isSale
-      ? "купли-продажи"
+      ? "Договор купли-продажи"
       : isEmployment
-        ? "трудовой"
+        ? "Трудовой договор"
         : isService
-          ? "оказания услуг"
+          ? "Договор оказания услуг"
           : isNda
-            ? "о конфиденциальности"
-            : "";
-
-  const typeText = contractType ? ` ${contractType}` : "";
+            ? "Соглашение о конфиденциальности (NDA)"
+            : "Договор";
 
   const summary =
     criticalCount > 0
-      ? `Договор${typeText} содержит ${criticalCount} критичных и ${mediumCount} средних рисков. Рекомендуется внести правки до подписания. Документ объёмом ${textLength} символов проанализирован автоматически.`
+      ? `${contractType} содержит ${criticalCount} критичных и ${mediumCount} средних рисков. Подписывать в текущей редакции не рекомендуется.`
       : mediumCount > 0
-        ? `Договор${typeText} в целом приемлем, но содержит ${mediumCount} замечаний, которые рекомендуется устранить. Документ объёмом ${textLength} символов проанализирован автоматически.`
-        : `Договор${typeText} не содержит явных рисков по результатам автоматической проверки. Для глубокого AI-анализа подключите API-ключ.`;
-
-  // suppress unused variable warning
-  void textLower;
+        ? `${contractType} в целом приемлем, но содержит ${mediumCount} замечаний, которые рекомендуется устранить.`
+        : `${contractType} не содержит явных рисков по автоматической проверке.`;
 
   return {
     score,
     summary,
+    contractType,
+    parties: "Стороны не определены автоматически (демо-режим)",
     risks,
+    notarization: {
+      required: isLease || isEmployment ? false : false,
+      reason:
+        "Не требуется по ст. 161 ГК РФ — простой письменной формы достаточно. Нотариальное заверение по желанию Сторон может усилить доказательственную силу.",
+    },
+    registration: {
+      required: isLease,
+      reason: isLease
+        ? "Если срок аренды недвижимости 1 год и более — обязательна государственная регистрация в Росреестре по ст. 651 ГК РФ."
+        : "Не требуется для данного типа договора.",
+    },
+    missingClauses: [
+      "Чёткое определение порядка досрочного расторжения",
+      "Конкретные сроки исполнения обязательств",
+      "Порядок претензионного урегулирования споров",
+    ],
+    preSigningChecklist: [
+      "Запросить выписку из ЕГРЮЛ/ЕГРИП контрагента не старше 30 дней",
+      "Проверить полномочия подписанта (доверенность, устав, приказ о назначении)",
+      "Уточнить актуальность банковских реквизитов в банке",
+      "Сверить ИНН/ОГРН на сайте ФНС (egrul.nalog.ru)",
+      `Документ объёмом ${textLength} символов — внимательно перечитать перед подписанием`,
+    ],
     isDemo: true,
   };
 }

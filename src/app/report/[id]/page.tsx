@@ -15,13 +15,34 @@ import {
   Loader2,
   Info,
   Download,
+  Stamp,
+  Building2,
+  ListChecks,
+  ClipboardCheck,
+  Users,
 } from "lucide-react";
+
+interface NotarizationInfo {
+  required: boolean;
+  reason: string;
+}
+
+interface RegistrationInfo {
+  required: boolean;
+  reason: string;
+}
 
 interface AnalysisData {
   fileName: string;
   score: number;
   summary: string;
+  contractType?: string;
+  parties?: string;
   risks: RiskItem[];
+  notarization?: NotarizationInfo;
+  registration?: RegistrationInfo;
+  missingClauses?: string[];
+  preSigningChecklist?: string[];
   isDemo?: boolean;
   documentId?: string;
 }
@@ -42,7 +63,6 @@ export default function ReportPage({
     loadedRef.current = true;
 
     async function loadAnalysis() {
-      // First try sessionStorage (just analyzed)
       const stored = sessionStorage.getItem("analysisResult");
       if (stored) {
         try {
@@ -56,7 +76,6 @@ export default function ReportPage({
         }
       }
 
-      // Try loading from DB
       if (id !== "latest") {
         try {
           const response = await fetch(`/api/documents/${id}`);
@@ -167,7 +186,7 @@ export default function ReportPage({
                 </p>
                 <p className="text-sm text-blue-700 mt-0.5">
                   Это автоматический анализ по ключевым словам. Для полноценного
-                  AI-анализа добавьте ANTHROPIC_API_KEY в файл .env.local
+                  AI-анализа добавьте API-ключ в .env
                 </p>
               </div>
             </div>
@@ -184,6 +203,23 @@ export default function ReportPage({
                     {analysis.fileName}
                   </h1>
                 </div>
+
+                {/* Contract type + parties */}
+                {analysis.contractType && (
+                  <div className="mb-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-primary-light px-2.5 py-1 text-xs font-semibold text-primary-dark">
+                      <FileText className="h-3 w-3" />
+                      {analysis.contractType}
+                    </span>
+                    {analysis.parties && (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1 text-xs font-medium text-muted">
+                        <Users className="h-3 w-3" />
+                        {analysis.parties}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <p className="text-sm leading-relaxed text-muted">
                   {analysis.summary}
                 </p>
@@ -216,6 +252,65 @@ export default function ReportPage({
             </div>
           </div>
 
+          {/* Notarization & Registration */}
+          {(analysis.notarization || analysis.registration) && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {analysis.notarization && (
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                        analysis.notarization.required
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-green-50 text-green-600"
+                      }`}
+                    >
+                      <Stamp className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Нотариус</p>
+                      <p className="font-semibold text-foreground">
+                        {analysis.notarization.required
+                          ? "Требуется"
+                          : "Не требуется"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted">
+                    {analysis.notarization.reason}
+                  </p>
+                </div>
+              )}
+
+              {analysis.registration && (
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                        analysis.registration.required
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-green-50 text-green-600"
+                      }`}
+                    >
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Госрегистрация</p>
+                      <p className="font-semibold text-foreground">
+                        {analysis.registration.required
+                          ? "Требуется"
+                          : "Не требуется"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted">
+                    {analysis.registration.reason}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Risk cards */}
           <div className="mt-6 space-y-4">
             <h2 className="text-lg font-bold text-foreground">
@@ -225,6 +320,61 @@ export default function ReportPage({
               <AnalysisCard key={i} risk={risk} index={i} />
             ))}
           </div>
+
+          {/* Missing clauses */}
+          {analysis.missingClauses && analysis.missingClauses.length > 0 && (
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/50 p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-amber-600" />
+                <h2 className="text-lg font-bold text-foreground">
+                  Что добавить в договор
+                </h2>
+              </div>
+              <p className="mb-3 text-sm text-muted">
+                Эти пункты отсутствуют, но критически важны для защиты ваших интересов:
+              </p>
+              <ul className="space-y-2">
+                {analysis.missingClauses.map((clause, i) => (
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-sm text-foreground"
+                  >
+                    <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                    <span>{clause}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Pre-signing checklist */}
+          {analysis.preSigningChecklist &&
+            analysis.preSigningChecklist.length > 0 && (
+              <div className="mt-6 rounded-xl border border-primary/20 bg-primary-light/20 p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-bold text-foreground">
+                    Чек-лист перед подписанием
+                  </h2>
+                </div>
+                <p className="mb-3 text-sm text-muted">
+                  Сделайте это до того, как поставите подпись:
+                </p>
+                <ul className="space-y-2">
+                  {analysis.preSigningChecklist.map((item, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-sm text-foreground"
+                    >
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-primary/30 bg-white text-xs font-bold text-primary">
+                        {i + 1}
+                      </div>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
           {/* Bottom CTA */}
           <div className="mt-8 rounded-2xl border border-primary/20 bg-primary-light/30 p-6 text-center print:hidden">

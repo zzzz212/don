@@ -26,6 +26,10 @@ export async function GET(
       );
     }
 
+    const metadata = document.analysis?.metadata
+      ? JSON.parse(document.analysis.metadata)
+      : {};
+
     return NextResponse.json({
       id: document.id,
       fileName: document.fileName,
@@ -33,6 +37,13 @@ export async function GET(
       score: document.analysis?.score ?? 0,
       summary: document.analysis?.summary ?? "",
       risks: document.analysis ? JSON.parse(document.analysis.risks) : [],
+      contractType: metadata.contractType,
+      parties: metadata.parties,
+      notarization: metadata.notarization,
+      registration: metadata.registration,
+      missingClauses: metadata.missingClauses,
+      preSigningChecklist: metadata.preSigningChecklist,
+      isDemo: metadata.isDemo,
       createdAt: document.createdAt,
     });
   } catch (error) {

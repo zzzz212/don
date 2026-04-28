@@ -66,6 +66,16 @@ export async function POST(request: NextRequest) {
         });
 
         if (userExists) {
+          const metadata = JSON.stringify({
+            contractType: analysis.contractType,
+            parties: analysis.parties,
+            notarization: analysis.notarization,
+            registration: analysis.registration,
+            missingClauses: analysis.missingClauses,
+            preSigningChecklist: analysis.preSigningChecklist,
+            isDemo: analysis.isDemo ?? false,
+          });
+
           const document = await prisma.document.create({
             data: {
               userId,
@@ -77,6 +87,7 @@ export async function POST(request: NextRequest) {
                   score: analysis.score,
                   summary: analysis.summary,
                   risks: JSON.stringify(analysis.risks),
+                  metadata,
                 },
               },
             },

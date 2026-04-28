@@ -78,6 +78,7 @@ model Analysis {
   score      Int
   summary    String
   risks      String
+  metadata   String?
   createdAt  DateTime @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
