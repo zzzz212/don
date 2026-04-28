@@ -73,6 +73,17 @@ export async function loginUser(formData: FormData) {
   return { success: true };
 }
 
+export async function isGoogleAuthEnabled() {
+  return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
 export async function loginWithGoogle() {
-  await signIn("google", { redirectTo: "/dashboard" });
+  try {
+    await signIn("google", { redirectTo: "/dashboard" });
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    throw new Error("Ошибка при входе через Google");
+  }
 }
