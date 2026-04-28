@@ -40,20 +40,21 @@ export interface AIResponse {
 export async function generateAI(
   systemPrompt: string,
   userMessage: string,
-  maxTokens = 4096
+  maxTokens = 4096,
+  temperature = 0.1
 ): Promise<AIResponse> {
   const provider = getActiveProvider();
 
   if (provider === "gemini") {
-    return generateGemini(systemPrompt, userMessage, maxTokens);
+    return generateGemini(systemPrompt, userMessage, maxTokens, temperature);
   }
 
   if (provider === "groq") {
-    return generateGroq(systemPrompt, userMessage, maxTokens);
+    return generateGroq(systemPrompt, userMessage, maxTokens, temperature);
   }
 
   if (provider === "anthropic") {
-    return generateAnthropic(systemPrompt, userMessage, maxTokens);
+    return generateAnthropic(systemPrompt, userMessage, maxTokens, temperature);
   }
 
   throw new Error("No AI provider configured");
@@ -86,13 +87,14 @@ export async function chatAI(
 async function generateGemini(
   systemPrompt: string,
   userMessage: string,
-  maxTokens: number
+  maxTokens: number,
+  temperature: number
 ): Promise<AIResponse> {
   const genAI = new GoogleGenerativeAI(getGeminiKey()!);
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
     systemInstruction: systemPrompt,
-    generationConfig: { maxOutputTokens: maxTokens },
+    generationConfig: { maxOutputTokens: maxTokens, temperature },
   });
 
   const result = await model.generateContent(userMessage);
@@ -131,7 +133,8 @@ async function chatGemini(
 async function generateGroq(
   systemPrompt: string,
   userMessage: string,
-  maxTokens: number
+  maxTokens: number,
+  temperature: number
 ): Promise<AIResponse> {
   const Groq = (await import("groq-sdk")).default;
   const client = new Groq({ apiKey: getGroqKey()! });
@@ -139,6 +142,7 @@ async function generateGroq(
   const response = await client.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     max_tokens: maxTokens,
+    temperature,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userMessage },
@@ -178,7 +182,8 @@ async function chatGroq(
 async function generateAnthropic(
   systemPrompt: string,
   userMessage: string,
-  maxTokens: number
+  maxTokens: number,
+  temperature: number
 ): Promise<AIResponse> {
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic();
@@ -186,6 +191,7 @@ async function generateAnthropic(
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: maxTokens,
+    temperature,
     system: systemPrompt,
     messages: [{ role: "user", content: userMessage }],
   });
