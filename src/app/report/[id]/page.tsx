@@ -15,6 +15,7 @@ import {
   Loader2,
   Info,
   Download,
+  FileDown,
   Stamp,
   Building2,
   ListChecks,
@@ -56,7 +57,34 @@ export default function ReportPage({
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const loadedRef = useRef(false);
+
+  const handleExportPDF = async () => {
+    if (!analysis) return;
+    setExporting("pdf");
+    try {
+      const { exportPDF } = await import("@/lib/export-pdf");
+      await exportPDF(analysis);
+    } catch (e) {
+      console.error("PDF export error:", e);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportDOCX = async () => {
+    if (!analysis) return;
+    setExporting("docx");
+    try {
+      const { exportDOCX } = await import("@/lib/export-docx");
+      await exportDOCX(analysis);
+    } catch (e) {
+      console.error("DOCX export error:", e);
+    } finally {
+      setExporting(null);
+    }
+  };
 
   useEffect(() => {
     if (loadedRef.current) return;
@@ -161,11 +189,28 @@ export default function ReportPage({
             </Link>
             <div className="flex gap-2">
               <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                onClick={handleExportPDF}
+                disabled={exporting === "pdf"}
+                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
               >
-                <Download className="h-4 w-4" />
+                {exporting === "pdf" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
                 Скачать PDF
+              </button>
+              <button
+                onClick={handleExportDOCX}
+                disabled={exporting === "docx"}
+                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+              >
+                {exporting === "docx" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                Скачать DOCX
               </button>
               <Link
                 href="/analyze"
