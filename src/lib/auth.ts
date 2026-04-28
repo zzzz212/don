@@ -6,9 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret:
-    process.env.AUTH_SECRET ||
-    "juriist-dev-secret-do-not-use-in-production-abc123xyz",
+  secret: process.env.AUTH_SECRET,
   trustHost: true,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adapter: PrismaAdapter(prisma as any),

@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateAI, getActiveProvider } from "@/lib/ai/client";
 import { GENERATE_DOCUMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { getTemplate } from "@/lib/templates";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+    const rl = rateLimit(ip, "generate");
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Слишком много запросов. Подождите немного." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { templateId, data } = body;
 

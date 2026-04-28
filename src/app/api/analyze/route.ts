@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseDocument } from "@/lib/parsers";
 import { analyzeContract } from "@/lib/ai/analyze";
-import { getActiveProvider } from "@/lib/ai/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+    const rl = rateLimit(ip, "analyze");
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Слишком много запросов. Подождите немного." },
+        { status: 429 }
+      );
+    }
+
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -50,9 +59,6 @@ export async function POST(request: NextRequest) {
     // Limit text length for API
     const truncatedText = contractText.slice(0, 15000);
 
-    // Analyze with AI (or demo fallback)
-    const provider = getActiveProvider();
-    console.log("[analyze] Active AI provider:", provider);
     const analysis = await analyzeContract(truncatedText);
 
     // Save to DB if user is authenticated

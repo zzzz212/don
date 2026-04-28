@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chatAI, getActiveProvider } from "@/lib/ai/client";
+import { rateLimit } from "@/lib/rate-limit";
 
 const SYSTEM_PROMPT = `Ты — опытный юрист-консультант, специализирующийся на российском законодательстве. Ты помогаешь предпринимателям и малому бизнесу разобраться в юридических вопросах.
 
@@ -16,6 +17,15 @@ const SYSTEM_PROMPT = `Ты — опытный юрист-консультант
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
+    const rl = rateLimit(ip, "chat");
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Слишком много запросов. Подождите немного." },
+        { status: 429 }
+      );
+    }
+
     const { messages } = await request.json();
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -27,7 +37,6 @@ export async function POST(request: NextRequest) {
 
     // If no AI provider — return demo indicator
     const provider = getActiveProvider();
-    console.log("[chat] Active AI provider:", provider);
     if (provider === "demo") {
       return NextResponse.json({ demo: true });
     }
