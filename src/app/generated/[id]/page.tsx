@@ -184,7 +184,7 @@ export default function ViewGeneratedPage() {
               <FileText className="h-6 w-6 text-primary" />
               {doc.name}
             </h1>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleCopy}
                 className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
@@ -209,6 +209,18 @@ export default function ViewGeneratedPage() {
                 Скачать DOCX
               </button>
               <button
+                onClick={() => {
+                  sessionStorage.setItem(
+                    `template_${doc.templateId}`,
+                    JSON.stringify(doc.formData)
+                  );
+                  router.push(`/templates/${doc.templateId}`);
+                }}
+                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+              >
+                ✏️ Редактировать поля
+              </button>
+              <button
                 onClick={handleDelete}
                 disabled={deleting}
                 className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-red-50 disabled:opacity-50"
@@ -219,11 +231,17 @@ export default function ViewGeneratedPage() {
             </div>
           </div>
 
-          {/* Document preview */}
-          <div className="rounded-2xl border border-border bg-white p-8 sm:p-10 shadow-sm">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-foreground">
-              {doc.content}
-            </pre>
+          {/* Document preview in A4 format */}
+          <div className="flex justify-center my-6">
+            <div className="w-full max-w-2xl" style={{ aspectRatio: "210/297" }}>
+              <div className="h-full bg-white rounded-lg shadow-2xl overflow-auto">
+                <div className="p-8 h-full">
+                  <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-foreground break-words">
+                    {doc.content}
+                  </pre>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Actions */}

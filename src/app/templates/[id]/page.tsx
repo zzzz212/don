@@ -19,7 +19,16 @@ import {
 export default function TemplateFillPage() {
   const params = useParams();
   const template = getTemplate(params.id as string);
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const templateId = params.id as string;
+
+  const [formData, setFormData] = useState<Record<string, string>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem(`template_${templateId}`);
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -135,7 +144,7 @@ export default function TemplateFillPage() {
           </Link>
 
           {!generatedDoc ? (
-            <div className="animate-fade-in">
+            <div className="animate-in fade-in duration-300">
               {/* Template header */}
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-foreground">
@@ -171,7 +180,7 @@ export default function TemplateFillPage() {
             </div>
           ) : (
             /* Generated document */
-            <div className="animate-fade-in">
+            <div className="animate-in fade-in duration-500">
               {/* Success header */}
               <div className="mb-6 flex items-center gap-3 rounded-xl bg-green-50 border border-green-200 p-4">
                 <CheckCircle className="h-5 w-5 text-success shrink-0" />
@@ -218,11 +227,17 @@ export default function TemplateFillPage() {
                 </div>
               </div>
 
-              {/* Document preview */}
-              <div className="rounded-2xl border border-border bg-white p-8 sm:p-10 shadow-sm">
-                <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-foreground">
-                  {generatedDoc}
-                </pre>
+              {/* Document preview in A4 format */}
+              <div className="flex justify-center my-6">
+                <div className="w-full max-w-2xl" style={{ aspectRatio: "210/297" }}>
+                  <div className="h-full bg-white rounded-lg shadow-2xl overflow-auto">
+                    <div className="p-8 h-full">
+                      <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-foreground break-words">
+                        {generatedDoc}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Generate another */}
