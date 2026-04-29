@@ -26,6 +26,7 @@ model User {
   counterpartyChecks CounterpartyCheck[]
   documentVersions   DocumentVersion[]
   versionComparisons VersionComparison[]
+  legalReferences    LegalReference[]
 }
 
 model Account {
@@ -168,6 +169,44 @@ model ChatMessage {
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId])
+}
+
+model LegalKnowledge {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  type          String   // "statute" | "article" | "clause"
+  title         String
+  shortTitle    String
+  fullText      String
+  commentary    String?
+  practiceNotes String?
+  relatedCodes  String   @default("[]") // JSON array as string
+
+  tags          String   @default("[]") // JSON array as string
+  searchVector  String
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  references    LegalReference[]
+
+  @@index([code])
+}
+
+model LegalReference {
+  id        String   @id @default(cuid())
+  userId    String
+  knownId   String
+
+  note      String?
+
+  createdAt DateTime @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledge LegalKnowledge  @relation(fields: [knownId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, knownId])
+  @@index([userId])
 }
 
 model CounterpartyProfile {
