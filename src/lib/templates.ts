@@ -27,7 +27,7 @@ export const templates: DocumentTemplate[] = [
       "Защитите конфиденциальную информацию при работе с партнёрами, подрядчиками и сотрудниками.",
     icon: "shield",
     category: "Конфиденциальность",
-    estimatedTime: "2 мин",
+    estimatedTime: "3 мин",
     fields: [
       {
         id: "disclosingParty",
@@ -86,6 +86,42 @@ export const templates: DocumentTemplate[] = [
         placeholder: "500000",
         required: true,
       },
+      {
+        id: "nonSolicitation",
+        label: "Включить запрет на переманивание сотрудников",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "no", label: "Нет" },
+          { value: "6months", label: "6 месяцев после расторжения" },
+          { value: "1year", label: "1 год после расторжения" },
+        ],
+      },
+      {
+        id: "ipOwnership",
+        label: "Принадлежность интеллектуальной собственности",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "disclosing", label: "Раскрывающей стороне" },
+          { value: "receiving", label: "Получающей стороне" },
+          { value: "joint", label: "Совместная собственность" },
+        ],
+      },
+      {
+        id: "materialsReturn",
+        label: "Требование возврата всех материалов",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "no", label: "Нет" },
+          { value: "yes", label: "Да, в течение 10 дней" },
+          { value: "destruction", label: "Да, с уничтожением копий" },
+        ],
+      },
     ],
   },
   {
@@ -96,7 +132,7 @@ export const templates: DocumentTemplate[] = [
       "Типовой договор аренды для офиса, склада или торгового помещения с защитой интересов арендатора.",
     icon: "building",
     category: "Недвижимость",
-    estimatedTime: "3 мин",
+    estimatedTime: "4 мин",
     fields: [
       {
         id: "landlord",
@@ -155,6 +191,42 @@ export const templates: DocumentTemplate[] = [
         required: false,
       },
       {
+        id: "utilities",
+        label: "Оплата коммунальных услуг",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "landlord", label: "Включена в арендную плату" },
+          { value: "tenant", label: "Оплачивает арендатор отдельно" },
+          { value: "shared", label: "Делится поровну" },
+        ],
+      },
+      {
+        id: "repairs",
+        label: "Ремонт и техническое обслуживание",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "landlord", label: "За счёт арендодателя" },
+          { value: "tenant", label: "За счёт арендатора" },
+          { value: "both", label: "В зависимости от типа ремонта" },
+        ],
+      },
+      {
+        id: "subrental",
+        label: "Разрешить субаренду",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "no", label: "Не разрешить" },
+          { value: "with_permission", label: "С согласия арендодателя" },
+          { value: "allowed", label: "Разрешить" },
+        ],
+      },
+      {
         id: "duration",
         label: "Срок аренды",
         type: "select",
@@ -165,6 +237,18 @@ export const templates: DocumentTemplate[] = [
           { value: "12", label: "1 год" },
           { value: "36", label: "3 года" },
           { value: "60", label: "5 лет" },
+        ],
+      },
+      {
+        id: "indexation",
+        label: "Индексация арендной платы",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "no", label: "Без индексации" },
+          { value: "cpi", label: "По индексу потребительских цен" },
+          { value: "fixed", label: "Ежегодное увеличение на фиксированный %" },
         ],
       },
       {
@@ -184,7 +268,7 @@ export const templates: DocumentTemplate[] = [
       "Договор для продажи товаров, оборудования или имущества между юридическими или физическими лицами.",
     icon: "handshake",
     category: "Торговля",
-    estimatedTime: "3 мин",
+    estimatedTime: "4 мин",
     fields: [
       {
         id: "seller",
@@ -242,6 +326,30 @@ export const templates: DocumentTemplate[] = [
         ],
       },
       {
+        id: "riskTransfer",
+        label: "Переход риска случайной гибели товара",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "delivery", label: "При передаче товара" },
+          { value: "payment", label: "При полной оплате" },
+          { value: "signing", label: "При подписании договора" },
+        ],
+      },
+      {
+        id: "packaging",
+        label: "Упаковка и доставка",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "seller", label: "За счёт продавца" },
+          { value: "buyer", label: "За счёт покупателя" },
+          { value: "included", label: "Включены в цену" },
+        ],
+      },
+      {
         id: "deliveryDate",
         label: "Срок поставки / передачи",
         type: "date",
@@ -261,6 +369,18 @@ export const templates: DocumentTemplate[] = [
           { value: "24", label: "2 года" },
         ],
       },
+      {
+        id: "claimsDeadline",
+        label: "Срок для предъявления претензий к качеству",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "14", label: "14 дней с момента получения" },
+          { value: "30", label: "30 дней с момента получения" },
+          { value: "warranty", label: "В течение гарантийного срока" },
+        ],
+      },
     ],
   },
   {
@@ -271,7 +391,7 @@ export const templates: DocumentTemplate[] = [
       "Для оформления отношений с подрядчиками, фрилансерами и поставщиками услуг.",
     icon: "briefcase",
     category: "Услуги",
-    estimatedTime: "3 мин",
+    estimatedTime: "4 мин",
     fields: [
       {
         id: "contractor",
@@ -316,6 +436,41 @@ export const templates: DocumentTemplate[] = [
         required: true,
       },
       {
+        id: "confidentiality",
+        label: "Включить обязательство конфиденциальности",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "no", label: "Нет" },
+          { value: "yes", label: "Да" },
+        ],
+      },
+      {
+        id: "ipOwnership",
+        label: "Принадлежность созданного контента / результатов",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "client", label: "Заказчику" },
+          { value: "contractor", label: "Исполнителю" },
+          { value: "shared", label: "Совместная собственность" },
+        ],
+      },
+      {
+        id: "subcontractors",
+        label: "Привлечение третьих лиц (субподрядчиков)",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "prohibited", label: "Запрещено" },
+          { value: "with_permission", label: "С согласия заказчика" },
+          { value: "allowed", label: "Разрешено" },
+        ],
+      },
+      {
         id: "deadline",
         label: "Срок выполнения",
         type: "date",
@@ -333,6 +488,17 @@ export const templates: DocumentTemplate[] = [
           { value: "postpaid", label: "Оплата по факту" },
           { value: "partial", label: "50/50" },
           { value: "milestone", label: "Поэтапная оплата" },
+        ],
+      },
+      {
+        id: "forceQajoure",
+        label: "Включить форс-мажорные обстоятельства",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "no", label: "Нет" },
+          { value: "yes", label: "Да" },
         ],
       },
     ],
@@ -662,7 +828,7 @@ export const templates: DocumentTemplate[] = [
       "Для выполнения конкретных работ с материальным результатом — ремонт, строительство, разработка.",
     icon: "hammer",
     category: "Услуги",
-    estimatedTime: "3 мин",
+    estimatedTime: "4 мин",
     fields: [
       {
         id: "customer",
@@ -719,6 +885,18 @@ export const templates: DocumentTemplate[] = [
         ],
       },
       {
+        id: "paymentSchedule",
+        label: "График платежей",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "end", label: "100% в конце после приёмки" },
+          { value: "start_end", label: "50% предоплата, 50% в конце" },
+          { value: "stages", label: "По этапам выполнения работ" },
+        ],
+      },
+      {
         id: "startDate",
         label: "Дата начала работ",
         type: "date",
@@ -744,6 +922,18 @@ export const templates: DocumentTemplate[] = [
           { value: "12", label: "1 год" },
           { value: "24", label: "2 года" },
           { value: "60", label: "5 лет" },
+        ],
+      },
+      {
+        id: "hiddenDefects",
+        label: "Срок обнаружения скрытых недостатков",
+        type: "select",
+        placeholder: "",
+        required: false,
+        options: [
+          { value: "30", label: "30 дней" },
+          { value: "60", label: "60 дней" },
+          { value: "warranty_period", label: "В течение гарантийного срока" },
         ],
       },
     ],
