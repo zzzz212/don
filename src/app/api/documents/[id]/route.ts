@@ -54,3 +54,44 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const document = await prisma.document.findUnique({
+      where: { id },
+    });
+
+    if (!document) {
+      return NextResponse.json(
+        { error: "Документ не найден" },
+        { status: 404 }
+      );
+    }
+
+    if (document.userId !== session.user.id) {
+      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+    }
+
+    await prisma.document.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Document deletion error:", error);
+    return NextResponse.json(
+      { error: "Ошибка при удалении документа" },
+      { status: 500 }
+    );
+  }
+}

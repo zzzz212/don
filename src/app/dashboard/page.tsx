@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Shield,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 interface DocumentItem {
@@ -23,6 +24,13 @@ interface DocumentItem {
   score: number;
   risksCount: number;
   topRisk: RiskLevel;
+  createdAt: string;
+}
+
+interface GeneratedDocItem {
+  id: string;
+  templateId: string;
+  name: string;
   createdAt: string;
 }
 
@@ -41,23 +49,58 @@ function timeAgo(date: string): string {
 
 export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"analyses" | "generated">("analyses");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadDocuments() {
+    async function loadData() {
       try {
-        const response = await fetch("/api/documents");
-        if (response.ok) {
-          const data = await response.json();
+        const [analysesRes, generatedRes] = await Promise.all([
+          fetch("/api/documents"),
+          fetch("/api/generated"),
+        ]);
+
+        if (analysesRes.ok) {
+          const data = await analysesRes.json();
           setDocuments(data);
+        }
+
+        if (generatedRes.ok) {
+          const data = await generatedRes.json();
+          setGeneratedDocs(data);
         }
       } catch {
         // silently fail — show empty state
       }
       setLoading(false);
     }
-    loadDocuments();
+    loadData();
   }, []);
+
+  async function deleteDocument(id: string, type: "analysis" | "generated") {
+    if (!confirm("Вы уверены? Документ будет удален.")) return;
+
+    setDeleting(id);
+    try {
+      const endpoint =
+        type === "analysis" ? `/api/documents/${id}` : `/api/generated/${id}`;
+      const response = await fetch(endpoint, { method: "DELETE" });
+
+      if (response.ok) {
+        if (type === "analysis") {
+          setDocuments((prev) => prev.filter((d) => d.id !== id));
+        } else {
+          setGeneratedDocs((prev) => prev.filter((d) => d.id !== id));
+        }
+      }
+    } catch {
+      alert("Ошибка при удалении документа");
+    } finally {
+      setDeleting(null);
+    }
+  }
 
   const totalDocs = documents.length;
   const avgScore =
@@ -146,11 +189,37 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          {/* Tabs */}
+          <div className="mb-8 flex gap-4 border-b border-border">
+            <button
+              onClick={() => setTab("analyses")}
+              className={`px-4 py-3 font-semibold transition-colors ${
+                tab === "analyses"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              Анализы договоров
+            </button>
+            <button
+              onClick={() => setTab("generated")}
+              className={`px-4 py-3 font-semibold transition-colors ${
+                tab === "generated"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              Созданные документы
+            </button>
+          </div>
+
           {/* Documents list */}
           <div className="rounded-xl border border-border bg-card">
             <div className="border-b border-border px-6 py-4">
               <h2 className="font-semibold text-foreground">
-                Последние документы
+                {tab === "analyses"
+                  ? "Проанализированные договоры"
+                  : "Сгенерированные документы"}
               </h2>
             </div>
 
@@ -158,65 +227,122 @@ export default function DashboardPage() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            ) : documents.length === 0 ? (
+            ) : tab === "analyses" ? (
+              documents.length === 0 ? (
+                <div className="py-12 text-center">
+                  <FileText className="mx-auto h-10 w-10 text-muted/40 mb-3" />
+                  <p className="text-muted font-medium">
+                    Пока нет проанализированных документов
+                  </p>
+                  <p className="text-sm text-muted/70 mt-1">
+                    Загрузите первый договор для анализа
+                  </p>
+                  <Link
+                    href="/analyze"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Анализировать договор
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-card-hover"
+                    >
+                      <Link
+                        href={`/report/${doc.id}`}
+                        className="flex flex-1 items-center gap-4"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-foreground">
+                            {doc.fileName}
+                          </p>
+                          <div className="mt-1 flex items-center gap-3">
+                            <span className="flex items-center gap-1 text-xs text-muted">
+                              <Clock className="h-3 w-3" />
+                              {timeAgo(doc.createdAt)}
+                            </span>
+                            <span className="text-xs text-muted">
+                              {doc.risksCount} рисков
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <RiskBadge level={doc.topRisk} />
+                          <div className="text-right">
+                            <span
+                              className={`text-lg font-bold ${
+                                doc.score >= 7
+                                  ? "text-success"
+                                  : doc.score >= 4
+                                    ? "text-warning"
+                                    : "text-danger"
+                              }`}
+                            >
+                              {doc.score}/10
+                            </span>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted" />
+                        </div>
+                      </Link>
+                      <button
+                        onClick={() => deleteDocument(doc.id, "analysis")}
+                        disabled={deleting === doc.id}
+                        className="shrink-0 p-2 text-muted transition-colors hover:text-danger disabled:opacity-50"
+                        title="Удалить анализ"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : generatedDocs.length === 0 ? (
               <div className="py-12 text-center">
                 <FileText className="mx-auto h-10 w-10 text-muted/40 mb-3" />
                 <p className="text-muted font-medium">
-                  Пока нет проанализированных документов
+                  Пока нет созданных документов
                 </p>
                 <p className="text-sm text-muted/70 mt-1">
-                  Загрузите первый договор для анализа
+                  Создайте первый документ из шаблона
                 </p>
                 <Link
-                  href="/analyze"
+                  href="/templates"
                   className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
                 >
                   <Plus className="h-4 w-4" />
-                  Анализировать договор
+                  Создать документ
                 </Link>
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {documents.map((doc) => (
+                {generatedDocs.map((doc) => (
                   <Link
                     key={doc.id}
-                    href={`/report/${doc.id}`}
-                    className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-card-hover"
+                    href={`/generated/${doc.id}`}
+                    className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-card-hover group"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-foreground">
-                        {doc.fileName}
+                        {doc.name}
                       </p>
                       <div className="mt-1 flex items-center gap-3">
                         <span className="flex items-center gap-1 text-xs text-muted">
                           <Clock className="h-3 w-3" />
                           {timeAgo(doc.createdAt)}
                         </span>
-                        <span className="text-xs text-muted">
-                          {doc.risksCount} рисков
-                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <RiskBadge level={doc.topRisk} />
-                      <div className="text-right">
-                        <span
-                          className={`text-lg font-bold ${
-                            doc.score >= 7
-                              ? "text-success"
-                              : doc.score >= 4
-                                ? "text-warning"
-                                : "text-danger"
-                          }`}
-                        >
-                          {doc.score}/10
-                        </span>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted" />
-                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted" />
                   </Link>
                 ))}
               </div>

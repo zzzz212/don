@@ -3,25 +3,26 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  plan          String    @default("FREE")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String                @id @default(cuid())
+  name               String?
+  email              String                @unique
+  emailVerified      DateTime?
+  image              String?
+  password           String?
+  plan               String                @default("FREE")
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
-  accounts Account[]
-  sessions Session[]
-  documents Document[]
-  chats     Chat[]
+  accounts           Account[]
+  sessions           Session[]
+  documents          Document[]
+  generatedDocuments GeneratedDocument[]
+  chats              Chat[]
 }
 
 model Account {
@@ -30,12 +31,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -65,7 +66,7 @@ model Document {
   userId    String
   fileName  String
   fileSize  Int
-  rawText   String    @db.Text
+  rawText   String
   analysis  Analysis?
   createdAt DateTime  @default(now())
 
@@ -78,12 +79,27 @@ model Analysis {
   id         String   @id @default(cuid())
   documentId String   @unique
   score      Int
-  summary    String   @db.Text
-  risks      String   @db.Text
-  metadata   String?  @db.Text
+  summary    String
+  risks      String
+  metadata   String?
   createdAt  DateTime @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model GeneratedDocument {
+  id         String   @id @default(cuid())
+  userId     String
+  templateId String
+  name       String
+  content    String
+  formData   Json
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([templateId])
 }
 
 model Chat {
@@ -103,7 +119,7 @@ model ChatMessage {
   id        String   @id @default(cuid())
   chatId    String
   role      String
-  content   String   @db.Text
+  content   String
   createdAt DateTime @default(now())
 
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)

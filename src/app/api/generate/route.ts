@@ -3,6 +3,8 @@ import { generateAI, getActiveProvider } from "@/lib/ai/client";
 import { GENERATE_DOCUMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { getTemplate } from "@/lib/templates";
 import { rateLimit } from "@/lib/rate-limit";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { templateId, data } = body;
+    const { templateId, data, documentName } = body;
 
     const template = getTemplate(templateId);
     if (!template) {
@@ -42,7 +44,27 @@ export async function POST(request: NextRequest) {
       4096
     );
 
-    return NextResponse.json({ document: response.text });
+    // Save to DB if user is authenticated
+    const session = await auth();
+    let savedDoc = null;
+
+    if (session?.user?.id) {
+      savedDoc = await prisma.generatedDocument.create({
+        data: {
+          userId: session.user.id,
+          templateId,
+          name: documentName || template.name,
+          content: response.text,
+          formData: data,
+        },
+      });
+    }
+
+    return NextResponse.json({
+      document: response.text,
+      saved: !!savedDoc,
+      id: savedDoc?.id,
+    });
   } catch (error) {
     console.error("Generation error:", error);
     return NextResponse.json(
