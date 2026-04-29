@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { CounterpartyFieldInput } from "@/components/counterparty-field-input";
 import { getTemplate, type TemplateField } from "@/lib/templates";
 import {
   ArrowLeft,
@@ -904,6 +905,9 @@ function renderField(
   formData: Record<string, string>,
   handleChange: (id: string, value: string) => void
 ) {
+  // Check if this is an INN field for counterparty checking
+  const isInnField = field.id.includes("Inn") || field.id.includes("inn");
+
   return (
     <div key={field.id}>
       <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -932,6 +936,12 @@ function renderField(
             </option>
           ))}
         </select>
+      ) : isInnField ? (
+        <CounterpartyFieldInput
+          value={formData[field.id] || ""}
+          onChange={(value) => handleChange(field.id, value)}
+          placeholder={field.placeholder}
+        />
       ) : (
         <input
           type={field.type}
