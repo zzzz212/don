@@ -5,6 +5,7 @@ export interface TemplateField {
   placeholder: string;
   required: boolean;
   options?: { value: string; label: string }[];
+  group?: "parties" | "conditions" | "dates" | "payment" | "additional";
 }
 
 export interface DocumentTemplate {
@@ -35,6 +36,7 @@ export const templates: DocumentTemplate[] = [
         type: "text",
         placeholder: "ООО «Ваша компания»",
         required: true,
+        group: "parties",
       },
       {
         id: "disclosingInn",
@@ -42,6 +44,7 @@ export const templates: DocumentTemplate[] = [
         type: "text",
         placeholder: "7712345678",
         required: true,
+        group: "parties",
       },
       {
         id: "receivingParty",
@@ -49,6 +52,7 @@ export const templates: DocumentTemplate[] = [
         type: "text",
         placeholder: "ИП Иванов И.И.",
         required: true,
+        group: "parties",
       },
       {
         id: "receivingInn",
@@ -56,6 +60,7 @@ export const templates: DocumentTemplate[] = [
         type: "text",
         placeholder: "771234567890",
         required: true,
+        group: "parties",
       },
       {
         id: "subject",
@@ -64,6 +69,7 @@ export const templates: DocumentTemplate[] = [
         placeholder:
           "Техническая документация, бизнес-планы, клиентская база...",
         required: true,
+        group: "conditions",
       },
       {
         id: "duration",
@@ -71,6 +77,7 @@ export const templates: DocumentTemplate[] = [
         type: "select",
         placeholder: "",
         required: true,
+        group: "dates",
         options: [
           { value: "1", label: "1 год" },
           { value: "2", label: "2 года" },
@@ -85,6 +92,7 @@ export const templates: DocumentTemplate[] = [
         type: "number",
         placeholder: "500000",
         required: true,
+        group: "conditions",
       },
       {
         id: "nonSolicitation",
@@ -92,6 +100,7 @@ export const templates: DocumentTemplate[] = [
         type: "select",
         placeholder: "",
         required: false,
+        group: "additional",
         options: [
           { value: "no", label: "Нет" },
           { value: "6months", label: "6 месяцев после расторжения" },
@@ -104,6 +113,7 @@ export const templates: DocumentTemplate[] = [
         type: "select",
         placeholder: "",
         required: false,
+        group: "additional",
         options: [
           { value: "disclosing", label: "Раскрывающей стороне" },
           { value: "receiving", label: "Получающей стороне" },
@@ -116,6 +126,7 @@ export const templates: DocumentTemplate[] = [
         type: "select",
         placeholder: "",
         required: false,
+        group: "additional",
         options: [
           { value: "no", label: "Нет" },
           { value: "yes", label: "Да, в течение 10 дней" },

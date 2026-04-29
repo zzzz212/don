@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
-import { getTemplate } from "@/lib/templates";
+import { getTemplate, type TemplateField } from "@/lib/templates";
 import {
   ArrowLeft,
   Sparkles,
@@ -146,55 +146,7 @@ export default function TemplateFillPage() {
 
               {/* Form */}
               <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-                <div className="space-y-5">
-                  {template.fields.map((field) => (
-                    <div key={field.id}>
-                      <label className="mb-1.5 block text-sm font-medium text-foreground">
-                        {field.label}
-                        {field.required && (
-                          <span className="ml-1 text-danger">*</span>
-                        )}
-                      </label>
-
-                      {field.type === "textarea" ? (
-                        <textarea
-                          value={formData[field.id] || ""}
-                          onChange={(e) =>
-                            handleChange(field.id, e.target.value)
-                          }
-                          placeholder={field.placeholder}
-                          rows={3}
-                          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                        />
-                      ) : field.type === "select" ? (
-                        <select
-                          value={formData[field.id] || ""}
-                          onChange={(e) =>
-                            handleChange(field.id, e.target.value)
-                          }
-                          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        >
-                          <option value="">Выберите...</option>
-                          {field.options?.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={field.type}
-                          value={formData[field.id] || ""}
-                          onChange={(e) =>
-                            handleChange(field.id, e.target.value)
-                          }
-                          placeholder={field.placeholder}
-                          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
+                {renderFormByGroups(template.fields, formData, handleChange)}
 
                 <div className="mt-8 flex justify-end">
                   <button
@@ -882,6 +834,100 @@ function getReturnMethodLabel(value: string): string {
     quarterly: "ежеквартальными платежами равными долями",
   };
   return map[value] || "определяется Сторонами";
+}
+
+function renderFormByGroups(
+  fields: TemplateField[],
+  formData: Record<string, string>,
+  handleChange: (id: string, value: string) => void
+) {
+  const groupLabels: Record<string, string> = {
+    parties: "👥 Стороны договора",
+    conditions: "📋 Условия",
+    dates: "📅 Сроки",
+    payment: "💰 Оплата",
+    additional: "⚙️ Дополнительно",
+  };
+
+  const groups = new Map<string, TemplateField[]>();
+  const ungrouped: TemplateField[] = [];
+
+  fields.forEach((field) => {
+    const group = field.group || null;
+    if (group) {
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group)!.push(field);
+    } else {
+      ungrouped.push(field);
+    }
+  });
+
+  return (
+    <div className="space-y-6">
+      {Array.from(groups.entries()).map(([groupKey, groupFields]) => (
+        <div key={groupKey} className="space-y-4">
+          <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">
+            {groupLabels[groupKey] || groupKey}
+          </h3>
+          <div className="space-y-4 ml-2 border-l-2 border-primary/20 pl-4">
+            {groupFields.map((field) => renderField(field, formData, handleChange))}
+          </div>
+        </div>
+      ))}
+
+      {ungrouped.length > 0 && (
+        <div className="space-y-4">
+          {ungrouped.map((field) => renderField(field, formData, handleChange))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderField(
+  field: TemplateField,
+  formData: Record<string, string>,
+  handleChange: (id: string, value: string) => void
+) {
+  return (
+    <div key={field.id}>
+      <label className="mb-1.5 block text-sm font-medium text-foreground">
+        {field.label}
+        {field.required && <span className="ml-1 text-danger">*</span>}
+      </label>
+
+      {field.type === "textarea" ? (
+        <textarea
+          value={formData[field.id] || ""}
+          onChange={(e) => handleChange(field.id, e.target.value)}
+          placeholder={field.placeholder}
+          rows={3}
+          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+        />
+      ) : field.type === "select" ? (
+        <select
+          value={formData[field.id] || ""}
+          onChange={(e) => handleChange(field.id, e.target.value)}
+          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="">Выберите...</option>
+          {field.options?.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={field.type}
+          value={formData[field.id] || ""}
+          onChange={(e) => handleChange(field.id, e.target.value)}
+          placeholder={field.placeholder}
+          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      )}
+    </div>
+  );
 }
 
 function numberToWords(n: number): string {
