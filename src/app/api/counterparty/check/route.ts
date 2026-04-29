@@ -12,7 +12,10 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    const isDemo = process.env.NODE_ENV === "development" && process.env.DEMO_MODE !== "false";
+
+    // Require auth in production, allow demo in development
+    if (!isDemo && !session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -36,16 +39,32 @@ export async function POST(request: Request) {
     if (isStale) {
       // Fetch fresh data from external sources
       // Try DaData first, then fallback to ЕГРЮЛ
-      const daDataResult = await fetchFromDaData(inn);
-      const egrulData = daDataResult ? {
-        name: daDataResult.name,
-        organizationType: daDataResult.name.split(" ")[0],
-        registrationDate: daDataResult.registrationDate,
-        address: daDataResult.address,
-        okved: undefined,
-        capitalSize: daDataResult.capitalSize,
-        statusCode: daDataResult.status,
-      } : await fetchFromEgrul(inn);
+      let daDataResult = null;
+      let egrulData = null;
+
+      try {
+        daDataResult = await fetchFromDaData(inn);
+      } catch (error) {
+        console.error("DaData error:", error);
+      }
+
+      if (!daDataResult) {
+        try {
+          egrulData = await fetchFromEgrul(inn);
+        } catch (error) {
+          console.error("ЕГРЮЛ error:", error);
+        }
+      } else {
+        egrulData = {
+          name: daDataResult.name,
+          organizationType: daDataResult.name.split(" ")[0],
+          registrationDate: daDataResult.registrationDate,
+          address: daDataResult.address,
+          okved: undefined,
+          capitalSize: daDataResult.capitalSize,
+          statusCode: daDataResult.status,
+        };
+      }
 
       const courtData = await fetchCourtData(inn);
       const debtData = await fetchDebtData(inn);
@@ -108,13 +127,15 @@ export async function POST(request: Request) {
       });
     }
 
-    // Save check history
-    await prisma.counterpartyCheck.create({
-      data: {
-        userId: session.user.id || "",
-        inn,
-      },
-    });
+    // Save check history (only if authenticated)
+    if (session?.user?.id) {
+      await prisma.counterpartyCheck.create({
+        data: {
+          userId: session.user.id,
+          inn,
+        },
+      });
+    }
 
     if (!profile) {
       return NextResponse.json(
