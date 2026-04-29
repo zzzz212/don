@@ -23,6 +23,7 @@ model User {
   documents          Document[]
   generatedDocuments GeneratedDocument[]
   chats              Chat[]
+  counterpartyChecks CounterpartyCheck[]
 }
 
 model Account {
@@ -125,4 +126,59 @@ model ChatMessage {
   chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId])
+}
+
+model CounterpartyProfile {
+  id                  String   @id @default(cuid())
+  inn                 String   @unique
+  name                String
+  organizationType    String?  // "ООО" | "ИП" | "АО" etc.
+
+  // From ЕГРЮЛ
+  registrationDate    DateTime?
+  address             String?
+  okved               String?
+  capitalSize         Int?
+  statusCode          String?
+
+  // From court registries
+  activeLawsuits      Int      @default(0)
+  completedLawsuits   Int      @default(0)
+  lossesCount         Int      @default(0)
+
+  // Debts and payments
+  debtFound           Boolean  @default(false)
+  debtAmount          BigInt?
+  debtSources         String   @default("") // JSON array as string
+
+  // Risk calculation
+  riskScore           Int      @default(50)
+  riskLevel           String   @default("medium")
+  riskFactors         String   @default("") // JSON array as string
+
+  lastUpdated         DateTime @updatedAt
+  dataSource          String   @default("egrul")
+
+  createdAt           DateTime @default(now())
+
+  checks              CounterpartyCheck[]
+
+  @@index([inn])
+}
+
+model CounterpartyCheck {
+  id           String   @id @default(cuid())
+  userId       String
+  inn          String
+
+  notes        String?
+
+  createdAt    DateTime @default(now())
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile      CounterpartyProfile @relation(fields: [inn], references: [inn], onDelete: Cascade)
+
+  @@unique([userId, inn])
+  @@index([userId])
+  @@index([inn])
 }

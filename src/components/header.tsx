@@ -14,12 +14,14 @@ import {
   Menu,
   X,
   LogOut,
+  Building2,
 } from "lucide-react";
 
 const navigation = [
   { name: "Дашборд", href: "/dashboard", icon: LayoutDashboard },
   { name: "Анализ договора", href: "/analyze", icon: FileText },
   { name: "Шаблоны", href: "/templates", icon: FolderOpen },
+  { name: "Контрагенты", href: "/counterparty", icon: Building2 },
   { name: "AI-консультант", href: "/chat", icon: MessageCircle },
 ];
 
