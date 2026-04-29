@@ -89,6 +89,36 @@ export default function TemplateFillPage() {
     }
   };
 
+  const handleDownloadDocx = async () => {
+    if (!generatedDoc || !template) return;
+
+    try {
+      const response = await fetch("/api/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: template.name,
+          content: generatedDoc,
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${template.name || "document"}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      alert("Ошибка при скачивании документа");
+    }
+  };
+
   return (
     <div className="flex min-h-full flex-col">
       <Header />
@@ -226,7 +256,10 @@ export default function TemplateFillPage() {
                       </>
                     )}
                   </button>
-                  <button className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark">
+                  <button
+                    onClick={handleDownloadDocx}
+                    className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+                  >
                     <Download className="h-4 w-4" />
                     Скачать DOCX
                   </button>
