@@ -47,8 +47,8 @@ export default function LegalReferencePage() {
       const response = await fetch("/api/legal/references");
       if (response.ok) {
         const data = await response.json();
-        const bookmarkedIds = new Set(
-          data.references.map((ref: any) => ref.knownId)
+        const bookmarkedIds = new Set<string>(
+          data.references.map((ref: { knownId: string }) => ref.knownId)
         );
         setBookmarked(bookmarkedIds);
       }

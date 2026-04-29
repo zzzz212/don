@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         versionNumber: nextVersionNumber,
         title: `Восстановление версии ${versionToRevert.versionNumber}`,
         content: versionToRevert.content,
-        formData: versionToRevert.formData,
+        formData: versionToRevert.formData ?? {},
         changesSummary: `Восстановлена версия ${versionToRevert.versionNumber}. ${changesSummary}`,
         createdBy: session.user.id,
       },

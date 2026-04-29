@@ -16,7 +16,7 @@ interface CourtData {
 
 interface DebtData {
   found: boolean;
-  amount?: BigInt;
+  amount?: bigint;
   sources: string[];
 }
 
@@ -45,10 +45,15 @@ const mockEgrulData: Record<string, EgrulData> = {
 // Fetch company data from ЕГРЮЛ (Federal Tax Service)
 export async function fetchFromEgrul(inn: string): Promise<EgrulData | null> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     const response = await fetch(
       `https://egrul.nalog.ru/api/v1/person/legal?inn=${inn}`,
-      { timeout: 5000 }
+      { signal: controller.signal }
     );
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       // Return mock data for testing if API fails
@@ -129,7 +134,7 @@ export function calculateRiskScore(data: {
   completedLawsuits: number;
   lossesCount: number;
   debtFound: boolean;
-  debtAmount?: BigInt;
+  debtAmount?: bigint;
 }): { score: number; level: string; factors: string[] } {
   let score = 30; // Base neutral score
   const factors: string[] = [];

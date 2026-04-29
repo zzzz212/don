@@ -104,6 +104,13 @@ export async function POST(request: Request) {
       },
     });
 
+    if (!profile) {
+      return NextResponse.json(
+        { error: "Failed to create or retrieve profile" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       profile: {
         ...profile,
