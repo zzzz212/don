@@ -16,6 +16,7 @@ import {
   Shield,
   Loader2,
   Trash2,
+  Download,
 } from "lucide-react";
 
 interface DocumentItem {
@@ -99,6 +100,39 @@ export default function DashboardPage() {
       alert("Ошибка при удалении документа");
     } finally {
       setDeleting(null);
+    }
+  }
+
+  async function downloadDocument(id: string, name: string) {
+    try {
+      const response = await fetch(`/api/generated/${id}`);
+      if (!response.ok) throw new Error("Document not found");
+
+      const doc = await response.json();
+
+      const docxResponse = await fetch("/api/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: name,
+          content: doc.content,
+        }),
+      });
+
+      if (docxResponse.ok) {
+        const blob = await docxResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${name}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      alert("Ошибка при скачивании документа");
     }
   }
 
@@ -323,27 +357,46 @@ export default function DashboardPage() {
             ) : (
               <div className="divide-y divide-border">
                 {generatedDocs.map((doc) => (
-                  <Link
+                  <div
                     key={doc.id}
-                    href={`/generated/${doc.id}`}
                     className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-card-hover group"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">
-                        {doc.name}
-                      </p>
-                      <div className="mt-1 flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs text-muted">
-                          <Clock className="h-3 w-3" />
-                          {timeAgo(doc.createdAt)}
-                        </span>
+                    <Link
+                      href={`/generated/${doc.id}`}
+                      className="flex flex-1 items-center gap-4"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
+                        <FileText className="h-5 w-5 text-primary" />
                       </div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted" />
-                  </Link>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">
+                          {doc.name}
+                        </p>
+                        <div className="mt-1 flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-xs text-muted">
+                            <Clock className="h-3 w-3" />
+                            {timeAgo(doc.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted" />
+                    </Link>
+                    <button
+                      onClick={() => downloadDocument(doc.id, doc.name)}
+                      className="shrink-0 p-2 text-muted transition-colors hover:text-primary"
+                      title="Скачать DOCX"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteDocument(doc.id, "generated")}
+                      disabled={deleting === doc.id}
+                      className="shrink-0 p-2 text-muted transition-colors hover:text-danger disabled:opacity-50"
+                      title="Удалить документ"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
