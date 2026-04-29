@@ -1,3 +1,5 @@
+import { fetchFromDaData } from "./dadata";
+
 interface EgrulData {
   name: string;
   organizationType?: string;
@@ -42,8 +44,27 @@ const mockEgrulData: Record<string, EgrulData> = {
   },
 };
 
-// Fetch company data from ЕГРЮЛ (Federal Tax Service)
+// Fetch company data from ЕГРЮЛ or DaData
 export async function fetchFromEgrul(inn: string): Promise<EgrulData | null> {
+  // Try DaData first (more reliable)
+  try {
+    const daDataResult = await fetchFromDaData(inn);
+    if (daDataResult) {
+      return {
+        name: daDataResult.name,
+        organizationType: daDataResult.name.split(" ")[0],
+        registrationDate: daDataResult.registrationDate,
+        address: daDataResult.address,
+        okved: undefined,
+        capitalSize: daDataResult.capitalSize,
+        statusCode: daDataResult.status,
+      };
+    }
+  } catch (error) {
+    console.error("DaData error, trying ЕГРЮЛ:", error);
+  }
+
+  // Fallback to ЕГРЮЛ
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);

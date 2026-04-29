@@ -6,6 +6,7 @@ import {
   fetchDebtData,
   calculateRiskScore,
 } from "@/lib/counterparty";
+import { fetchFromDaData } from "@/lib/dadata";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -34,13 +35,24 @@ export async function POST(request: Request) {
 
     if (isStale) {
       // Fetch fresh data from external sources
-      const egrulData = await fetchFromEgrul(inn);
+      // Try DaData first, then fallback to ЕГРЮЛ
+      const daDataResult = await fetchFromDaData(inn);
+      const egrulData = daDataResult ? {
+        name: daDataResult.name,
+        organizationType: daDataResult.name.split(" ")[0],
+        registrationDate: daDataResult.registrationDate,
+        address: daDataResult.address,
+        okved: undefined,
+        capitalSize: daDataResult.capitalSize,
+        statusCode: daDataResult.status,
+      } : await fetchFromEgrul(inn);
+
       const courtData = await fetchCourtData(inn);
       const debtData = await fetchDebtData(inn);
 
       const riskCalc = calculateRiskScore({
         registrationDate: egrulData?.registrationDate,
-        statusCode: egrulData?.statusCode,
+        statusCode: daDataResult?.status || egrulData?.statusCode,
         activeLawsuits: courtData.activeLawsuits,
         completedLawsuits: courtData.completedLawsuits,
         lossesCount: courtData.lossesCount,
