@@ -14,6 +14,7 @@ import {
   Loader2,
   Trash2,
   CheckCircle,
+  GitBranch,
 } from "lucide-react";
 
 interface GeneratedDocument {
@@ -208,6 +209,13 @@ export default function ViewGeneratedPage() {
                 <Download className="h-4 w-4" />
                 Скачать DOCX
               </button>
+              <Link
+                href={`/generated/${doc.id}/versions`}
+                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+              >
+                <GitBranch className="h-4 w-4" />
+                Версии
+              </Link>
               <button
                 onClick={() => {
                   sessionStorage.setItem(

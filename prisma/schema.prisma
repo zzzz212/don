@@ -24,6 +24,8 @@ model User {
   generatedDocuments GeneratedDocument[]
   chats              Chat[]
   counterpartyChecks CounterpartyCheck[]
+  documentVersions   DocumentVersion[]
+  versionComparisons VersionComparison[]
 }
 
 model Account {
@@ -97,10 +99,50 @@ model GeneratedDocument {
   formData   Json
   createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions DocumentVersion[]
 
   @@index([userId])
   @@index([templateId])
+}
+
+model DocumentVersion {
+  id              String   @id @default(cuid())
+  generatedDocId  String
+  versionNumber   Int
+  title           String
+  content         String
+  formData        Json
+  changesSummary  String?
+
+  createdAt       DateTime @default(now())
+  createdBy       String?
+
+  generatedDoc    GeneratedDocument @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
+  creator         User?     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  v1Comparisons   VersionComparison[] @relation("v1")
+  v2Comparisons   VersionComparison[] @relation("v2")
+
+  @@unique([generatedDocId, versionNumber])
+  @@index([generatedDocId])
+}
+
+model VersionComparison {
+  id        String   @id @default(cuid())
+  v1Id      String
+  v2Id      String
+  userId    String
+
+  diffs     String
+
+  createdAt DateTime @default(now())
+
+  v1   DocumentVersion @relation("v1", fields: [v1Id], references: [id], onDelete: Cascade)
+  v2   DocumentVersion @relation("v2", fields: [v2Id], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([v1Id, v2Id, userId])
+  @@index([userId])
 }
 
 model Chat {
