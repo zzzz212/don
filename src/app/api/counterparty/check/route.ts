@@ -6,7 +6,7 @@ import {
   fetchDebtData,
   calculateRiskScore,
 } from "@/lib/counterparty";
-import { fetchFromDaData } from "@/lib/dadata";
+import { fetchFromDaData, fetchDaDataFinance } from "@/lib/dadata";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -38,12 +38,16 @@ export async function POST(request: Request) {
 
     if (isStale) {
       // Fetch fresh data from external sources
-      // Try DaData first, then fallback to ЕГРЮЛ
+      // Try DaData first (primary), fallback to ЕГРЮЛ, then mock
+      let dataSource = "mock";
       let daDataResult = null;
       let egrulData = null;
 
       try {
         daDataResult = await fetchFromDaData(inn);
+        if (daDataResult) {
+          dataSource = "dadata";
+        }
       } catch (error) {
         console.error("DaData error:", error);
       }
@@ -51,33 +55,54 @@ export async function POST(request: Request) {
       if (!daDataResult) {
         try {
           egrulData = await fetchFromEgrul(inn);
+          if (egrulData && egrulData.name) {
+            dataSource = "egrul";
+          }
         } catch (error) {
           console.error("ЕГРЮЛ error:", error);
         }
       } else {
         egrulData = {
           name: daDataResult.name,
-          organizationType: daDataResult.name.split(" ")[0],
+          organizationType: daDataResult.organizationType,
           registrationDate: daDataResult.registrationDate,
           address: daDataResult.address,
-          okved: undefined,
+          okved: daDataResult.okved,
           capitalSize: daDataResult.capitalSize,
-          statusCode: daDataResult.status,
+          statusCode: daDataResult.statusCode,
         };
+      }
+
+      // Try to get extended financial data from DaData (if secret key configured)
+      let financeData = null;
+      try {
+        financeData = await fetchDaDataFinance(inn);
+      } catch (error) {
+        console.error("DaData finance error:", error);
       }
 
       const courtData = await fetchCourtData(inn);
       const debtData = await fetchDebtData(inn);
 
+      // Use real DaData finance data if available, fallback to mock
+      const debtFound = financeData?.debt ? financeData.debt > 0 : debtData.found;
+      const debtAmount = financeData?.debt
+        ? BigInt(Math.round(financeData.debt))
+        : debtData.amount;
+
       const riskCalc = calculateRiskScore({
         registrationDate: egrulData?.registrationDate,
-        statusCode: daDataResult?.status || egrulData?.statusCode,
+        statusCode: egrulData?.statusCode,
         activeLawsuits: courtData.activeLawsuits,
         completedLawsuits: courtData.completedLawsuits,
         lossesCount: courtData.lossesCount,
-        debtFound: debtData.found,
-        debtAmount: debtData.amount,
+        debtFound,
+        debtAmount,
       });
+
+      const debtSources = financeData?.debt
+        ? ["DaData (финансовые данные)"]
+        : debtData.sources;
 
       // Upsert profile
       profile = await prisma.counterpartyProfile.upsert({
@@ -96,12 +121,13 @@ export async function POST(request: Request) {
           activeLawsuits: courtData.activeLawsuits,
           completedLawsuits: courtData.completedLawsuits,
           lossesCount: courtData.lossesCount,
-          debtFound: debtData.found,
-          debtAmount: debtData.amount,
-          debtSources: JSON.stringify(debtData.sources),
+          debtFound,
+          debtAmount,
+          debtSources: JSON.stringify(debtSources),
           riskScore: riskCalc.score,
           riskLevel: riskCalc.level,
           riskFactors: JSON.stringify(riskCalc.factors),
+          dataSource,
         },
         update: {
           name: egrulData?.name || undefined,
@@ -116,12 +142,13 @@ export async function POST(request: Request) {
           activeLawsuits: courtData.activeLawsuits,
           completedLawsuits: courtData.completedLawsuits,
           lossesCount: courtData.lossesCount,
-          debtFound: debtData.found,
-          debtAmount: debtData.amount,
-          debtSources: JSON.stringify(debtData.sources),
+          debtFound,
+          debtAmount,
+          debtSources: JSON.stringify(debtSources),
           riskScore: riskCalc.score,
           riskLevel: riskCalc.level,
           riskFactors: JSON.stringify(riskCalc.factors),
+          dataSource,
           lastUpdated: new Date(),
         },
       });
