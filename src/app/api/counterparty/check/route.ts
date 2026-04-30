@@ -129,10 +129,19 @@ export async function POST(request: Request) {
 
     // Save check history (only if authenticated)
     if (session?.user?.id) {
-      await prisma.counterpartyCheck.create({
-        data: {
+      await prisma.counterpartyCheck.upsert({
+        where: {
+          userId_inn: {
+            userId: session.user.id,
+            inn,
+          },
+        },
+        create: {
           userId: session.user.id,
           inn,
+        },
+        update: {
+          createdAt: new Date(),
         },
       });
     }
