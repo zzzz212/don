@@ -20,11 +20,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { inn } = body;
+    const { inn, forceRefresh } = body;
 
     if (!inn || typeof inn !== "string" || !/^\d{10,12}$/.test(inn)) {
       return NextResponse.json({ error: "Invalid INN format" }, { status: 400 });
     }
+
+    console.log(`[Counterparty] Checking INN ${inn} (forceRefresh=${!!forceRefresh})`);
+    console.log(`[Counterparty] DADATA_API_KEY=${process.env.DADATA_API_KEY ? "SET" : "NOT SET"}, DADATA_SECRET_KEY=${process.env.DADATA_SECRET_KEY ? "SET" : "NOT SET"}`);
 
     // Check if profile exists and is fresh (< 30 days)
     let profile = await prisma.counterpartyProfile.findUnique({
@@ -32,9 +35,13 @@ export async function POST(request: Request) {
     });
 
     const isStale =
+      forceRefresh ||
       !profile ||
+      profile.dataSource === "mock" ||
       (profile.lastUpdated &&
         Date.now() - profile.lastUpdated.getTime() > 30 * 24 * 60 * 60 * 1000);
+
+    console.log(`[Counterparty] Profile found=${!!profile}, dataSource=${profile?.dataSource || "none"}, isStale=${isStale}`);
 
     if (isStale) {
       // Fetch fresh data from external sources

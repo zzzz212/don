@@ -57,7 +57,7 @@ export default function CounterpartyPage() {
       const response = await fetch("/api/counterparty/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inn }),
+        body: JSON.stringify({ inn, forceRefresh: true }),
       });
 
       if (!response.ok) {
