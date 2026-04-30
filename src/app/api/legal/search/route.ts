@@ -15,31 +15,28 @@ export async function GET(request: Request) {
     }
 
     // Search in title, shortTitle, and searchVector
+    // Note: SQLite's default string comparison is case-insensitive, so no need for mode
     const results = await prisma.legalKnowledge.findMany({
       where: {
         OR: [
           {
             title: {
               contains: query,
-              mode: "insensitive",
             },
           },
           {
             shortTitle: {
               contains: query,
-              mode: "insensitive",
             },
           },
           {
             searchVector: {
               contains: query,
-              mode: "insensitive",
             },
           },
           {
             code: {
               contains: query,
-              mode: "insensitive",
             },
           },
         ],
