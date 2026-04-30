@@ -34,6 +34,7 @@ interface CounterpartyProfile {
   riskScore: number;
   riskLevel: string;
   riskFactors: string[];
+  dataSource?: string;
 }
 
 export default function CounterpartyPage() {
@@ -196,6 +197,26 @@ export default function CounterpartyPage() {
                       {profile.name}
                     </h2>
                     <p className="text-sm text-muted">ИНН: {profile.inn}</p>
+                    {profile.dataSource && (
+                      <p className="text-xs text-muted mt-1">
+                        Источник:{" "}
+                        <span
+                          className={
+                            profile.dataSource === "dadata"
+                              ? "text-green-600 font-medium"
+                              : profile.dataSource === "egrul"
+                                ? "text-blue-600 font-medium"
+                                : "text-orange-600 font-medium"
+                          }
+                        >
+                          {profile.dataSource === "dadata"
+                            ? "DaData (реальные данные)"
+                            : profile.dataSource === "egrul"
+                              ? "ЕГРЮЛ"
+                              : "Демо-данные"}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   {getRiskIcon(profile.riskLevel)}
                 </div>

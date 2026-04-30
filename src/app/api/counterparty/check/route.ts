@@ -187,14 +187,16 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({
-      profile: {
-        ...profile,
-        debtAmount: profile.debtAmount ? profile.debtAmount.toString() : null,
-        debtSources: JSON.parse(profile.debtSources),
-        riskFactors: JSON.parse(profile.riskFactors),
-      },
-    });
+    const responseProfile = {
+      ...profile,
+      debtAmount: profile.debtAmount ? profile.debtAmount.toString() : null,
+      debtSources: JSON.parse(profile.debtSources),
+      riskFactors: JSON.parse(profile.riskFactors),
+    };
+
+    console.log(`[Counterparty] Response: name="${responseProfile.name}", source=${responseProfile.dataSource}, status=${responseProfile.statusCode}`);
+
+    return NextResponse.json({ profile: responseProfile });
   } catch (error) {
     console.error("Counterparty check error:", error);
     return NextResponse.json(
