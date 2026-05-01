@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
         data: {
           userId: session.user.id,
           templateId,
-          templateCode: templateId, // Use templateId as code for legacy templates
           name: documentName || template.name,
           content: response.text,
           formData: data,
