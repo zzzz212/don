@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -94,13 +94,17 @@ model Analysis {
 model GeneratedDocument {
   id         String   @id @default(cuid())
   userId     String
-  templateId String
+  templateId String?  // Optional: can be null if template is deleted
+  templateCode String  // Copy of template code for reference
   name       String
-  content    String
-  formData   Json
+  content    String             // Rendered HTML/Markdown of the contract
+  formData   Json     // {SELLER_NAME: "...", AMOUNT: 100000, ...}
+  status     String   @default("draft")  // draft, final, signed
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   versions DocumentVersion[]
 
   @@index([userId])
@@ -207,6 +211,23 @@ model LegalReference {
 
   @@unique([userId, knownId])
   @@index([userId])
+}
+
+model ContractTemplate {
+  id          String   @id @default(cuid())
+  code        String   @unique  // "PROM_SALE", "PROM_USLUG", etc.
+  name        String             // "Договор купли-продажи"
+  category    String             // "Коммерческие", "Трудовые", "Имущественные"
+  description String
+  content     String             // Handlebars template with {{VARIABLE}} placeholders
+  variables   String             // JSON: [{name, type, label, required, placeholder}]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  generatedDocs GeneratedDocument[]
+
+  @@index([category])
 }
 
 model CounterpartyProfile {
