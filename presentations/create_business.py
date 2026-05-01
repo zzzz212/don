@@ -479,16 +479,35 @@ unit = [
     ("CAC (стоимость привлечения)", "1 200 ₽", TEXT_DARK),
     ("LTV (доход с клиента)", "23 880 ₽", GREEN),
     ("LTV/CAC", "19,9×", ACCENT),
-    ("Маржа после AI-затрат", "82%", GREEN),
+    ("Валовая маржа (после AI)", "98,6%", GREEN),
+    ("Операционная маржа", "94,6%", GREEN),
     ("Окупаемость клиента", "0,6 мес", GREEN),
 ]
 
 for i, (lbl, val, color) in enumerate(unit):
-    ty = Inches(2.8) + Inches(0.6) * i
-    add_text(s, Inches(0.9), ty, Inches(3.5), Inches(0.5),
-             lbl, font_size=13, color=TEXT_DARK)
-    add_text(s, Inches(4.4), ty, Inches(2), Inches(0.5),
-             val, font_size=15, bold=True, color=color, align=PP_ALIGN.RIGHT)
+    ty = Inches(2.8) + Inches(0.55) * i
+    add_text(s, Inches(0.9), ty, Inches(3.5), Inches(0.45),
+             lbl, font_size=12, color=TEXT_DARK)
+    add_text(s, Inches(4.4), ty, Inches(2), Inches(0.45),
+             val, font_size=14, bold=True, color=color, align=PP_ALIGN.RIGHT)
+
+# Разбивка затрат
+add_text(s, Inches(0.9), Inches(5.8), Inches(5.6), Inches(0.4),
+         "Затраты на 1 PRO клиента:", font_size=12, bold=True, color=TEXT_DARK)
+costs = [
+    ("Claude API (30 анализов)", "24 ₽"),
+    ("DaData", "3 ₽"),
+    ("Хостинг (Vercel+Neon)", "0.32 ₽"),
+    ("Генерация документов", "0.5 ₽"),
+    ("Платежи (2.5%)", "50 ₽"),
+    ("Поддержка", "30 ₽"),
+]
+for j, (cost_name, cost_val) in enumerate(costs):
+    ty = Inches(6.3) + Inches(0.35) * j
+    add_text(s, Inches(0.9), ty, Inches(3.5), Inches(0.32),
+             "▸ " + cost_name, font_size=10, color=TEXT_GREY)
+    add_text(s, Inches(4.4), ty, Inches(2), Inches(0.32),
+             cost_val, font_size=10, bold=True, color=RED, align=PP_ALIGN.RIGHT)
 
 # Правая часть - выручка по годам
 add_round(s, Inches(6.85), Inches(1.9), Inches(6.1), Inches(5), NAVY)
