@@ -27,6 +27,7 @@ model User {
   documentVersions   DocumentVersion[]
   versionComparisons VersionComparison[]
   legalReferences    LegalReference[]
+  aiUsage            AiUsage[]
 }
 
 model Account {
@@ -245,6 +246,25 @@ model CounterpartyProfile {
   checks              CounterpartyCheck[]
 
   @@index([inn])
+}
+
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  feature      String
+  provider     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  cachedTokens Int      @default(0)
+  latencyMs    Int
+
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, feature])
 }
 
 model CounterpartyCheck {
