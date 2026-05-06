@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatAI, getActiveProvider } from "@/lib/ai/client";
+import { chat, getActiveProvider } from "@/lib/ai/client";
+import { CHAT_SYSTEM } from "@/lib/ai/prompts";
+import { logUsage } from "@/lib/ai/usage";
+import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-
-const SYSTEM_PROMPT = `Ты — опытный юрист-консультант, специализирующийся на российском законодательстве. Ты помогаешь предпринимателям и малому бизнесу разобраться в юридических вопросах.
-
-ПРАВИЛА:
-1. Отвечай на русском языке
-2. Ссылайся на конкретные статьи законов (ГК РФ, ТК РФ, НК РФ, КоАП РФ и др.)
-3. Давай практичные, применимые советы
-4. Структурируй ответ: ключевые моменты, детали, рекомендация
-5. Если вопрос неоднозначен — укажи варианты и оговорки
-6. В конце КАЖДОГО ответа добавляй дисклеймер: "⚠️ Данный ответ носит информационный характер и не является юридической консультацией."
-7. Если вопрос не связан с юриспруденцией — вежливо сообщи, что специализируешься только на правовых вопросах
-
-Отвечай структурированно, используя markdown для форматирования (жирный текст, списки, нумерация).`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,22 +25,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If no AI provider — return demo indicator
-    const provider = getActiveProvider();
-    if (provider === "demo") {
+    if (getActiveProvider() === "demo") {
       return NextResponse.json({ demo: true });
     }
 
-    const response = await chatAI(
-      SYSTEM_PROMPT,
-      messages.map((m: { role: string; content: string }) => ({
-        role: m.role as "user" | "assistant",
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+
+    const result = await chat({
+      system: CHAT_SYSTEM,
+      messages: messages.map((m: { role: string; content: string }) => ({
+        role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
         content: m.content,
       })),
-      2048
-    );
+      maxTokens: 2048,
+    });
 
-    return NextResponse.json({ message: response.text });
+    await logUsage(userId, result.usage, "chat");
+
+    return NextResponse.json({ message: result.text });
   } catch (error) {
     console.error("Chat error:", error);
     return NextResponse.json(

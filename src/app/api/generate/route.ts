@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateAI, getActiveProvider } from "@/lib/ai/client";
-import { GENERATE_DOCUMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { generateText, getActiveProvider } from "@/lib/ai/client";
+import { GENERATE_DOCUMENT_SYSTEM } from "@/lib/ai/prompts";
+import { logUsage } from "@/lib/ai/usage";
 import { getTemplate } from "@/lib/templates";
 import { rateLimit } from "@/lib/rate-limit";
 import { auth } from "@/lib/auth";
@@ -28,40 +29,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If no AI provider — tell frontend to use local generation
     if (getActiveProvider() === "demo") {
       return NextResponse.json({ demo: true });
     }
 
-    // Build a description of what to generate
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+
     const fieldDescriptions = template.fields
       .map((f) => `${f.label}: ${data[f.id] || "не указано"}`)
       .join("\n");
 
-    const response = await generateAI(
-      GENERATE_DOCUMENT_SYSTEM_PROMPT,
-      `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
-      4096
-    );
+    const result = await generateText({
+      system: GENERATE_DOCUMENT_SYSTEM,
+      prompt: `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
+      model: "fast",
+      maxTokens: 4096,
+    });
 
-    // Save to DB if user is authenticated
-    const session = await auth();
+    await logUsage(userId, result.usage, "generate");
+
     let savedDoc = null;
-
-    if (session?.user?.id) {
+    if (userId) {
       savedDoc = await prisma.generatedDocument.create({
         data: {
-          userId: session.user.id,
+          userId,
           templateId,
           name: documentName || template.name,
-          content: response.text,
+          content: result.data,
           formData: data,
         },
       });
     }
 
     return NextResponse.json({
-      document: response.text,
+      document: result.data,
       saved: !!savedDoc,
       id: savedDoc?.id,
     });

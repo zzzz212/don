@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     // Limit text length for API
     const truncatedText = contractText.slice(0, 15000);
 
-    const analysis = await analyzeContract(truncatedText);
+    const analysis = await analyzeContract(truncatedText, userId ?? null);
 
     // Save to DB if user is authenticated
     let documentId: string | null = null;
