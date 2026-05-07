@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getStorage, isStorageAvailable } from "@/lib/storage";
 
 export async function GET(
   _request: NextRequest,
@@ -34,6 +35,8 @@ export async function GET(
       id: document.id,
       fileName: document.fileName,
       fileSize: document.fileSize,
+      mimeType: document.mimeType,
+      hasOriginal: !!document.blobKey,
       score: document.analysis?.score ?? 0,
       summary: document.analysis?.summary ?? "",
       risks: document.analysis ? JSON.parse(document.analysis.risks) : [],
@@ -80,6 +83,15 @@ export async function DELETE(
 
     if (document.userId !== session.user.id) {
       return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+    }
+
+    // Best-effort blob cleanup — log on failure, don't block deletion.
+    if (document.blobKey && isStorageAvailable()) {
+      try {
+        await getStorage().delete(document.blobKey);
+      } catch (e) {
+        console.error("[documents/delete] blob cleanup failed:", e);
+      }
     }
 
     await prisma.document.delete({

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkQuotaSafe } from "@/lib/quota";
+import { getStorage, isStorageAvailable } from "@/lib/storage";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,10 +72,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Capture original bytes once — parseDocument consumes the stream and we
+    // also want to push the original to object storage if configured.
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const mimeType = file.type || "application/octet-stream";
+
     // Parse the document
     let contractText: string;
     try {
-      const parsed = await parseDocument(file);
+      const parsed = await parseDocument(
+        new File([fileBytes], file.name, { type: mimeType })
+      );
       contractText = parsed.text;
     } catch {
       return NextResponse.json(
@@ -104,6 +112,25 @@ export async function POST(request: NextRequest) {
 
     const analysis = await analyzeContract(contractText, userId ?? null);
 
+    // Upload original file to object storage in parallel with DB save below.
+    // Storage failure must not fail the request — the user still gets their
+    // analysis. We just won't have a "Скачать оригинал" link for this doc.
+    let blobInfo: { url: string; key: string } | null = null;
+    if (userId && isStorageAvailable()) {
+      try {
+        const storage = getStorage();
+        const uploaded = await storage.upload({
+          fileName: file.name,
+          mimeType,
+          data: fileBytes,
+          folder: `documents/${userId}`,
+        });
+        blobInfo = { url: uploaded.url, key: uploaded.key };
+      } catch (storageError) {
+        console.error("Failed to store original document:", storageError);
+      }
+    }
+
     // Save to DB if user is authenticated
     let documentId: string | null = null;
     if (userId) {
@@ -131,6 +158,9 @@ export async function POST(request: NextRequest) {
               fileName: file.name,
               fileSize: file.size,
               rawText: contractText,
+              mimeType,
+              blobUrl: blobInfo?.url ?? null,
+              blobKey: blobInfo?.key ?? null,
               analysis: {
                 create: {
                   score: analysis.score,
@@ -155,6 +185,7 @@ export async function POST(request: NextRequest) {
       documentId,
       fileName: file.name,
       textLength: contractText.length,
+      hasOriginal: documentId !== null && blobInfo !== null,
     });
   } catch (error) {
     console.error("Analysis error:", error);
