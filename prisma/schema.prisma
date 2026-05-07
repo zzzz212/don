@@ -72,6 +72,9 @@ model Document {
   fileName  String
   fileSize  Int
   rawText   String
+  mimeType  String?
+  blobUrl   String?
+  blobKey   String?
   analysis  Analysis?
   createdAt DateTime  @default(now())
 
