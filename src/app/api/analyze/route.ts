@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkQuotaSafe } from "@/lib/quota";
 import { getStorage, isStorageAvailable } from "@/lib/storage";
+import { getOcr, isOcrAvailable, OcrError } from "@/lib/ocr";
+import { logOcrUsage } from "@/lib/ai/usage";
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,13 +79,18 @@ export async function POST(request: NextRequest) {
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     const mimeType = file.type || "application/octet-stream";
 
-    // Parse the document
+    // Parse the document. parseDocument returns needsOcr=true for scanned
+    // PDFs whose embedded text layer is empty/whitespace-only.
     let contractText: string;
+    let needsOcr = false;
+    let parsedMimeType = mimeType;
     try {
       const parsed = await parseDocument(
         new File([fileBytes], file.name, { type: mimeType })
       );
       contractText = parsed.text;
+      needsOcr = parsed.needsOcr ?? false;
+      if (parsed.mimeType) parsedMimeType = parsed.mimeType;
     } catch {
       return NextResponse.json(
         { error: "Не удалось прочитать файл. Убедитесь, что формат поддерживается (PDF, DOCX, TXT)." },
@@ -91,9 +98,95 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!contractText.trim()) {
+    let usedOcr = false;
+
+    if (needsOcr) {
+      // Empty PDF text layer — likely a scan. Try OCR if configured + allowed.
+      if (!isOcrAvailable()) {
+        return NextResponse.json(
+          {
+            error:
+              "Документ выглядит как скан (текстовый слой пуст). Распознавание сканов не настроено в этом окружении.",
+            code: "OCR_NOT_AVAILABLE",
+          },
+          { status: 422 }
+        );
+      }
+
+      if (userId) {
+        const ocrQuota = await checkQuotaSafe(userId, "ocr");
+        if (ocrQuota && !ocrQuota.allowed) {
+          return NextResponse.json(
+            {
+              error:
+                "Распознавание сканов доступно на тарифах «Про» и «Бизнес». Перейдите на платный план.",
+              code: "OCR_NOT_AVAILABLE_ON_FREE",
+              quota: {
+                feature: ocrQuota.feature,
+                used: ocrQuota.used,
+                limit: ocrQuota.limit,
+                plan: ocrQuota.plan,
+                resetsAt: ocrQuota.resetsAt.toISOString(),
+              },
+            },
+            { status: 402 }
+          );
+        }
+      } else {
+        // Anonymous users follow FREE rules — no OCR.
+        return NextResponse.json(
+          {
+            error:
+              "Распознавание сканов доступно зарегистрированным пользователям на платном тарифе. Войдите и перейдите на «Про».",
+            code: "OCR_REQUIRES_AUTH",
+          },
+          { status: 401 }
+        );
+      }
+
+      const ocr = getOcr();
+      if (file.size > ocr.inlineLimitBytes) {
+        return NextResponse.json(
+          {
+            error: `Размер файла (${(file.size / 1024 / 1024).toFixed(2)} МБ) превышает лимит OCR (${(ocr.inlineLimitBytes / 1024 / 1024).toFixed(2)} МБ). Сжмите PDF перед загрузкой (например, через ilovepdf.com → Compress PDF).`,
+            code: "DOCUMENT_TOO_LARGE_FOR_OCR",
+            sizeBytes: file.size,
+            limitBytes: ocr.inlineLimitBytes,
+          },
+          { status: 422 }
+        );
+      }
+
+      try {
+        const ocrResult = await ocr.recognize({
+          data: fileBytes,
+          mimeType: parsedMimeType,
+          languages: ["ru", "en"],
+        });
+        contractText = ocrResult.text;
+        usedOcr = true;
+        await logOcrUsage(userId, ocrResult, contractText.length);
+      } catch (ocrError) {
+        const code =
+          ocrError instanceof OcrError ? ocrError.code : "PROVIDER_ERROR";
+        const status = code === "EMPTY_RESULT" ? 400 : 502;
+        const message =
+          code === "EMPTY_RESULT"
+            ? "Не удалось распознать текст. Возможно, скан слишком низкого качества — попробуйте другую копию."
+            : "Сервис распознавания временно недоступен. Попробуйте позже.";
+        console.error("[analyze] OCR failed:", ocrError);
+        return NextResponse.json(
+          { error: message, code: `OCR_${code}` },
+          { status }
+        );
+      }
+    } else if (!contractText.trim()) {
       return NextResponse.json(
-        { error: "Документ пуст или не содержит текста. Возможно, PDF состоит из сканированных изображений." },
+        {
+          error:
+            "Документ пуст или не содержит текста.",
+          code: "EMPTY_DOCUMENT",
+        },
         { status: 400 }
       );
     }
@@ -150,6 +243,7 @@ export async function POST(request: NextRequest) {
             missingClauses: analysis.missingClauses,
             preSigningChecklist: analysis.preSigningChecklist,
             isDemo: analysis.isDemo ?? false,
+            usedOcr,
           });
 
           const document = await prisma.document.create({
@@ -186,6 +280,7 @@ export async function POST(request: NextRequest) {
       fileName: file.name,
       textLength: contractText.length,
       hasOriginal: documentId !== null && blobInfo !== null,
+      usedOcr,
     });
   } catch (error) {
     console.error("Analysis error:", error);
