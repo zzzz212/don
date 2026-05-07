@@ -3,7 +3,7 @@ export type Plan = (typeof PLANS)[number];
 
 export const DEFAULT_PLAN: Plan = "FREE";
 
-export type QuotaFeature = "analyze" | "generate" | "chat";
+export type QuotaFeature = "analyze" | "generate" | "chat" | "ocr";
 
 export const UNLIMITED = Number.POSITIVE_INFINITY;
 
@@ -11,6 +11,7 @@ interface PlanLimits {
   analyze: number;
   generate: number;
   chat: number;
+  ocr: number;
 }
 
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
@@ -18,16 +19,19 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     analyze: 3,
     generate: 2,
     chat: UNLIMITED,
+    ocr: 0, // OCR is gated on paid tiers — most expensive operation
   },
   PRO: {
     analyze: UNLIMITED,
     generate: UNLIMITED,
     chat: UNLIMITED,
+    ocr: UNLIMITED,
   },
   BUSINESS: {
     analyze: UNLIMITED,
     generate: UNLIMITED,
     chat: UNLIMITED,
+    ocr: UNLIMITED,
   },
 };
 

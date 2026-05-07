@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { checkQuota } from "@/lib/quota";
 import type { QuotaFeature } from "@/lib/plans";
 
-const FEATURES: QuotaFeature[] = ["analyze", "generate", "chat"];
+const FEATURES: QuotaFeature[] = ["analyze", "generate", "chat", "ocr"];
 
 export async function GET() {
   const session = await auth();
