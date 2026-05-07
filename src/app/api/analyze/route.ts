@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseDocument } from "@/lib/parsers";
 import { analyzeContract } from "@/lib/ai/analyze";
+import { isOversizedDocument, HARD_DOC_LIMIT } from "@/lib/ai/chunking";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
@@ -89,10 +90,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Limit text length for API
-    const truncatedText = contractText.slice(0, 15000);
+    if (isOversizedDocument(contractText)) {
+      return NextResponse.json(
+        {
+          error: `Документ слишком большой для автоматического анализа (${contractText.length.toLocaleString("ru-RU")} символов, лимит ${HARD_DOC_LIMIT.toLocaleString("ru-RU")}). Разбейте его на части и проанализируйте по разделам.`,
+          code: "DOCUMENT_TOO_LARGE",
+          textLength: contractText.length,
+          limit: HARD_DOC_LIMIT,
+        },
+        { status: 413 }
+      );
+    }
 
-    const analysis = await analyzeContract(truncatedText, userId ?? null);
+    const analysis = await analyzeContract(contractText, userId ?? null);
 
     // Save to DB if user is authenticated
     let documentId: string | null = null;
@@ -120,7 +130,7 @@ export async function POST(request: NextRequest) {
               userId,
               fileName: file.name,
               fileSize: file.size,
-              rawText: truncatedText,
+              rawText: contractText,
               analysis: {
                 create: {
                   score: analysis.score,
