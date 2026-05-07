@@ -8,11 +8,22 @@ import { rateLimit } from "@/lib/rate-limit";
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-    const rl = rateLimit(ip, "chat");
+    const rl = await rateLimit(ip, "chat");
     if (!rl.ok) {
       return NextResponse.json(
-        { error: "Слишком много запросов. Подождите немного." },
-        { status: 429 }
+        {
+          error: "Слишком много запросов. Подождите немного.",
+          code: "RATE_LIMITED",
+          resetAt: rl.resetAt,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(rl.limit),
+            "X-RateLimit-Remaining": String(rl.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+          },
+        }
       );
     }
 

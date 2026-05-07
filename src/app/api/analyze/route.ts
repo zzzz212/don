@@ -4,20 +4,53 @@ import { analyzeContract } from "@/lib/ai/analyze";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { checkQuotaSafe } from "@/lib/quota";
 
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-    const rl = rateLimit(ip, "analyze");
+    const rl = await rateLimit(ip, "analyze");
     if (!rl.ok) {
       return NextResponse.json(
-        { error: "Слишком много запросов. Подождите немного." },
-        { status: 429 }
+        {
+          error: "Слишком много запросов. Подождите немного.",
+          code: "RATE_LIMITED",
+          resetAt: rl.resetAt,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(rl.limit),
+            "X-RateLimit-Remaining": String(rl.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+          },
+        }
       );
     }
 
     const session = await auth();
     const userId = session?.user?.id;
+
+    // Plan-based quota check (anonymous users skip; rate limit already applied)
+    if (userId) {
+      const quota = await checkQuotaSafe(userId, "analyze");
+      if (quota && !quota.allowed) {
+        return NextResponse.json(
+          {
+            error: `Лимит тарифа ${quota.plan} исчерпан: ${quota.used} из ${quota.limit} анализов в этом месяце. Перейдите на тариф «Про» для безлимита.`,
+            code: "QUOTA_EXCEEDED",
+            quota: {
+              feature: quota.feature,
+              used: quota.used,
+              limit: quota.limit,
+              plan: quota.plan,
+              resetsAt: quota.resetsAt.toISOString(),
+            },
+          },
+          { status: 402 }
+        );
+      }
+    }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
