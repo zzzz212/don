@@ -16,11 +16,13 @@ import {
   Info,
   Download,
   FileDown,
+  FileImage,
   Stamp,
   Building2,
   ListChecks,
   ClipboardCheck,
   Users,
+  RefreshCw,
 } from "lucide-react";
 
 interface NotarizationInfo {
@@ -46,6 +48,8 @@ interface AnalysisData {
   preSigningChecklist?: string[];
   isDemo?: boolean;
   documentId?: string;
+  hasOriginal?: boolean;
+  usedOcr?: boolean;
 }
 
 export default function ReportPage({
@@ -58,6 +62,7 @@ export default function ReportPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
+  const [reanalyzing, setReanalyzing] = useState(false);
   const loadedRef = useRef(false);
 
   const handleExportPDF = async () => {
@@ -83,6 +88,54 @@ export default function ReportPage({
       console.error("DOCX export error:", e);
     } finally {
       setExporting(null);
+    }
+  };
+
+  const handleDownloadOriginal = () => {
+    if (!analysis?.documentId) return;
+    // Navigate to the file route — server returns 302 to the storage URL.
+    window.location.href = `/api/documents/${analysis.documentId}/file`;
+  };
+
+  const handleReanalyze = async () => {
+    if (!analysis?.documentId || reanalyzing) return;
+    if (
+      !confirm(
+        "Перепроанализировать документ? Будет израсходован 1 анализ из вашего тарифа."
+      )
+    ) {
+      return;
+    }
+
+    setReanalyzing(true);
+    try {
+      const response = await fetch(
+        `/api/documents/${analysis.documentId}/reanalyze`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        if (response.status === 402) {
+          alert(
+            data.error ||
+              "Лимит тарифа исчерпан. Перейдите на «Про» для безлимитного анализа."
+          );
+        } else {
+          alert(data.error || "Ошибка при повторном анализе");
+        }
+        return;
+      }
+
+      const result = await response.json();
+      // Reload the page to fetch the fresh analysis from the DB
+      sessionStorage.setItem("analysisResult", JSON.stringify(result));
+      window.location.reload();
+    } catch (e) {
+      console.error("Re-analyze error:", e);
+      alert("Не удалось выполнить повторный анализ");
+    } finally {
+      setReanalyzing(false);
     }
   };
 
@@ -187,7 +240,32 @@ export default function ReportPage({
               <ArrowLeft className="h-4 w-4" />
               К дашборду
             </Link>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {analysis.hasOriginal && (
+                <button
+                  onClick={handleDownloadOriginal}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  title="Скачать оригинальный загруженный файл"
+                >
+                  <FileImage className="h-4 w-4" />
+                  Оригинал
+                </button>
+              )}
+              {analysis.documentId && (
+                <button
+                  onClick={handleReanalyze}
+                  disabled={reanalyzing}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  title="Запустить анализ заново — например, после обновления AI-модели"
+                >
+                  {reanalyzing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Перепроанализировать
+                </button>
+              )}
               <button
                 onClick={handleExportPDF}
                 disabled={exporting === "pdf"}
@@ -249,17 +327,28 @@ export default function ReportPage({
                   </h1>
                 </div>
 
-                {/* Contract type + parties */}
-                {analysis.contractType && (
+                {/* Contract type + parties + OCR badge */}
+                {(analysis.contractType || analysis.usedOcr) && (
                   <div className="mb-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-primary-light px-2.5 py-1 text-xs font-semibold text-primary-dark">
-                      <FileText className="h-3 w-3" />
-                      {analysis.contractType}
-                    </span>
+                    {analysis.contractType && (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-primary-light px-2.5 py-1 text-xs font-semibold text-primary-dark">
+                        <FileText className="h-3 w-3" />
+                        {analysis.contractType}
+                      </span>
+                    )}
                     {analysis.parties && (
                       <span className="inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1 text-xs font-medium text-muted">
                         <Users className="h-3 w-3" />
                         {analysis.parties}
+                      </span>
+                    )}
+                    {analysis.usedOcr && (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700"
+                        title="Текст распознан со скана через Yandex Vision OCR"
+                      >
+                        <FileImage className="h-3 w-3" />
+                        Распознан со скана
                       </span>
                     )}
                   </div>
