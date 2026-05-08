@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getStorage, isStorageAvailable } from "@/lib/storage";
+import { reportError } from "@/lib/telemetry";
 
 export async function GET(
   _request: NextRequest,
@@ -50,7 +51,7 @@ export async function GET(
       createdAt: document.createdAt,
     });
   } catch (error) {
-    console.error("Document fetch error:", error);
+    await reportError(error, { op: "documents.get" });
     return NextResponse.json(
       { error: "Ошибка при загрузке документа" },
       { status: 500 }
@@ -100,7 +101,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Document deletion error:", error);
+    await reportError(error, { op: "documents.delete" });
     return NextResponse.json(
       { error: "Ошибка при удалении документа" },
       { status: 500 }

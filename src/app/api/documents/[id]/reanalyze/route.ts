@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { checkQuotaSafe } from "@/lib/quota";
 import { analyzeContract } from "@/lib/ai/analyze";
 import { isOversizedDocument, HARD_DOC_LIMIT } from "@/lib/ai/chunking";
+import { reportError } from "@/lib/telemetry";
 
 export async function POST(
   request: NextRequest,
@@ -155,7 +156,7 @@ export async function POST(
       usedOcr: previousMetadata.usedOcr ?? false,
     });
   } catch (error) {
-    console.error("Re-analyze error:", error);
+    await reportError(error, { op: "reanalyze" });
     return NextResponse.json(
       { error: "Ошибка при повторном анализе. Попробуйте позже." },
       { status: 500 }

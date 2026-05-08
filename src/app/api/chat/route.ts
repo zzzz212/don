@@ -4,6 +4,7 @@ import { CHAT_SYSTEM } from "@/lib/ai/prompts";
 import { logUsage } from "@/lib/ai/usage";
 import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/telemetry";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ message: result.text });
   } catch (error) {
-    console.error("Chat error:", error);
+    await reportError(error, { op: "chat" });
     return NextResponse.json(
       { error: "Ошибка при обработке запроса. Попробуйте позже." },
       { status: 500 }

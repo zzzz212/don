@@ -7,6 +7,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { checkQuotaSafe } from "@/lib/quota";
+import { reportError } from "@/lib/telemetry";
 
 export async function POST(request: NextRequest) {
   try {
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
       id: savedDoc?.id,
     });
   } catch (error) {
-    console.error("Generation error:", error);
+    await reportError(error, { op: "generate" });
     return NextResponse.json(
       { error: "Ошибка при генерации документа. Попробуйте позже." },
       { status: 500 }

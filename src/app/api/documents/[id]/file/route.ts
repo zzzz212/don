@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
+import { reportError } from "@/lib/telemetry";
 
 export async function GET(
   _request: NextRequest,
@@ -70,7 +71,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Document file fetch error:", error);
+    await reportError(error, { op: "documents.file" });
     return NextResponse.json(
       { error: "Ошибка при получении файла" },
       { status: 500 }

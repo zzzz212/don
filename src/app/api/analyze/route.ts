@@ -14,6 +14,7 @@ import {
   recognizeMultiPagePdf,
 } from "@/lib/ocr";
 import { logOcrUsage } from "@/lib/ai/usage";
+import { reportError } from "@/lib/telemetry";
 
 export async function POST(request: NextRequest) {
   try {
@@ -315,7 +316,7 @@ export async function POST(request: NextRequest) {
       usedOcr,
     });
   } catch (error) {
-    console.error("Analysis error:", error);
+    await reportError(error, { op: "analyze" });
     return NextResponse.json(
       { error: "Ошибка при анализе документа. Попробуйте позже." },
       { status: 500 }
