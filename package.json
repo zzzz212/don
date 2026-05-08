@@ -28,6 +28,7 @@
     "mammoth": "^1.12.0",
     "next": "16.2.3",
     "next-auth": "^5.0.0-beta.30",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.18.0",
     "prisma": "^6.19.3",

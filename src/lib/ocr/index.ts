@@ -9,6 +9,11 @@ export type {
   OcrResult,
 } from "./types";
 export { OcrError } from "./types";
+export {
+  recognizeMultiPagePdf,
+  type MultiPageResult,
+} from "./multipage";
+export { MAX_PAGES_PER_DOCUMENT } from "./pdf-splitter";
 
 const PROVIDERS: OcrProvider[] = [yandexOcrProvider];
 
