@@ -15,6 +15,7 @@ import {
 import { generateDemoAnalysis } from "./providers/demo";
 import { logUsage } from "./usage";
 import type { Usage } from "./types";
+import { dedupRisks, byRiskSeverity } from "./dedup";
 
 export type {
   AnalysisRisk,
@@ -27,12 +28,6 @@ const MAP_CONCURRENCY = 4;
 const MAX_RISKS_RETURNED = 8;
 const MAX_RISKS_TO_SYNTHESIS = 15;
 const PREAMBLE_CHARS = 8_000;
-
-const RISK_PRIORITY: Record<AnalysisRisk["level"], number> = {
-  critical: 0,
-  medium: 1,
-  low: 2,
-};
 
 export async function analyzeContract(
   contractText: string,
@@ -130,31 +125,6 @@ async function extractRisksForChunk(
 
   await logUsage(userId, result.usage, "analyze");
   return result.data.risks;
-}
-
-function dedupRisks(risks: AnalysisRisk[]): AnalysisRisk[] {
-  const seen = new Map<string, AnalysisRisk>();
-
-  for (const risk of risks) {
-    const key = riskDedupKey(risk);
-    const existing = seen.get(key);
-
-    if (!existing || RISK_PRIORITY[risk.level] < RISK_PRIORITY[existing.level]) {
-      seen.set(key, risk);
-    }
-  }
-
-  return Array.from(seen.values());
-}
-
-function riskDedupKey(risk: AnalysisRisk): string {
-  const original = risk.originalText.trim().slice(0, 50).toLowerCase();
-  const number = risk.clauseNumber.trim().toLowerCase();
-  return `${number}|${original}`;
-}
-
-function byRiskSeverity(a: AnalysisRisk, b: AnalysisRisk): number {
-  return RISK_PRIORITY[a.level] - RISK_PRIORITY[b.level];
 }
 
 async function synthesizeStructure(

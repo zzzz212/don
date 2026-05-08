@@ -10,6 +10,7 @@ import {
   normalizeSystem,
 } from "../types";
 import { describeSchemaForPrompt } from "../schema-helpers";
+import { tryParse } from "../json-parse";
 
 function getKey(): string | null {
   const key = process.env.GROQ_API_KEY;
@@ -40,24 +41,6 @@ function toUsage(raw: GroqUsageRaw | undefined, model: string, latencyMs: number
 async function getClient() {
   const Groq = (await import("groq-sdk")).default;
   return new Groq({ apiKey: getKey()! });
-}
-
-function stripJsonFences(text: string): string {
-  const trimmed = text.trim();
-  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return fenceMatch ? fenceMatch[1].trim() : trimmed;
-}
-
-function tryParse<T extends z.ZodTypeAny>(
-  raw: string,
-  schema: T
-): z.infer<T> | null {
-  try {
-    const parsed = JSON.parse(stripJsonFences(raw));
-    return schema.parse(parsed);
-  } catch {
-    return null;
-  }
 }
 
 export async function generate<T extends z.ZodTypeAny>(
