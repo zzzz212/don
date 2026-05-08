@@ -7,7 +7,12 @@ import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkQuotaSafe } from "@/lib/quota";
 import { getStorage, isStorageAvailable } from "@/lib/storage";
-import { getOcr, isOcrAvailable, OcrError } from "@/lib/ocr";
+import {
+  getOcr,
+  isOcrAvailable,
+  OcrError,
+  recognizeMultiPagePdf,
+} from "@/lib/ocr";
 import { logOcrUsage } from "@/lib/ai/usage";
 
 export async function POST(request: NextRequest) {
@@ -145,38 +150,65 @@ export async function POST(request: NextRequest) {
       }
 
       const ocr = getOcr();
-      if (file.size > ocr.inlineLimitBytes) {
-        return NextResponse.json(
-          {
-            error: `Размер файла (${(file.size / 1024 / 1024).toFixed(2)} МБ) превышает лимит OCR (${(ocr.inlineLimitBytes / 1024 / 1024).toFixed(2)} МБ). Сжмите PDF перед загрузкой (например, через ilovepdf.com → Compress PDF).`,
-            code: "DOCUMENT_TOO_LARGE_FOR_OCR",
-            sizeBytes: file.size,
-            limitBytes: ocr.inlineLimitBytes,
-          },
-          { status: 422 }
-        );
-      }
+      const isPdf = parsedMimeType === "application/pdf";
+      const fitsInline = file.size <= ocr.inlineLimitBytes;
 
       try {
-        const ocrResult = await ocr.recognize({
-          data: fileBytes,
-          mimeType: parsedMimeType,
-          languages: ["ru", "en"],
-        });
-        contractText = ocrResult.text;
-        usedOcr = true;
-        await logOcrUsage(userId, ocrResult, contractText.length);
+        if (fitsInline) {
+          // Small PDF or single image — single-shot sync OCR.
+          const ocrResult = await ocr.recognize({
+            data: fileBytes,
+            mimeType: parsedMimeType,
+            languages: ["ru", "en"],
+          });
+          contractText = ocrResult.text;
+          usedOcr = true;
+          await logOcrUsage(userId, ocrResult, contractText.length);
+        } else if (isPdf) {
+          // Multi-page scan: split into per-page PDFs and OCR in parallel.
+          const ocrResult = await recognizeMultiPagePdf(fileBytes);
+          contractText = ocrResult.text;
+          usedOcr = true;
+          await logOcrUsage(userId, ocrResult, contractText.length);
+          if (ocrResult.failedPages > 0) {
+            console.warn(
+              `[analyze] OCR completed with ${ocrResult.failedPages}/${ocrResult.pageCount} failed pages`
+            );
+          }
+        } else {
+          // Non-PDF over the inline limit — can't split. Tell the user how.
+          return NextResponse.json(
+            {
+              error: `Размер изображения (${(file.size / 1024 / 1024).toFixed(2)} МБ) превышает лимит OCR (${(ocr.inlineLimitBytes / 1024 / 1024).toFixed(2)} МБ на изображение). Уменьшите разрешение или сожмите файл.`,
+              code: "DOCUMENT_TOO_LARGE_FOR_OCR",
+              sizeBytes: file.size,
+              limitBytes: ocr.inlineLimitBytes,
+            },
+            { status: 422 }
+          );
+        }
       } catch (ocrError) {
         const code =
           ocrError instanceof OcrError ? ocrError.code : "PROVIDER_ERROR";
-        const status = code === "EMPTY_RESULT" ? 400 : 502;
-        const message =
+        const status =
           code === "EMPTY_RESULT"
-            ? "Не удалось распознать текст. Возможно, скан слишком низкого качества — попробуйте другую копию."
-            : "Сервис распознавания временно недоступен. Попробуйте позже.";
+            ? 400
+            : code === "INPUT_TOO_LARGE"
+              ? 422
+              : 502;
+        const message =
+          ocrError instanceof OcrError && code === "INPUT_TOO_LARGE"
+            ? ocrError.message
+            : code === "EMPTY_RESULT"
+              ? "Не удалось распознать текст. Возможно, скан слишком низкого качества — попробуйте другую копию."
+              : "Сервис распознавания временно недоступен. Попробуйте позже.";
         console.error("[analyze] OCR failed:", ocrError);
         return NextResponse.json(
-          { error: message, code: `OCR_${code}` },
+          {
+            error: message,
+            code:
+              code === "INPUT_TOO_LARGE" ? "DOCUMENT_TOO_LARGE_FOR_OCR" : `OCR_${code}`,
+          },
           { status }
         );
       }
