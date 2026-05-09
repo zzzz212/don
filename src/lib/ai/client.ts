@@ -6,6 +6,7 @@ import {
   type ChatResult,
   type GenerateOptions,
   type GenerateResult,
+  type StreamEvent,
 } from "./types";
 import * as anthropic from "./providers/anthropic";
 import * as gemini from "./providers/gemini";
@@ -111,9 +112,34 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
   );
 }
 
+/**
+ * Streaming chat — yields delta / usage / done / error events from the
+ * highest-priority available provider. There is no mid-stream fallback:
+ * once any delta has been emitted we are committed to that provider.
+ * Falling back would require restarting the message on the consumer side,
+ * which is worse UX than failing fast.
+ */
+export async function* streamChat(
+  opts: ChatOptions
+): AsyncGenerator<StreamEvent> {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    yield { kind: "error", message: "No AI provider configured" };
+    return;
+  }
+  yield* PROVIDERS[providers[0]].streamChat(opts);
+}
+
 // ── Re-exports ──────────────────────────────────────────────────────
 
-export type { AIProvider, ChatOptions, GenerateOptions, GenerateResult, Usage } from "./types";
+export type {
+  AIProvider,
+  ChatOptions,
+  GenerateOptions,
+  GenerateResult,
+  StreamEvent,
+  Usage,
+} from "./types";
 export { AIError } from "./types";
 
 // ── Backward-compatibility shims ────────────────────────────────────

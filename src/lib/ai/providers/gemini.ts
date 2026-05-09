@@ -5,6 +5,7 @@ import {
   type ChatResult,
   type GenerateOptions,
   type GenerateResult,
+  type StreamEvent,
   type Usage,
   MODEL_MAP,
   normalizeSystem,
@@ -138,5 +139,60 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
     };
   } catch (e) {
     throw new AIError(`Gemini chat failed: ${(e as Error).message}`, "gemini", e);
+  }
+}
+
+export async function* streamChat(
+  opts: ChatOptions
+): AsyncGenerator<StreamEvent> {
+  const modelName = MODEL_MAP.gemini[opts.model ?? "smart"];
+  const system = normalizeSystem(opts.system);
+  const start = Date.now();
+
+  try {
+    const model = await getModel(modelName, system.text);
+
+    const history = opts.messages.slice(0, -1).map((m) => ({
+      role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+      parts: [{ text: m.content }],
+    }));
+
+    const lastMessage = opts.messages[opts.messages.length - 1];
+    if (!lastMessage) {
+      yield { kind: "error", message: "Empty messages list" };
+      return;
+    }
+
+    const chatSession = model.startChat({
+      history,
+      generationConfig: {
+        temperature: opts.temperature ?? 0.3,
+        maxOutputTokens: opts.maxTokens ?? 2048,
+      },
+    });
+
+    const streamResult = await chatSession.sendMessageStream(lastMessage.content);
+
+    for await (const chunk of streamResult.stream) {
+      // Check abort signal between chunks — Gemini SDK does not honor it natively.
+      if (opts.signal?.aborted) {
+        yield { kind: "error", message: "Stream aborted" };
+        return;
+      }
+      const text = chunk.text();
+      if (text) yield { kind: "delta", text };
+    }
+
+    const aggregated = await streamResult.response;
+    yield {
+      kind: "usage",
+      usage: toUsage(aggregated.usageMetadata, modelName, Date.now() - start),
+    };
+    yield { kind: "done" };
+  } catch (e) {
+    yield {
+      kind: "error",
+      message: `Gemini stream failed: ${(e as Error).message}`,
+    };
   }
 }

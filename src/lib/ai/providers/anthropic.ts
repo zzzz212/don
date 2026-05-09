@@ -5,6 +5,7 @@ import {
   type ChatResult,
   type GenerateOptions,
   type GenerateResult,
+  type StreamEvent,
   type Usage,
   MODEL_MAP,
   normalizeSystem,
@@ -164,5 +165,52 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
     };
   } catch (e) {
     throw new AIError(`Anthropic chat failed: ${(e as Error).message}`, "anthropic", e);
+  }
+}
+
+export async function* streamChat(
+  opts: ChatOptions
+): AsyncGenerator<StreamEvent> {
+  const model = MODEL_MAP.anthropic[opts.model ?? "smart"];
+  const system = normalizeSystem(opts.system);
+  const client = await getClient();
+  const start = Date.now();
+
+  const systemBlocks = system.cacheable
+    ? [{ type: "text" as const, text: system.text, cache_control: { type: "ephemeral" as const } }]
+    : system.text;
+
+  try {
+    const stream = client.messages.stream(
+      {
+        model,
+        max_tokens: opts.maxTokens ?? 2048,
+        temperature: opts.temperature ?? 0.3,
+        system: systemBlocks,
+        messages: opts.messages.map((m) => ({ role: m.role, content: m.content })),
+      },
+      { signal: opts.signal }
+    );
+
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        yield { kind: "delta", text: event.delta.text };
+      }
+    }
+
+    const finalMessage = await stream.finalMessage();
+    yield {
+      kind: "usage",
+      usage: toUsage(finalMessage.usage, model, Date.now() - start),
+    };
+    yield { kind: "done" };
+  } catch (e) {
+    yield {
+      kind: "error",
+      message: `Anthropic stream failed: ${(e as Error).message}`,
+    };
   }
 }

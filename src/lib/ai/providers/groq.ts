@@ -5,6 +5,7 @@ import {
   type ChatResult,
   type GenerateOptions,
   type GenerateResult,
+  type StreamEvent,
   type Usage,
   MODEL_MAP,
   normalizeSystem,
@@ -162,5 +163,68 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
     };
   } catch (e) {
     throw new AIError(`Groq chat failed: ${(e as Error).message}`, "groq", e);
+  }
+}
+
+export async function* streamChat(
+  opts: ChatOptions
+): AsyncGenerator<StreamEvent> {
+  const modelName = MODEL_MAP.groq[opts.model ?? "smart"];
+  const system = normalizeSystem(opts.system);
+  const client = await getClient();
+  const start = Date.now();
+
+  try {
+    // Groq SDK (forked from OpenAI) does not expose stream_options in TS
+    // types yet, even though the wire protocol supports it. Cast bypasses
+    // the missing type so the final SSE chunk carries usage data.
+    const createParams = {
+      model: modelName,
+      max_tokens: opts.maxTokens ?? 2048,
+      temperature: opts.temperature ?? 0.3,
+      stream: true,
+      stream_options: { include_usage: true },
+      messages: [
+        { role: "system", content: system.text },
+        ...opts.messages.map((m) => ({ role: m.role, content: m.content })),
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const stream = (await client.chat.completions.create(createParams, {
+      signal: opts.signal,
+    })) as unknown as AsyncIterable<{
+      choices: Array<{ delta?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    }>;
+
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content ?? "";
+      if (text) yield { kind: "delta", text };
+
+      // Final chunk after all deltas carries usage when include_usage:true.
+      if (chunk.usage) {
+        inputTokens = chunk.usage.prompt_tokens ?? 0;
+        outputTokens = chunk.usage.completion_tokens ?? 0;
+      }
+    }
+
+    yield {
+      kind: "usage",
+      usage: toUsage(
+        { prompt_tokens: inputTokens, completion_tokens: outputTokens },
+        modelName,
+        Date.now() - start
+      ),
+    };
+    yield { kind: "done" };
+  } catch (e) {
+    yield {
+      kind: "error",
+      message: `Groq stream failed: ${(e as Error).message}`,
+    };
   }
 }
