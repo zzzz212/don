@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -188,6 +190,12 @@ model LegalKnowledge {
 
   tags          String   @default("[]") // JSON array as string
   searchVector  String
+
+  // pgvector embedding (1024-dim, voyage-3-large). Nullable so rows can
+  // exist before being indexed. Filled by /api/admin/embed-legal.
+  // Prisma can't represent vector types natively yet, so we use Unsupported
+  // and query through raw SQL in src/lib/legal-search.ts.
+  embedding     Unsupported("vector(1024)")?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
