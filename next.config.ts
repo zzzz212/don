@@ -22,7 +22,16 @@ const config: NextConfig =
         // to bypass ad blockers. Off by default — enable if you see
         // sample loss in prod.
         // tunnelRoute: "/monitoring",
-        disableLogger: true,
+
+        // Replaces the deprecated `disableLogger: true` flag in Sentry
+        // SDK 10.x — strips Sentry's internal debug logging from the
+        // production bundle via webpack tree-shaking. Turbopack ignores
+        // this in `next dev`; the flag only matters for `next build`.
+        webpack: {
+          treeshake: {
+            removeDebugLogging: true,
+          },
+        },
       })
     : nextConfig;
 
