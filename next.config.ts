@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pdf-parse", "mammoth", "pdfkit"],
+  serverExternalPackages: ["pdf-parse", "mammoth", "pdfkit", "voyageai"],
 };
 
 // Wrap with Sentry only when telemetry is configured. Without SENTRY_DSN the
