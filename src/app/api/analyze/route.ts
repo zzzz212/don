@@ -15,6 +15,7 @@ import {
 } from "@/lib/ocr";
 import { logOcrUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
+import { embedDocumentChunks } from "@/lib/document-search";
 
 export async function POST(request: NextRequest) {
   try {
@@ -300,6 +301,21 @@ export async function POST(request: NextRequest) {
             include: { analysis: true },
           });
           documentId = document.id;
+
+          // Embed the document for semantic search across the user's
+          // archive. Fire-and-forget: the response goes back immediately
+          // with the analysis. If embedding fails (Voyage outage, no key,
+          // pgvector missing) the document still exists — search just
+          // won't find it until /api/admin/embed-documents is rerun.
+          const docId = document.id;
+          const text = contractText;
+          void embedDocumentChunks(docId, text).catch((e) => {
+            reportError(e, {
+              op: "analyze.embed-chunks",
+              userId,
+              extra: { documentId: docId },
+            });
+          });
         }
       } catch (dbError) {
         // DB save failed — still return the analysis result

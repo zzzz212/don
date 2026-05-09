@@ -6,6 +6,7 @@ import { checkQuotaSafe } from "@/lib/quota";
 import { analyzeContract } from "@/lib/ai/analyze";
 import { isOversizedDocument, HARD_DOC_LIMIT } from "@/lib/ai/chunking";
 import { reportError } from "@/lib/telemetry";
+import { embedDocumentChunks, hasEmbeddings } from "@/lib/document-search";
 
 export async function POST(
   request: NextRequest,
@@ -144,6 +145,22 @@ export async function POST(
           risks: JSON.stringify(analysis.risks),
           metadata,
         },
+      });
+    }
+
+    // Backfill chunk embeddings if this document was uploaded before semantic
+    // search shipped (or if a previous embed attempt failed). Reanalysis
+    // doesn't change rawText so we only embed when chunks are missing.
+    const docId = document.id;
+    const text = document.rawText;
+    const alreadyEmbedded = await hasEmbeddings(docId).catch(() => false);
+    if (!alreadyEmbedded) {
+      void embedDocumentChunks(docId, text).catch((e) => {
+        reportError(e, {
+          op: "reanalyze.embed-chunks",
+          userId,
+          extra: { documentId: docId },
+        });
       });
     }
 
