@@ -78,11 +78,31 @@ model Document {
   blobUrl   String?
   blobKey   String?
   analysis  Analysis?
+  chunks    DocumentChunk[]
   createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DocumentChunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  chunkIndex  Int
+  text        String
+
+  // pgvector embedding for semantic search across the user's own contracts.
+  // 1024-dim matches Voyage voyage-3-large (same model as LegalKnowledge).
+  // Nullable so a Document can exist before its chunks are embedded.
+  embedding   Unsupported("vector(1024)")?
+
+  createdAt   DateTime @default(now())
+
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
 }
 
 model Analysis {
