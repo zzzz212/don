@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { checkQuota } from "@/lib/quota";
+import { ensureActiveOrg } from "@/lib/org";
 import type { QuotaFeature } from "@/lib/plans";
 
 const FEATURES: QuotaFeature[] = ["analyze", "generate", "chat", "ocr"];
@@ -17,12 +18,17 @@ export async function GET() {
   }
 
   try {
+    // session.user.activeOrgId is set by the JWT callback, but fall back to
+    // ensureActiveOrg as a safety net for edge cases (stale JWT, etc.).
+    const orgId = session.user.activeOrgId ?? (await ensureActiveOrg(userId));
+
     const statuses = await Promise.all(
-      FEATURES.map((f) => checkQuota(userId, f))
+      FEATURES.map((f) => checkQuota(orgId, f))
     );
 
     return NextResponse.json({
       plan: statuses[0]?.plan ?? "FREE",
+      orgId,
       resetsAt: statuses[0]?.resetsAt.toISOString(),
       features: statuses.reduce<Record<string, unknown>>((acc, s) => {
         acc[s.feature] = {

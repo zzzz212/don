@@ -1,3 +1,10 @@
+// Per-workspace plan quotas. With workspaces, plan + usage are tracked at
+// the Organization level — a paying team's MEMBERS share one PRO plan, and
+// a single user's "Personal workspace" is just an org-of-one.
+//
+// All routes call checkQuotaSafe(orgId, feature) right after auth + role
+// resolution. Anonymous (no orgId) calls bypass quota entirely.
+
 import { prisma } from "@/lib/db";
 import {
   getPlanLimits,
@@ -14,6 +21,7 @@ export interface QuotaStatus {
   allowed: boolean;
   resetsAt: Date;
   plan: string;
+  orgId: string;
 }
 
 function startOfMonthUtc(date = new Date()): Date {
@@ -24,13 +32,13 @@ function startOfNextMonthUtc(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
 }
 
-export async function getUsageThisMonth(
-  userId: string,
+export async function getOrgUsageThisMonth(
+  orgId: string,
   feature: QuotaFeature
 ): Promise<number> {
   return prisma.aiUsage.count({
     where: {
-      userId,
+      orgId,
       feature,
       createdAt: { gte: startOfMonthUtc() },
     },
@@ -38,15 +46,15 @@ export async function getUsageThisMonth(
 }
 
 export async function checkQuota(
-  userId: string,
+  orgId: string,
   feature: QuotaFeature
 ): Promise<QuotaStatus> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
     select: { plan: true },
   });
 
-  const plan = normalizePlan(user?.plan);
+  const plan = normalizePlan(org?.plan);
   const limit = getPlanLimits(plan)[feature];
   const resetsAt = startOfNextMonthUtc();
 
@@ -59,10 +67,11 @@ export async function checkQuota(
       allowed: true,
       resetsAt,
       plan,
+      orgId,
     };
   }
 
-  const used = await getUsageThisMonth(userId, feature);
+  const used = await getOrgUsageThisMonth(orgId, feature);
 
   return {
     feature,
@@ -72,16 +81,17 @@ export async function checkQuota(
     allowed: used < limit,
     resetsAt,
     plan,
+    orgId,
   };
 }
 
 export async function checkQuotaSafe(
-  userId: string | null | undefined,
+  orgId: string | null | undefined,
   feature: QuotaFeature
 ): Promise<QuotaStatus | null> {
-  if (!userId) return null;
+  if (!orgId) return null;
   try {
-    return await checkQuota(userId, feature);
+    return await checkQuota(orgId, feature);
   } catch (e) {
     console.error("[quota] check failed (fail-open):", (e as Error).message);
     return null;

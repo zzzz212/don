@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function GET(
   _request: NextRequest,
@@ -14,12 +15,14 @@ export async function GET(
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const { id } = await params;
 
-    // Look up by both id and userId so a foreign id returns the same 404 as
-    // a non-existent one — no enumeration via response shape.
+    // Workspace-scoped lookup. Foreign-org docs return the same 404 shape
+    // as a missing id, so the response can't be used to enumerate ids.
     const document = await prisma.document.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, orgId },
       select: {
         id: true,
         fileName: true,

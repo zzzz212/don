@@ -16,6 +16,7 @@ import {
 import { logOcrUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks } from "@/lib/document-search";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,10 +42,15 @@ export async function POST(request: NextRequest) {
 
     const session = await auth();
     const userId = session?.user?.id;
+    // The current workspace owns the resulting Document and is what the
+    // plan / quota check runs against. Anonymous calls skip both.
+    const orgId = userId
+      ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
+      : null;
 
     // Plan-based quota check (anonymous users skip; rate limit already applied)
-    if (userId) {
-      const quota = await checkQuotaSafe(userId, "analyze");
+    if (orgId) {
+      const quota = await checkQuotaSafe(orgId, "analyze");
       if (quota && !quota.allowed) {
         return NextResponse.json(
           {
@@ -120,8 +126,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (userId) {
-        const ocrQuota = await checkQuotaSafe(userId, "ocr");
+      if (userId && orgId) {
+        const ocrQuota = await checkQuotaSafe(orgId, "ocr");
         if (ocrQuota && !ocrQuota.allowed) {
           return NextResponse.json(
             {
@@ -165,13 +171,13 @@ export async function POST(request: NextRequest) {
           });
           contractText = ocrResult.text;
           usedOcr = true;
-          await logOcrUsage(userId, ocrResult, contractText.length);
+          await logOcrUsage(userId, orgId, ocrResult, contractText.length);
         } else if (isPdf) {
           // Multi-page scan: split into per-page PDFs and OCR in parallel.
           const ocrResult = await recognizeMultiPagePdf(fileBytes);
           contractText = ocrResult.text;
           usedOcr = true;
-          await logOcrUsage(userId, ocrResult, contractText.length);
+          await logOcrUsage(userId, orgId, ocrResult, contractText.length);
           if (ocrResult.failedPages > 0) {
             console.warn(
               `[analyze] OCR completed with ${ocrResult.failedPages}/${ocrResult.pageCount} failed pages`
@@ -237,7 +243,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysis = await analyzeContract(contractText, userId ?? null);
+    const analysis = await analyzeContract(contractText, userId ?? null, orgId);
 
     // Upload original file to object storage in parallel with DB save below.
     // Storage failure must not fail the request — the user still gets their
@@ -283,6 +289,7 @@ export async function POST(request: NextRequest) {
           const document = await prisma.document.create({
             data: {
               userId,
+              orgId,
               fileName: file.name,
               fileSize: file.size,
               rawText: contractText,

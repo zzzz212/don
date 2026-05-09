@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { checkQuotaSafe } from "@/lib/quota";
 import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,9 +49,12 @@ export async function POST(request: NextRequest) {
 
     const session = await auth();
     const userId = session?.user?.id ?? null;
+    const orgId = userId
+      ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
+      : null;
 
-    if (userId) {
-      const quota = await checkQuotaSafe(userId, "generate");
+    if (orgId) {
+      const quota = await checkQuotaSafe(orgId, "generate");
       if (quota && !quota.allowed) {
         return NextResponse.json(
           {
@@ -80,13 +84,14 @@ export async function POST(request: NextRequest) {
       maxTokens: 4096,
     });
 
-    await logUsage(userId, result.usage, "generate");
+    await logUsage(userId, orgId, result.usage, "generate");
 
     let savedDoc = null;
     if (userId) {
       savedDoc = await prisma.generatedDocument.create({
         data: {
           userId,
+          orgId,
           templateId,
           name: documentName || template.name,
           content: result.data,

@@ -103,12 +103,13 @@ export async function hasEmbeddings(documentId: string): Promise<boolean> {
 }
 
 /**
- * Semantic search over the user's documents. Returns docs grouped, each with
- * up to 3 best-matching fragments. Strictly scoped to userId — a user can
- * never see chunks from another user's contracts.
+ * Semantic search over a workspace's documents. Returns docs grouped, each
+ * with up to 3 best-matching fragments. Strictly scoped to orgId — chunks
+ * from other workspaces (or pre-workspaces docs without orgId) are
+ * invisible.
  */
-export async function searchUserDocuments(
-  userId: string,
+export async function searchOrgDocuments(
+  orgId: string,
   query: string,
   topDocs = 8
 ): Promise<DocumentSearchHit[]> {
@@ -126,9 +127,9 @@ export async function searchUserDocuments(
   }
   const literal = `[${queryVec.join(",")}]`;
 
-  // Pull the top N chunks across all of the user's documents, then group
-  // client-side. The userId join in WHERE keeps cross-user data invisible
-  // even if the index returns noise.
+  // Pull the top N chunks across the workspace's documents, then group
+  // client-side. The orgId join in WHERE keeps cross-workspace data
+  // invisible even if the IVFFlat index returns noise.
   type ChunkRow = {
     documentId: string;
     chunkIndex: number;
@@ -148,7 +149,7 @@ export async function searchUserDocuments(
       (c."embedding" <=> ${literal}::vector) AS distance
     FROM "DocumentChunk" c
     INNER JOIN "Document" d ON d."id" = c."documentId"
-    WHERE d."userId" = ${userId}
+    WHERE d."orgId" = ${orgId}
       AND c."embedding" IS NOT NULL
     ORDER BY c."embedding" <=> ${literal}::vector
     LIMIT ${MAX_CHUNKS_PER_QUERY}

@@ -8,6 +8,7 @@ import { buildLegalContext } from "@/lib/ai/rag";
 import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +47,9 @@ export async function POST(request: NextRequest) {
 
     const session = await auth();
     const userId = session?.user?.id ?? null;
+    const orgId = userId
+      ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
+      : null;
 
     // RAG: retrieve top-K relevant statutes for the latest user question and
     // inject them into the system prompt so the AI cites real articles
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
       for await (const event of source) {
         if (event.kind === "usage") {
           // Fire-and-forget DB write so we don't block the stream.
-          void logUsage(userId, event.usage, "chat");
+          void logUsage(userId, orgId, event.usage, "chat");
         }
         if (event.kind === "error") {
           await reportError(new Error(event.message), {

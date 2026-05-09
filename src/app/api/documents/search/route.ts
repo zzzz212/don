@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { searchUserDocuments } from "@/lib/document-search";
+import { searchOrgDocuments } from "@/lib/document-search";
 import { isEmbeddingAvailable } from "@/lib/embeddings";
 import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg } from "@/lib/org";
 
-// GET /api/documents/search?q=... — semantic search across the requesting
-// user's contracts. Falls back to a fileName / Analysis.summary keyword
-// match when embeddings aren't configured or the user's docs aren't
-// embedded yet.
+// GET /api/documents/search?q=... — semantic search across the active
+// workspace's contracts. Falls back to a fileName / Analysis.summary
+// keyword match when embeddings aren't configured or no docs are embedded
+// yet.
 //
-// Strictly auth-scoped: WHERE userId = me everywhere, no cross-user reads.
+// Workspace-scoped: WHERE orgId = activeOrg, no cross-workspace reads.
 
 export async function GET(request: Request) {
   try {
@@ -23,6 +24,8 @@ export async function GET(request: Request) {
     }
 
     const userId = session.user.id;
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(userId));
     const url = new URL(request.url);
     const query = (url.searchParams.get("q") || "").trim();
     const limit = Math.min(
@@ -40,7 +43,7 @@ export async function GET(request: Request) {
 
     // Try semantic first when embeddings are configured.
     if (isEmbeddingAvailable()) {
-      const hits = await searchUserDocuments(userId, query, limit);
+      const hits = await searchOrgDocuments(orgId, query, limit);
       if (hits.length > 0) {
         return NextResponse.json({
           mode: "semantic",
@@ -66,7 +69,7 @@ export async function GET(request: Request) {
     // isn't available or didn't match.
     const docs = await prisma.document.findMany({
       where: {
-        userId,
+        orgId,
         OR: [
           { fileName: { contains: query, mode: "insensitive" } },
           { analysis: { summary: { contains: query, mode: "insensitive" } } },

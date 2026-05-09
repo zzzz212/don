@@ -7,6 +7,7 @@ import {
   calculateRiskScore,
 } from "@/lib/counterparty";
 import { fetchFromDaData, fetchDaDataFinance } from "@/lib/dadata";
+import { ensureActiveOrg } from "@/lib/org";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -161,21 +162,30 @@ export async function POST(request: Request) {
       });
     }
 
-    // Save check history (only if authenticated)
+    // Save check history (only if authenticated). Dedup is per-workspace
+    // so the same INN re-checked by different team members shows up once
+    // in the org's history (with the most recent createdAt).
     if (session?.user?.id) {
+      const orgId =
+        session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
+
       await prisma.counterpartyCheck.upsert({
         where: {
-          userId_inn: {
-            userId: session.user.id,
+          orgId_inn: {
+            orgId,
             inn,
           },
         },
         create: {
           userId: session.user.id,
+          orgId,
           inn,
         },
         update: {
           createdAt: new Date(),
+          // Capture who refreshed this most recently — useful in the future
+          // for "last checked by X" UI.
+          userId: session.user.id,
         },
       });
     }

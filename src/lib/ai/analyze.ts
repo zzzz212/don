@@ -31,24 +31,26 @@ const PREAMBLE_CHARS = 8_000;
 
 export async function analyzeContract(
   contractText: string,
-  userId: string | null = null
+  userId: string | null = null,
+  orgId: string | null = null
 ): Promise<AnalysisResult> {
   if (getActiveProvider() === "demo") {
     return generateDemoAnalysis(contractText);
   }
 
   if (isShortDocument(contractText)) {
-    return analyzeSinglePass(contractText, userId);
+    return analyzeSinglePass(contractText, userId, orgId);
   }
 
-  return analyzeMultiPass(contractText, userId);
+  return analyzeMultiPass(contractText, userId, orgId);
 }
 
 // ── Short doc: single pass against the full ANALYZE prompt ──────────
 
 async function analyzeSinglePass(
   text: string,
-  userId: string | null
+  userId: string | null,
+  orgId: string | null
 ): Promise<AnalysisResult> {
   const result = await generate({
     schema: AnalysisResultSchema,
@@ -59,7 +61,7 @@ async function analyzeSinglePass(
     temperature: 0.1,
   });
 
-  await logUsage(userId, result.usage, "analyze");
+  await logUsage(userId, orgId, result.usage, "analyze");
   return result.data;
 }
 
@@ -67,18 +69,19 @@ async function analyzeSinglePass(
 
 async function analyzeMultiPass(
   text: string,
-  userId: string | null
+  userId: string | null,
+  orgId: string | null
 ): Promise<AnalysisResult> {
   const chunks = chunkContract(text);
 
   // Map phase: extract risks per chunk in parallel, capped concurrency.
-  const chunkRisks = await mapChunks(chunks, userId);
+  const chunkRisks = await mapChunks(chunks, userId, orgId);
 
   // Flatten + dedup; sort by severity.
   const allRisks = dedupRisks(chunkRisks).sort(byRiskSeverity);
 
   // Reduce phase: ask AI to fill structural fields based on preamble + risks.
-  const synthesis = await synthesizeStructure(text, allRisks, userId);
+  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId);
 
   return {
     ...synthesis,
@@ -88,14 +91,15 @@ async function analyzeMultiPass(
 
 async function mapChunks(
   chunks: Chunk[],
-  userId: string | null
+  userId: string | null,
+  orgId: string | null
 ): Promise<AnalysisRisk[]> {
   const out: AnalysisRisk[] = [];
 
   for (let i = 0; i < chunks.length; i += MAP_CONCURRENCY) {
     const batch = chunks.slice(i, i + MAP_CONCURRENCY);
     const settled = await Promise.allSettled(
-      batch.map((c) => extractRisksForChunk(c, userId))
+      batch.map((c) => extractRisksForChunk(c, userId, orgId))
     );
 
     for (const r of settled) {
@@ -112,7 +116,8 @@ async function mapChunks(
 
 async function extractRisksForChunk(
   chunk: Chunk,
-  userId: string | null
+  userId: string | null,
+  orgId: string | null
 ): Promise<AnalysisRisk[]> {
   const result = await generate({
     schema: ChunkRisksSchema,
@@ -123,14 +128,15 @@ async function extractRisksForChunk(
     temperature: 0.1,
   });
 
-  await logUsage(userId, result.usage, "analyze");
+  await logUsage(userId, orgId, result.usage, "analyze");
   return result.data.risks;
 }
 
 async function synthesizeStructure(
   fullText: string,
   risks: AnalysisRisk[],
-  userId: string | null
+  userId: string | null,
+  orgId: string | null
 ) {
   const preamble = fullText.slice(0, PREAMBLE_CHARS);
   const counts = {
@@ -176,7 +182,7 @@ ${riskList || "(рисков не найдено)"}
       temperature: 0.1,
     });
 
-    await logUsage(userId, result.usage, "analyze");
+    await logUsage(userId, orgId, result.usage, "analyze");
     return result.data;
   } catch (e) {
     console.error("[analyze] synthesis failed, using fallback:", e);

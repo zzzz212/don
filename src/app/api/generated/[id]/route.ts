@@ -1,30 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const { id } = await params;
 
-    const doc = await prisma.generatedDocument.findUnique({
-      where: { id },
+    // Workspace-scoped: any member can read documents owned by the org.
+    const doc = await prisma.generatedDocument.findFirst({
+      where: { id, orgId },
     });
 
     if (!doc) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
-    }
-
-    if (doc.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json(doc);
@@ -38,32 +37,30 @@ export async function GET(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const { id } = await params;
 
-    const doc = await prisma.generatedDocument.findUnique({
-      where: { id },
+    const doc = await prisma.generatedDocument.findFirst({
+      where: { id, orgId },
+      select: { id: true },
     });
 
     if (!doc) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
-    if (doc.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     await prisma.generatedDocument.delete({
-      where: { id },
+      where: { id: doc.id },
     });
 
     return NextResponse.json({ success: true });

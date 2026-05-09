@@ -7,6 +7,7 @@ import { analyzeContract } from "@/lib/ai/analyze";
 import { isOversizedDocument, HARD_DOC_LIMIT } from "@/lib/ai/chunking";
 import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks, hasEmbeddings } from "@/lib/document-search";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function POST(
   request: NextRequest,
@@ -39,12 +40,16 @@ export async function POST(
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    const orgId =
+      session?.user?.activeOrgId ?? (await ensureActiveOrg(userId));
+
     const { id } = await params;
 
-    // Look up scoped to userId so foreign / non-existent documents share
-    // the same 404 — no enumeration via response shape.
+    // Look up scoped to the active workspace — every member of the org can
+    // re-analyse documents owned by the org. Foreign / non-existent docs
+    // share the same 404 (no enumeration via response shape).
     const document = await prisma.document.findFirst({
-      where: { id, userId },
+      where: { id, orgId },
       include: { analysis: true },
     });
 
@@ -69,7 +74,7 @@ export async function POST(
     // Quota check — re-analysis costs an analyze credit just like the first
     // run. Skipping this would let FREE users bypass the monthly cap by
     // pressing "Перепроанализировать" repeatedly.
-    const quota = await checkQuotaSafe(userId, "analyze");
+    const quota = await checkQuotaSafe(orgId, "analyze");
     if (quota && !quota.allowed) {
       return NextResponse.json(
         {
@@ -99,7 +104,7 @@ export async function POST(
       );
     }
 
-    const analysis = await analyzeContract(document.rawText, userId);
+    const analysis = await analyzeContract(document.rawText, userId, orgId);
 
     // Preserve the usedOcr flag from the original analysis — re-analysis
     // doesn't run OCR again; it works on already-recognised text.
