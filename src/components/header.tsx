@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { OrgSwitcher } from "@/components/org-switcher";
 import {
   Scale,
   FileText,
@@ -47,14 +48,21 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border bg-white/80 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              ЮрИИст
-            </span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
+                <Scale className="h-5 w-5" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-foreground">
+                ЮрИИст
+              </span>
+            </Link>
+            {!isLanding && user && (
+              <div className="hidden md:block">
+                <OrgSwitcher />
+              </div>
+            )}
+          </div>
 
           {/* Desktop navigation */}
           {!isLanding && (
