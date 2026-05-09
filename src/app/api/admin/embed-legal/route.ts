@@ -157,8 +157,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     await reportError(error, { op: "embed-legal" });
+    // Admin-only endpoint behind x-admin-key auth — safe to surface the
+    // actual error so remote curl shows what's wrong.
     return NextResponse.json(
-      { error: "Не удалось сгенерировать embeddings" },
+      {
+        error: "Не удалось сгенерировать embeddings",
+        detail: (error as Error).message,
+      },
       { status: 500 }
     );
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { isEmbeddingAvailable } from "@/lib/embeddings";
 import { embedDocumentChunks } from "@/lib/document-search";
@@ -53,7 +54,15 @@ export async function POST(request: Request) {
     // Pick documents to process. The `WHERE NOT EXISTS` correlated subquery
     // skips docs that already have at least one embedded chunk; with ?force=1
     // we drop that filter.
+    //
+    // SQL fragments are composed with Prisma.sql / Prisma.empty — calling
+    // prisma.$queryRaw inside an interpolation would execute that fragment
+    // as its own (broken) query and return a Promise, not a fragment.
     type Row = { id: string; rawText: string };
+    const userFilter = userId
+      ? Prisma.sql`d."userId" = ${userId} AND `
+      : Prisma.empty;
+
     const rows = force
       ? await prisma.document.findMany({
           where: userId ? { userId } : undefined,
@@ -64,7 +73,7 @@ export async function POST(request: Request) {
       : await prisma.$queryRaw<Row[]>`
           SELECT d."id", d."rawText"
           FROM "Document" d
-          WHERE ${userId ? prisma.$queryRaw`d."userId" = ${userId} AND ` : prisma.$queryRaw``}
+          WHERE ${userFilter}
                 NOT EXISTS (
                   SELECT 1 FROM "DocumentChunk" c
                   WHERE c."documentId" = d."id"
@@ -127,8 +136,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     await reportError(error, { op: "embed-documents" });
+    // This is an admin-only endpoint behind x-admin-key auth, so it's safe
+    // to surface the actual error message to make remote debugging painless.
     return NextResponse.json(
-      { error: "Не удалось сгенерировать embeddings" },
+      {
+        error: "Не удалось сгенерировать embeddings",
+        detail: (error as Error).message,
+      },
       { status: 500 }
     );
   }
