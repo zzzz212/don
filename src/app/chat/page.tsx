@@ -15,14 +15,18 @@ import {
   ShieldCheck,
   Banknote,
   Briefcase,
+  Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseSseStream } from "@/lib/sse-client";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  /** True while this assistant message is still being streamed in. */
+  streaming?: boolean;
 }
 
 const suggestedQuestions = [
@@ -270,14 +274,30 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Holds the AbortController for the current streaming request so the user
+  // can hit Stop and we can cancel the upstream AI call.
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const getAIResponse = async (
-    allMessages: Message[]
-  ): Promise<string> => {
+  // Stream the AI response into the placeholder assistant message identified
+  // by `assistantId`. Updates the message content as deltas arrive.
+  const streamAIResponse = async (
+    allMessages: Message[],
+    assistantId: string
+  ): Promise<void> => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const setAssistant = (
+      mutator: (msg: Message) => Message
+    ) =>
+      setMessages((prev) =>
+        prev.map((m) => (m.id === assistantId ? mutator(m) : m))
+      );
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -288,26 +308,81 @@ export default function ChatPage() {
             content: m.content,
           })),
         }),
+        signal: controller.signal,
       });
 
-      if (!response.ok) throw new Error("API error");
-
-      const data = await response.json();
-
-      // If API returns demo flag — use local responses
-      if (data.demo) {
-        return getDemoResponse(allMessages[allMessages.length - 1].content);
+      // Demo-mode and error responses come back as JSON, not SSE.
+      const contentType = response.headers.get("Content-Type") ?? "";
+      if (!contentType.includes("text/event-stream")) {
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.demo) {
+          setAssistant((m) => ({
+            ...m,
+            content: getDemoResponse(
+              allMessages[allMessages.length - 1].content
+            ),
+            streaming: false,
+          }));
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(data.error || `API error ${response.status}`);
+        }
+        // Unexpected JSON 200 — show whatever message field we got.
+        setAssistant((m) => ({
+          ...m,
+          content: data.message ?? "",
+          streaming: false,
+        }));
+        return;
       }
 
-      return data.message;
-    } catch {
-      // Fallback to demo on any error
-      return getDemoResponse(allMessages[allMessages.length - 1].content);
+      if (!response.body) throw new Error("No response body");
+
+      let receivedAnyDelta = false;
+      for await (const event of parseSseStream(response.body)) {
+        if (event.kind === "delta") {
+          receivedAnyDelta = true;
+          setAssistant((m) => ({ ...m, content: m.content + event.text }));
+        } else if (event.kind === "error") {
+          // If we already started streaming, append the error inline so the
+          // user sees both the partial answer and what went wrong.
+          setAssistant((m) => ({
+            ...m,
+            content:
+              m.content +
+              (receivedAnyDelta ? "\n\n" : "") +
+              `⚠️ ${event.message}`,
+            streaming: false,
+          }));
+          return;
+        } else if (event.kind === "done") {
+          break;
+        }
+        // 'usage' events carry token counts; we don't surface them in the UI yet.
+      }
+
+      setAssistant((m) => ({ ...m, streaming: false }));
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        // User pressed Stop — keep whatever was streamed so far.
+        setAssistant((m) => ({ ...m, streaming: false }));
+        return;
+      }
+      // Total failure — fall back to a demo response so the chat doesn't
+      // dead-end on a bare error.
+      setAssistant((m) => ({
+        ...m,
+        content: getDemoResponse(allMessages[allMessages.length - 1].content),
+        streaming: false,
+      }));
+    } finally {
+      abortControllerRef.current = null;
+      setIsLoading(false);
     }
   };
 
-  const handleSend = async () => {
-    const text = input.trim();
+  const sendMessage = async (text: string) => {
     if (!text || isLoading) return;
 
     const userMessage: Message = {
@@ -316,54 +391,40 @@ export default function ChatPage() {
       content: text,
       timestamp: new Date(),
     };
+    const assistantId = (Date.now() + 1).toString();
+    const assistantPlaceholder: Message = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      streaming: true,
+    };
 
     const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setInput("");
+    setMessages([...updatedMessages, assistantPlaceholder]);
     setIsLoading(true);
 
-    // Reset textarea height
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
     }
 
-    const responseText = await getAIResponse(updatedMessages);
+    await streamAIResponse(updatedMessages, assistantId);
+  };
 
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: responseText,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
-    setIsLoading(false);
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    setInput("");
+    await sendMessage(text);
   };
 
   const handleQuestionClick = async (question: string) => {
     setInput("");
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: question,
-      timestamp: new Date(),
-    };
+    await sendMessage(question);
+  };
 
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setIsLoading(true);
-
-    const responseText = await getAIResponse(updatedMessages);
-
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: responseText,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
-    setIsLoading(false);
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -552,6 +613,20 @@ export default function ChatPage() {
                                 </p>
                               );
                             })}
+                            {message.streaming && message.content.length > 0 && (
+                              <span
+                                className="inline-block h-3.5 w-1 ml-0.5 align-middle bg-primary/70 animate-pulse"
+                                aria-hidden
+                              />
+                            )}
+                            {message.streaming && message.content.length === 0 && (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                <span className="text-sm text-muted">
+                                  Анализирую ваш вопрос...
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-sm leading-relaxed">{message.content}</p>
@@ -564,23 +639,6 @@ export default function ChatPage() {
                       )}
                     </div>
                   ))}
-
-                  {/* Typing indicator */}
-                  {isLoading && (
-                    <div className="flex gap-3 animate-fade-in">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-700 mt-1">
-                        <Scale className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="rounded-2xl border border-border bg-card px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <span className="text-sm text-muted">
-                            Анализирую ваш вопрос...
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -596,17 +654,32 @@ export default function ChatPage() {
                     value={input}
                     onChange={handleTextareaInput}
                     onKeyDown={handleKeyDown}
-                    placeholder="Задайте следующий вопрос..."
+                    placeholder={
+                      isLoading
+                        ? "AI отвечает..."
+                        : "Задайте следующий вопрос..."
+                    }
                     rows={1}
-                    className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:outline-none"
+                    disabled={isLoading}
+                    className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:outline-none disabled:opacity-60"
                   />
-                  <button
-                    onClick={handleSend}
-                    disabled={!input.trim() || isLoading}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white transition-colors hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
+                  {isLoading ? (
+                    <button
+                      onClick={handleStop}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger text-white transition-colors hover:bg-danger/90"
+                      title="Остановить генерацию"
+                    >
+                      <Square className="h-4 w-4 fill-current" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim()}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white transition-colors hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 <p className="mt-2 text-center text-xs text-muted">
                   AI-консультант может допускать ошибки. Проверяйте важную информацию.
