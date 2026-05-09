@@ -95,6 +95,10 @@ export async function POST(request: Request) {
     let totalChunks = 0;
     let totalTokens = 0;
     let failed = 0;
+    // Capture up to a handful of representative error messages so the
+    // admin curl response can show the *why* of failures without anyone
+    // hunting through Vercel function logs or Sentry.
+    const failureSamples: Array<{ documentId: string; message: string }> = [];
 
     for (const row of rows) {
       try {
@@ -106,6 +110,12 @@ export async function POST(request: Request) {
         }
       } catch (e) {
         failed++;
+        if (failureSamples.length < 5) {
+          failureSamples.push({
+            documentId: row.id,
+            message: (e as Error).message,
+          });
+        }
         await reportError(e, {
           op: "embed-documents.row",
           extra: { documentId: row.id },
@@ -133,6 +143,7 @@ export async function POST(request: Request) {
       totalChunks,
       totalTokens,
       failed,
+      ...(failureSamples.length > 0 ? { failureSamples } : {}),
     });
   } catch (error) {
     await reportError(error, { op: "embed-documents" });
