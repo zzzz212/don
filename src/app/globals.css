@@ -347,11 +347,21 @@ select:focus-visible {
 
 /* Generated-document preview chrome — Times-style serif so legal copy
    feels familiar to lawyers reviewing it. White paper background even
-   in dark mode (printable surface). */
+   in dark mode (printable surface).
+   Children are explicitly pinned to ink-black so a stray Tailwind
+   text-foreground / text-muted (which binds to the *theme* variable)
+   inside the rendered content can't bleed into a milky-grey reading
+   experience on the white paper. */
+.document-preview,
+.document-preview * {
+  color: #0f172a;
+}
 .document-preview {
   font-family: "Times New Roman", "Liberation Serif", Georgia, serif;
-  color: #0f172a;
   background: #ffffff;
+  /* Native form widgets / scrollbars also get the light treatment so a
+     dark-mode browser doesn't render them with white text on white. */
+  color-scheme: light;
 }
 .document-preview p {
   text-indent: 1.25em;

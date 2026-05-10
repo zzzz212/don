@@ -19,18 +19,21 @@ const features = [
     title: "Анализ договоров",
     description:
       "Загрузите договор — AI найдёт опасные пункты, скрытые риски и предложит конкретные правки за 30 секунд.",
+    href: "/analyze",
   },
   {
     icon: FileText,
     title: "Генерация документов",
     description:
       "Создавайте типовые документы — НДА, аренда, купля-продажа — заполнив простую форму. Юридически грамотно.",
+    href: "/templates",
   },
   {
     icon: Shield,
     title: "Юридический скоринг",
     description:
       "Каждый договор получает оценку от 1 до 10. Вы сразу видите, безопасно ли подписывать.",
+    href: "/analyze",
   },
 ];
 
@@ -53,6 +56,7 @@ const pricing = [
       "Базовый отчёт о рисках",
     ],
     cta: "Начать бесплатно",
+    href: "/register",
     popular: false,
   },
   {
@@ -68,6 +72,7 @@ const pricing = [
       "Экспорт отчётов в PDF",
     ],
     cta: "Подключить Про",
+    href: "/billing",
     popular: true,
   },
   {
@@ -83,7 +88,8 @@ const pricing = [
       "Персональный менеджер",
       "SLA 99.9%",
     ],
-    cta: "Связаться с нами",
+    cta: "Перейти на Бизнес",
+    href: "/billing",
     popular: false,
   },
 ];
@@ -177,12 +183,13 @@ export default function LandingPage() {
           </div>
           <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
-              <div
+              <Link
                 key={feature.title}
+                href={feature.href}
                 className="group rounded-2xl border border-border bg-card p-8 transition-all hover:border-primary/30 hover:shadow-lg"
               >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-light text-primary transition-colors group-hover:bg-primary group-hover:text-white">
-                  <feature.icon className="h-6 w-6" />
+                  <feature.icon className="h-6 w-6" aria-hidden="true" />
                 </div>
                 <h3 className="text-lg font-bold text-foreground">
                   {feature.title}
@@ -190,7 +197,7 @@ export default function LandingPage() {
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   {feature.description}
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -335,7 +342,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Link
-                  href={plan.popular ? "/analyze" : "/dashboard"}
+                  href={plan.href}
                   className={`mt-8 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
                     plan.popular
                       ? "bg-primary text-white hover:bg-primary-dark"

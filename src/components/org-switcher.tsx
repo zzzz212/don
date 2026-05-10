@@ -11,9 +11,6 @@ import {
   Settings,
   Users,
   Loader2,
-  CreditCard,
-  ShieldCheck,
-  Lock,
 } from "lucide-react";
 
 interface Organization {
@@ -66,23 +63,7 @@ export function OrgSwitcher() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Admin status — fired in parallel with the orgs fetch. Failure is
-  // silent: not-admin is the safe default.
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/admin/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((json) => {
-        if (!cancelled && json?.isAdmin) setIsAdmin(true);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Close on outside click.
   useEffect(() => {
@@ -303,63 +284,35 @@ export function OrgSwitcher() {
             ))}
           </ul>
 
+          {/* Workspace-scoped actions only. Per-account stuff (billing,
+              security, admin panel) lives in AccountMenu — listing it
+              here too just trained users to second-guess where to click. */}
           <div className="border-t border-border p-1">
             <Link
               href="/settings/organization"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
             >
-              <Settings className="h-4 w-4 text-muted" />
+              <Settings className="h-4 w-4 text-muted" aria-hidden="true" />
               Настройки workspace
-            </Link>
-            <Link
-              href="/billing"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
-            >
-              <CreditCard className="h-4 w-4 text-muted" />
-              Тариф и биллинг
-              {active.isTrial && typeof active.trialDaysLeft === "number" && (
-                <span className="ml-auto rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
-                  Триал {active.trialDaysLeft}д
-                </span>
-              )}
             </Link>
             <Link
               href="/settings/organization#members"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
             >
-              <Users className="h-4 w-4 text-muted" />
+              <Users className="h-4 w-4 text-muted" aria-hidden="true" />
               Пригласить участника
             </Link>
-            <Link
-              href="/account/security"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
-            >
-              <Lock className="h-4 w-4 text-muted" />
-              Безопасность аккаунта
-            </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
-              >
-                <ShieldCheck className="h-4 w-4 text-warning" />
-                Админ-панель
-              </Link>
-            )}
             <button
               onClick={handleCreate}
               disabled={creating}
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface disabled:opacity-50"
             >
               {creating ? (
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
               ) : (
-                <Plus className="h-4 w-4 text-muted" />
+                <Plus className="h-4 w-4 text-muted" aria-hidden="true" />
               )}
               Создать workspace
             </button>

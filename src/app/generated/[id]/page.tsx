@@ -49,11 +49,15 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
       /[А-ЯA-Z]/.test(block);
     const isNumberedSection = /^\d+\.\s+[А-ЯA-Z]/.test(block);
 
+    // No `text-foreground` here — that class binds to the theme variable
+    // and would render light grey on the always-white document page in
+    // dark mode. We let the .document-preview parent's CSS color cascade
+    // through (see globals.css — it pins all descendants to ink black).
     if (isAllCapsHeading) {
       return (
         <h2
           key={i}
-          className="mb-3 mt-6 text-center text-base font-bold uppercase tracking-wide text-foreground first:mt-0"
+          className="mb-3 mt-6 text-center text-base font-bold uppercase tracking-wide first:mt-0"
         >
           {block}
         </h2>
@@ -64,9 +68,9 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
       const [firstLine, ...rest] = block.split("\n");
       return (
         <div key={i} className="mb-4 mt-5 first:mt-0">
-          <h3 className="mb-2 text-sm font-bold text-foreground">{firstLine}</h3>
+          <h3 className="mb-2 text-sm font-bold">{firstLine}</h3>
           {rest.length > 0 && (
-            <p className="whitespace-pre-line text-justify text-sm leading-relaxed text-foreground">
+            <p className="whitespace-pre-line text-justify text-sm leading-relaxed">
               {rest.join("\n")}
             </p>
           )}
@@ -76,7 +80,7 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
     return (
       <p
         key={i}
-        className="mb-3 whitespace-pre-line text-justify text-sm leading-relaxed text-foreground"
+        className="mb-3 whitespace-pre-line text-justify text-sm leading-relaxed"
       >
         {block}
       </p>
