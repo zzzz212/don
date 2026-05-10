@@ -55,10 +55,18 @@ export async function generate<T extends z.ZodTypeAny>(
   const client = await getClient();
   const start = Date.now();
 
+  // Cache breakpoint on the tool definition too — tool_use schemas can
+  // be 500-1000 tokens for our analyze/synthesis paths, and the JSON
+  // schema is stable across every request that uses the same Zod type.
+  // Anthropic counts the cumulative prefix (system + tools) toward the
+  // 1024-token minimum, so this also rescues short-system requests.
   const tool = {
     name: TOOL_NAME,
     description: "Submit the structured result. You MUST call this tool exactly once.",
     input_schema: toAnthropicSchema(opts.schema) as never,
+    ...(system.cacheable
+      ? { cache_control: { type: "ephemeral" as const } }
+      : {}),
   };
 
   const systemBlocks = system.cacheable
@@ -135,6 +143,45 @@ export async function generateText(
   }
 }
 
+// Convert a flat ChatOptions message array into Anthropic's structured
+// content shape, dropping a cache_control marker on the LAST message in
+// the conversation history (everything before the user's current turn).
+// This makes long-running conversations cheap on input: each follow-up
+// re-uses the prefix as a cache hit instead of re-billing the entire
+// thread.
+//
+// Why "second-to-last": the current user turn changes every request,
+// so the cache key has to end one turn earlier. The marker stays on
+// the prefix that's stable across the next call too.
+function buildCachedMessages(
+  messages: ChatOptions["messages"]
+): Array<{
+  role: "user" | "assistant";
+  content:
+    | string
+    | Array<{ type: "text"; text: string; cache_control?: { type: "ephemeral" } }>;
+}> {
+  if (messages.length < 2) {
+    return messages.map((m) => ({ role: m.role, content: m.content }));
+  }
+  const lastPrefixIdx = messages.length - 2;
+  return messages.map((m, i) => {
+    if (i === lastPrefixIdx) {
+      return {
+        role: m.role,
+        content: [
+          {
+            type: "text" as const,
+            text: m.content,
+            cache_control: { type: "ephemeral" as const },
+          },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
 export async function chat(opts: ChatOptions): Promise<ChatResult> {
   const model = MODEL_MAP.anthropic[opts.model ?? "smart"];
   const system = normalizeSystem(opts.system);
@@ -151,7 +198,7 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
       max_tokens: opts.maxTokens ?? 2048,
       temperature: opts.temperature ?? 0.3,
       system: systemBlocks,
-      messages: opts.messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: buildCachedMessages(opts.messages),
     });
 
     const text = response.content
@@ -187,7 +234,7 @@ export async function* streamChat(
         max_tokens: opts.maxTokens ?? 2048,
         temperature: opts.temperature ?? 0.3,
         system: systemBlocks,
-        messages: opts.messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: buildCachedMessages(opts.messages),
       },
       { signal: opts.signal }
     );
