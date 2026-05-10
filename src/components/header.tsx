@@ -7,6 +7,8 @@ import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useT } from "@/components/i18n-provider";
 import {
   Scale,
   FileText,
@@ -19,19 +21,20 @@ import {
   Building2,
 } from "lucide-react";
 
-const navigation = [
-  { name: "Дашборд", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Анализ договора", href: "/analyze", icon: FileText },
-  { name: "Шаблоны", href: "/templates", icon: FolderOpen },
-  { name: "Контрагенты", href: "/counterparty", icon: Building2 },
-  { name: "AI-консультант", href: "/chat", icon: MessageCircle },
-];
-
 export function Header() {
   const pathname = usePathname();
   const isLanding = pathname === "/";
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
+  const t = useT();
+
+  const navigation = [
+    { name: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
+    { name: t("nav.analyze"), href: "/analyze", icon: FileText },
+    { name: t("nav.templates"), href: "/templates", icon: FolderOpen },
+    { name: t("nav.counterparty"), href: "/counterparty", icon: Building2 },
+    { name: t("nav.chat"), href: "/chat", icon: MessageCircle },
+  ];
 
   const user = session?.user;
   const initials = user?.name
@@ -53,7 +56,7 @@ export function Header() {
                 <Scale className="h-5 w-5" aria-hidden="true" />
               </div>
               <span className="text-xl font-bold tracking-tight text-foreground">
-                ЮрИИст
+                {t("brand.name")}
               </span>
             </Link>
             {!isLanding && user && <OrgSwitcher />}
@@ -61,7 +64,10 @@ export function Header() {
 
           {/* Desktop navigation */}
           {!isLanding && (
-            <nav className="hidden md:flex items-center gap-1" aria-label="Основная навигация">
+            <nav
+              className="hidden md:flex items-center gap-1"
+              aria-label={t("nav.primary")}
+            >
               {navigation.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 return (
@@ -88,22 +94,24 @@ export function Header() {
             {isLanding && !user ? (
               <div className="flex items-center gap-1 sm:gap-2">
                 <ThemeToggle />
+                <LanguageToggle />
                 <Link
                   href="/login"
                   className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface sm:px-4"
                 >
-                  Войти
+                  {t("auth.login")}
                 </Link>
                 <Link
                   href="/register"
                   className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark sm:px-4"
                 >
-                  Регистрация
+                  {t("auth.register")}
                 </Link>
               </div>
             ) : isLanding && user ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <ThemeToggle />
+                <LanguageToggle />
                 <span className="hidden md:inline text-sm text-muted truncate max-w-[12rem]">
                   {user.name || user.email}
                 </span>
@@ -117,13 +125,13 @@ export function Header() {
                   href="/dashboard"
                   className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark sm:px-4"
                 >
-                  В кабинет
+                  {t("nav.openApp")}
                 </Link>
               </div>
             ) : (
               <>
                 <span className="hidden lg:inline text-sm text-muted truncate max-w-[14rem]">
-                  {user?.name || user?.email || "Бесплатный тариф"}
+                  {user?.name || user?.email || t("plan.free")}
                 </span>
                 <div
                   className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-fg"
@@ -132,10 +140,11 @@ export function Header() {
                   {initials}
                 </div>
                 <ThemeToggle />
+                <LanguageToggle />
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
-                  aria-label="Выйти из аккаунта"
-                  title="Выйти"
+                  aria-label={t("auth.logout")}
+                  title={t("auth.logout")}
                   className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
                 >
                   <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -143,7 +152,7 @@ export function Header() {
                 {/* Mobile hamburger */}
                 <button
                   onClick={() => setMobileOpen(!mobileOpen)}
-                  aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
+                  aria-label={mobileOpen ? t("nav.menuClose") : t("nav.menuOpen")}
                   aria-expanded={mobileOpen}
                   aria-controls="mobile-nav"
                   className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
@@ -204,7 +213,7 @@ export function Header() {
                   {initials}
                 </div>
                 <span className="text-sm text-foreground truncate">
-                  {user?.name || user?.email || "Пользователь"}
+                  {user?.name || user?.email || t("plan.free")}
                 </span>
               </div>
               <button
@@ -212,7 +221,7 @@ export function Header() {
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-muted hover:bg-surface hover:text-foreground transition-colors"
               >
                 <LogOut className="h-5 w-5" aria-hidden="true" />
-                Выйти
+                {t("auth.logout")}
               </button>
             </div>
           </div>

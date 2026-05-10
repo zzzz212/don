@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Providers } from "@/components/providers";
+import { SkipLink } from "@/components/skip-link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,10 +9,11 @@ export const metadata: Metadata = {
     "Проверка договоров, генерация документов и юридические консультации с помощью искусственного интеллекта. Для малого и среднего бизнеса в РФ.",
 };
 
-// Inline script that resolves the theme BEFORE React hydrates — avoids
-// the "flash of incorrect theme" (FOIT) on cold loads. Runs synchronously
-// in <head>; can't use module imports, so we keep it tiny and inline.
-const NO_FOIT_THEME_SCRIPT = `
+// Inline script that resolves theme + locale BEFORE React hydrates —
+// avoids the "flash of incorrect theme" / "flash of incorrect language"
+// on cold loads. Runs synchronously in <head>; can't use module imports,
+// so we keep it tiny and inline.
+const NO_FOIT_BOOT_SCRIPT = `
 (function() {
   try {
     var stored = localStorage.getItem('juriist:theme');
@@ -21,6 +23,12 @@ const NO_FOIT_THEME_SCRIPT = `
     if (pref === 'dark') root.classList.add('dark');
     root.style.colorScheme = pref;
   } catch (e) { /* localStorage blocked — fall through to default light */ }
+  try {
+    var locStored = localStorage.getItem('juriist:locale');
+    var loc = locStored === 'ru' || locStored === 'en' ? locStored
+      : ((navigator.language || 'ru').toLowerCase().split('-')[0] === 'en' ? 'en' : 'ru');
+    document.documentElement.lang = loc;
+  } catch (e) { /* fall through to default ru */ }
 })();
 `.trim();
 
@@ -32,13 +40,13 @@ export default function RootLayout({
   return (
     <html lang="ru" className="h-full antialiased" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: NO_FOIT_THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: NO_FOIT_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <a href="#main-content" className="skip-link">
-          Перейти к содержимому
-        </a>
-        <Providers>{children}</Providers>
+        <Providers>
+          <SkipLink />
+          {children}
+        </Providers>
       </body>
     </html>
   );
