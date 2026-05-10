@@ -10,6 +10,10 @@ import { DocumentSearchBar } from "@/components/document-search-bar";
 import { DocumentRowSkeleton } from "@/components/skeleton";
 import { useToast } from "@/components/toast";
 import {
+  EmptyState,
+  DocsEmptyIllustration,
+} from "@/components/empty-state";
+import {
   FileText,
   Plus,
   Clock,
@@ -281,41 +285,36 @@ export default function DashboardPage() {
               </div>
             ) : tab === "analyses" ? (
               documents.length === 0 ? (
-                <div className="px-6 py-16 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light">
-                    <FileSearch className="h-8 w-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">
-                    Загрузите первый договор
-                  </h3>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-                    AI прочитает каждый пункт, оценит риски и подсветит опасные
-                    места. Поддерживаются PDF и DOCX, а на «Про» — даже сканы.
-                  </p>
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                    <Link
-                      href="/analyze"
-                      className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Анализировать договор
-                    </Link>
-                    <Link
-                      href="/chat"
-                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      Спросить AI-юриста
-                    </Link>
-                    <Link
-                      href="/counterparty"
-                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-                    >
-                      <Building2 className="h-4 w-4" />
-                      Проверить контрагента
-                    </Link>
-                  </div>
-                </div>
+                <EmptyState
+                  illustration={<DocsEmptyIllustration />}
+                  title="Загрузите первый договор"
+                  description="AI прочитает каждый пункт, оценит риски и подсветит опасные места. Поддерживаются PDF и DOCX, а на «Про» — даже сканы."
+                  actions={
+                    <>
+                      <Link
+                        href="/analyze"
+                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Анализировать договор
+                      </Link>
+                      <Link
+                        href="/chat"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                      >
+                        <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                        Спросить AI-юриста
+                      </Link>
+                      <Link
+                        href="/counterparty"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                      >
+                        <Building2 className="h-4 w-4" aria-hidden="true" />
+                        Проверить контрагента
+                      </Link>
+                    </>
+                  }
+                />
               ) : (
                 <div className="divide-y divide-border">
                   {documents.map((doc) => (
@@ -376,26 +375,20 @@ export default function DashboardPage() {
                 </div>
               )
             ) : generatedDocs.length === 0 ? (
-              <div className="px-6 py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light">
-                  <FolderOpen className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground">
-                  Создайте первый документ из шаблона
-                </h3>
-                <p className="mx-auto mt-2 max-w-md text-sm text-muted">
-                  9 готовых шаблонов: NDA, аренда, услуги, поставка, заём,
-                  трудовой и другие. Заполните форму — получите DOCX,
-                  юридически грамотный и готовый к подписанию.
-                </p>
-                <Link
-                  href="/templates"
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-                >
-                  <Plus className="h-4 w-4" />
-                  Открыть шаблоны
-                </Link>
-              </div>
+              <EmptyState
+                illustration={<DocsEmptyIllustration />}
+                title="Создайте первый документ из шаблона"
+                description="20 готовых шаблонов: NDA, аренда, услуги, поставка, заём, трудовой и другие. Заполните форму — получите DOCX, юридически грамотный и готовый к подписанию."
+                actions={
+                  <Link
+                    href="/templates"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    Открыть шаблоны
+                  </Link>
+                }
+              />
             ) : (
               <div className="divide-y divide-border">
                 {generatedDocs.map((doc) => (
