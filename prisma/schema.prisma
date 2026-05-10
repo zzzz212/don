@@ -26,6 +26,14 @@ model User {
   // get a "Personal workspace" with all their existing data attached.
   activeOrgId        String?
 
+  // Lifetime per-user "trial used" flag. Set when the trial is granted
+  // (either automatically on first-org bootstrap or manually via the
+  // /api/billing/activate-trial endpoint for users whose account
+  // pre-dates the trial feature). Once non-null, the user can never
+  // re-claim the trial — prevents recreating workspaces to farm extra
+  // free PRO time.
+  trialActivatedAt   DateTime?
+
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 

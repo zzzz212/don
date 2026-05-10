@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
@@ -42,6 +43,7 @@ interface BillingStatus {
   isTrial: boolean;
   trialEndsAt: string | null;
   trialDaysLeft: number | null;
+  canActivateTrial: boolean;
   subscription: SubscriptionInfo | null;
   payments: PaymentRow[];
 }
@@ -131,6 +133,8 @@ export default function BillingPage() {
     "PRO" | "BUSINESS" | null
   >(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [trialActivating, setTrialActivating] = useState(false);
+  const [trialError, setTrialError] = useState<string | null>(null);
 
   const reload = () => {
     setLoading(true);
@@ -159,6 +163,28 @@ export default function BillingPage() {
   useEffect(() => {
     reload();
   }, []);
+
+  const handleActivateTrial = async () => {
+    setTrialActivating(true);
+    setTrialError(null);
+    try {
+      const r = await fetch("/api/billing/activate-trial", {
+        method: "POST",
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setTrialError(json.error ?? "Не удалось активировать пробный период.");
+        return;
+      }
+      // Reload billing status so the trial banner / chip / quota all
+      // re-render with the new state.
+      reload();
+    } catch {
+      setTrialError("Сеть недоступна.");
+    } finally {
+      setTrialActivating(false);
+    }
+  };
 
   const handleCheckout = async (plan: "PRO" | "BUSINESS") => {
     setCheckoutLoading(plan);
@@ -275,6 +301,51 @@ export default function BillingPage() {
                     {formatDate(data.subscription.canceledAt)}. Доступ к функциям
                     тарифа сохраняется до{" "}
                     <strong>{formatDate(data.subscription.currentPeriodEnd)}</strong>.
+                  </div>
+                )}
+
+                {data.canActivateTrial && (
+                  <div className="mt-5 rounded-xl border border-primary/30 bg-primary-light/30 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground">
+                          Активируйте бесплатный пробный период «Про»
+                        </p>
+                        <p className="mt-1 text-sm text-muted">
+                          7 дней безлимитного анализа договоров, генерации
+                          документов и OCR. Без привязки карты и
+                          автосписаний. Доступно один раз для каждого
+                          аккаунта.
+                        </p>
+                        {trialError && (
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {trialError}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleActivateTrial}
+                          disabled={trialActivating}
+                          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                        >
+                          {trialActivating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Активируем...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4" />
+                              Активировать на 7 дней
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </section>

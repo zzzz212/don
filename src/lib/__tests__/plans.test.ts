@@ -93,6 +93,27 @@ describe("isUnlimited / UNLIMITED", () => {
   });
 });
 
+describe("legal-info trial constants stay in sync", () => {
+  it("TRIAL_DAYS numeric value matches the cyrillic label used on /offer", async () => {
+    const { TRIAL_DAYS, TRIAL_DAYS_LABEL } = await import("../legal-info");
+    const expected: Record<number, string> = {
+      1: "один",
+      3: "три",
+      5: "пять",
+      7: "семь",
+      10: "десять",
+      14: "четырнадцать",
+      30: "тридцать",
+    };
+    const allowed = expected[TRIAL_DAYS];
+    expect(
+      allowed,
+      `Если TRIAL_DAYS изменился — добавь сюда новое сопоставление и обнови TRIAL_DAYS_LABEL в legal-info.ts`
+    ).toBeDefined();
+    expect(TRIAL_DAYS_LABEL).toBe(allowed);
+  });
+});
+
 describe("getEffectivePlan", () => {
   const NOW = new Date("2026-05-10T12:00:00Z");
   const FUTURE = new Date("2026-05-20T12:00:00Z"); // 10 days ahead

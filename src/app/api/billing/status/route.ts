@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { ensureActiveOrg, requireMembership, OrgAccessError } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
 import { getEffectivePlan } from "@/lib/plans";
+import { checkTrialEligibility } from "@/lib/billing/trial";
 
 // GET /api/billing/status
 //   Returns the workspace's current subscription state and the most
@@ -24,7 +25,7 @@ export async function GET() {
       session.user.activeOrgId ?? (await ensureActiveOrg(userId));
     const membership = await requireMembership(userId, orgId, "OWNER");
 
-    const [subscription, payments] = await Promise.all([
+    const [subscription, payments, trialEligibility] = await Promise.all([
       prisma.subscription.findUnique({ where: { orgId } }),
       prisma.payment.findMany({
         where: { orgId },
@@ -42,6 +43,7 @@ export async function GET() {
           providerPaymentId: true,
         },
       }),
+      checkTrialEligibility(userId, orgId),
     ]);
 
     const effective = getEffectivePlan({
@@ -59,6 +61,7 @@ export async function GET() {
         ? effective.trialEndsAt.toISOString()
         : null,
       trialDaysLeft: effective.trialDaysLeft,
+      canActivateTrial: trialEligibility.canActivate,
       subscription: subscription
         ? {
             plan: subscription.plan,

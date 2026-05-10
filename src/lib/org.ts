@@ -181,7 +181,12 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
 
     await tx.user.update({
       where: { id: userId },
-      data: { activeOrgId: org.id },
+      data: {
+        activeOrgId: org.id,
+        // Mark the trial as claimed for this account — guards against the
+        // user later deleting and re-bootstrapping to farm a second trial.
+        trialActivatedAt: new Date(),
+      },
     });
 
     // Backfill existing per-user data into the new personal workspace so

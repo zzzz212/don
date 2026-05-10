@@ -6,6 +6,7 @@ import {
   CONTACTS,
   PRICING_RUB,
   TRIAL_DAYS,
+  TRIAL_DAYS_LABEL,
 } from "@/lib/legal-info";
 
 export const metadata: Metadata = {
@@ -154,7 +155,7 @@ export default function OfferPage() {
       <p>
         При создании первого рабочего пространства Заказчику может быть
         предоставлен пробный период бесплатного доступа к функционалу Тарифа
-        «Про» сроком на <strong>{TRIAL_DAYS} (четырнадцать) календарных дней</strong>.
+        «Про» сроком на <strong>{TRIAL_DAYS} ({TRIAL_DAYS_LABEL}) календарных дней</strong>.
         Пробный период активируется автоматически в момент регистрации
         учётной записи и не требует ввода платёжных данных.
       </p>
