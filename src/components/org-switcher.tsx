@@ -10,13 +10,22 @@ import {
   Settings,
   Users,
   Loader2,
+  CreditCard,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 
 interface Organization {
   id: string;
   name: string;
   slug: string;
+  /** Effective plan — already PRO if a trial is active. */
   plan: string;
+  /** Plan that will apply once any active trial expires. */
+  baselinePlan?: string;
+  isTrial?: boolean;
+  trialDaysLeft?: number | null;
+  trialEndsAt?: string | null;
   role: "OWNER" | "ADMIN" | "MEMBER";
   isActive: boolean;
   createdAt: string;
@@ -27,6 +36,21 @@ const PLAN_LABEL: Record<string, string> = {
   PRO: "Про",
   BUSINESS: "Бизнес",
 };
+
+function planSubtitle(org: Organization): string {
+  const planLabel = PLAN_LABEL[org.plan] ?? org.plan;
+  if (org.isTrial && typeof org.trialDaysLeft === "number") {
+    const days = org.trialDaysLeft;
+    const word =
+      days === 1
+        ? "день"
+        : days >= 2 && days <= 4
+          ? "дня"
+          : "дней";
+    return `Триал · ${days} ${word} · ${org.role}`;
+  }
+  return `${planLabel} · ${org.role}`;
+}
 
 export function OrgSwitcher() {
   // useSession.update() is the only way to force NextAuth to re-run the
@@ -41,7 +65,23 @@ export function OrgSwitcher() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Admin status — fired in parallel with the orgs fetch. Failure is
+  // silent: not-admin is the safe default.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.isAdmin) setIsAdmin(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Close on outside click.
   useEffect(() => {
@@ -152,7 +192,21 @@ export function OrgSwitcher() {
         body: JSON.stringify({ name: name.trim() }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string;
+        };
+        // Soft-redirect to /billing when the user hit the FREE workspace
+        // limit — turning the error into a productive next step.
+        if (data.code === "FREE_WORKSPACE_LIMIT") {
+          const ok = window.confirm(
+            `${data.error}\n\nПерейти в раздел оплаты?`
+          );
+          if (ok) {
+            window.location.href = "/billing";
+          }
+          return;
+        }
         alert(data.error ?? "Не удалось создать workspace");
         return;
       }
@@ -187,12 +241,17 @@ export function OrgSwitcher() {
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex max-w-[220px] items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
+        className="flex max-w-[260px] items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
       >
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-light text-xs font-bold text-primary-dark">
           {active.name.slice(0, 1).toUpperCase()}
         </div>
         <span className="truncate text-foreground">{active.name}</span>
+        {active.isTrial && typeof active.trialDaysLeft === "number" && (
+          <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+            Триал {active.trialDaysLeft}д
+          </span>
+        )}
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
 
@@ -218,7 +277,7 @@ export function OrgSwitcher() {
                       {org.name}
                     </span>
                     <span className="text-[10px] uppercase tracking-wide text-muted">
-                      {PLAN_LABEL[org.plan] ?? org.plan} · {org.role}
+                      {planSubtitle(org)}
                     </span>
                   </div>
                   {switching === org.id ? (
@@ -241,6 +300,19 @@ export function OrgSwitcher() {
               Настройки workspace
             </Link>
             <Link
+              href="/billing"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+            >
+              <CreditCard className="h-4 w-4 text-muted" />
+              Тариф и биллинг
+              {active.isTrial && typeof active.trialDaysLeft === "number" && (
+                <span className="ml-auto rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  Триал {active.trialDaysLeft}д
+                </span>
+              )}
+            </Link>
+            <Link
               href="/settings/organization#members"
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
@@ -248,6 +320,24 @@ export function OrgSwitcher() {
               <Users className="h-4 w-4 text-muted" />
               Пригласить участника
             </Link>
+            <Link
+              href="/account/security"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+            >
+              <Lock className="h-4 w-4 text-muted" />
+              Безопасность аккаунта
+            </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+              >
+                <ShieldCheck className="h-4 w-4 text-amber-600" />
+                Админ-панель
+              </Link>
+            )}
             <button
               onClick={handleCreate}
               disabled={creating}

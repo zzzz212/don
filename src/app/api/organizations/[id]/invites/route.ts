@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OrgAccessError, requireMembership, type Role } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
+import { sendEmail } from "@/lib/email";
+import { buildInviteEmail } from "@/lib/email/templates/invite";
+import { captureEvent } from "@/lib/analytics/server";
+import { logAudit, attribution } from "@/lib/audit";
 
 // Token is 32 random bytes hex-encoded — 256 bits of entropy, unguessable.
 const TOKEN_BYTES = 32;
@@ -113,6 +117,56 @@ export async function POST(
         `https://${request.headers.get("host") ?? "localhost"}`
     );
 
+    // Send the invite email when a target address was supplied. Fire-and-
+    // forget — the URL is also returned in the response, so the inviter can
+    // copy/paste it as a fallback if delivery fails.
+    let emailDelivered: { ok: boolean; error?: string } | null = null;
+    if (email) {
+      const inviter = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { name: true, email: true },
+      });
+      const orgRow = await prisma.organization.findUnique({
+        where: { id },
+        select: { name: true },
+      });
+      if (inviter?.email && orgRow?.name) {
+        const result = await sendEmail(
+          buildInviteEmail({
+            to: email,
+            orgName: orgRow.name,
+            inviterName: inviter.name,
+            inviterEmail: inviter.email,
+            role,
+            acceptUrl: url.toString(),
+            expiresAt: expiresAt.toISOString(),
+          })
+        );
+        emailDelivered = { ok: result.ok, error: result.error };
+      }
+    }
+
+    void captureEvent({
+      userId: session.user.id,
+      orgId: id,
+      event: "member_invited",
+      properties: {
+        role,
+        emailProvided: !!email,
+        emailDelivered: emailDelivered?.ok ?? null,
+      },
+    });
+    void logAudit({
+      orgId: id,
+      userId: session.user.id,
+      action: "member.invited",
+      target: invite.id,
+      targetType: "invite",
+      // Don't log raw email — redact() catches it but defensive double-check.
+      payload: { role, emailProvided: !!email },
+      ...attribution(request),
+    });
+
     return NextResponse.json({
       invite: {
         id: invite.id,
@@ -122,6 +176,7 @@ export async function POST(
         expiresAt,
         url: url.toString(),
       },
+      emailDelivered,
     });
   } catch (error) {
     if (error instanceof OrgAccessError) {

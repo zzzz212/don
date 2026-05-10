@@ -48,12 +48,23 @@ export interface ChatOptions {
  * Single event in a streaming chat response. Providers yield zero or more
  * `delta` events, then one `usage` event, then `done`. `error` may appear
  * at any point and terminates the stream.
+ *
+ * `saved` is emitted by route handlers (not providers) after the stream
+ * completes and the result is persisted somewhere — e.g. /api/generated/
+ * [id]/refine fires it after committing the new DocumentVersion so the
+ * client can navigate / show the new version number without an extra
+ * fetch round-trip.
  */
 export type StreamEvent =
   | { kind: "delta"; text: string }
   | { kind: "usage"; usage: Usage }
   | { kind: "error"; message: string }
-  | { kind: "done" };
+  | { kind: "done" }
+  | { kind: "saved"; payload: Record<string, unknown> }
+  // Lifecycle hint emitted by the refine route so the UI can switch
+  // between "applying patches" and "streaming a regenerated document"
+  // states without guessing from the absence of delta events.
+  | { kind: "mode"; mode: "patch" | "regen"; reason?: string };
 
 export type GenerateResult<T extends z.ZodTypeAny | undefined> = {
   data: T extends z.ZodTypeAny ? z.infer<T> : string;

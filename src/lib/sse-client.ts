@@ -13,7 +13,9 @@ export type ClientStreamEvent =
   | { kind: "delta"; text: string }
   | { kind: "usage"; usage: Record<string, unknown> }
   | { kind: "error"; message: string }
-  | { kind: "done" };
+  | { kind: "done" }
+  | { kind: "saved"; payload: Record<string, unknown> }
+  | { kind: "mode"; mode: "patch" | "regen"; reason?: string };
 
 export async function* parseSseStream(
   body: ReadableStream<Uint8Array>
@@ -93,6 +95,14 @@ function parseEventBlock(block: string): ClientStreamEvent | null {
   }
   if (event === "done") {
     return { kind: "done" };
+  }
+  if (event === "saved") {
+    return { kind: "saved", payload: data };
+  }
+  if (event === "mode") {
+    const mode = data.mode === "patch" ? "patch" : "regen";
+    const reason = typeof data.reason === "string" ? data.reason : undefined;
+    return { kind: "mode", mode, reason };
   }
   return null;
 }

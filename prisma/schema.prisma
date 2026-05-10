@@ -26,6 +26,14 @@ model User {
   // get a "Personal workspace" with all their existing data attached.
   activeOrgId        String?
 
+  // Lifetime per-user "trial used" flag. Set when the trial is granted
+  // (either automatically on first-org bootstrap or manually via the
+  // /api/billing/activate-trial endpoint for users whose account
+  // pre-dates the trial feature). Once non-null, the user can never
+  // re-claim the trial — prevents recreating workspaces to farm extra
+  // free PRO time.
+  trialActivatedAt   DateTime?
+
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
@@ -40,6 +48,91 @@ model User {
   legalReferences    LegalReference[]
   aiUsage            AiUsage[]
   memberships        Membership[]
+  passwordResetTokens PasswordResetToken[]
+  payments           Payment[]
+  auditEvents        AuditEvent[]
+  totp               TotpCredential?
+}
+
+// Time-based One-Time Password (TOTP) credential for 2FA. One row per
+// user. enabledAt distinguishes "setup started but not confirmed" from
+// "fully enabled" — until enabledAt is non-null, the login flow does
+// NOT require a TOTP code (so a half-finished setup can't lock the
+// user out).
+//
+// Recovery codes: SHA-256 hashes of 10 single-use random codes shown
+// to the user once at setup. On consume the matched hash is removed.
+// When recoveryCodes empties while TOTP is still enabled, the UI
+// nudges the user to regenerate.
+//
+// Secret storage: base32-encoded TOTP secret stored as plaintext. The
+// security model assumes DB encryption-at-rest (Neon's default) — same
+// posture as Google Authenticator's reference implementation. A future
+// hardening pass can wrap this with an env-key AEAD.
+model TotpCredential {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  secret        String
+  enabledAt     DateTime?
+  recoveryCodes String[]  @default([])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Single-use, time-limited password-reset token. Only the SHA-256 hash is
+// stored; the plaintext value lives only in the email recipient's inbox.
+// On consume the row is marked used (not deleted) so a stolen email
+// arriving twice can't be replayed even within the validity window.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Workspace + account audit log. One row per security/billing-relevant
+// action. Actor is always identified (userId not nullable) so we can
+// answer "who did X" definitively. orgId is nullable for account-level
+// events (2FA enabled, password changed) and deleted-workspace events
+// (onDelete: SetNull keeps the audit row visible after the org is gone).
+//
+// PII rules: payload may contain ids and categorical labels but never
+// emails, names, document content, or auth secrets. The redact helper
+// in src/lib/audit.ts strips known sensitive fields before insert.
+model AuditEvent {
+  id         String   @id @default(cuid())
+  orgId      String?
+  userId     String
+  // Controlled vocabulary — see AuditAction in src/lib/audit.ts.
+  action     String
+  // Affected entity reference — e.g. membershipId, paymentId, inviteId.
+  target     String?
+  // Hint for what `target` refers to — e.g. "membership" | "payment" |
+  // "invite" | "document" | "workspace".
+  targetType String?
+  // Free-form context. JSON. Old/new values, role, plan, etc.
+  payload    Json?
+  // Best-effort attribution from request headers. Useful for "alert me
+  // if my account is signed in from a new IP" features later.
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action])
 }
 
 // A workspace shared by 1..N users. Plans, quotas, and document visibility
@@ -51,6 +144,12 @@ model Organization {
   slug        String   @unique
   plan        String   @default("FREE")
 
+  // While this is in the future, the workspace gets PRO-tier features
+  // even if `plan == "FREE"`. Set on first-time bootstrap of a user's
+  // personal workspace (one trial per user) and never extended for
+  // additional workspaces created by the same user. Null = no trial.
+  trialEndsAt DateTime?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -61,6 +160,89 @@ model Organization {
   chats              Chat[]
   counterpartyChecks CounterpartyCheck[]
   aiUsage            AiUsage[]
+  subscription       Subscription?
+  payments           Payment[]
+  auditEvents        AuditEvent[]
+}
+
+// One row per Organization that has ever paid. Updated in place on every
+// renewal — keeps things simple. Historical record of what was bought
+// when lives in Payment[].
+model Subscription {
+  id                 String   @id @default(cuid())
+  orgId              String   @unique
+  // The plan the customer is paying for. Distinct from Organization.plan
+  // (which is the *currently effective* tier) so a future "scheduled
+  // downgrade at period end" can be expressed without lying about the
+  // current state.
+  plan               String
+  // "ACTIVE" | "CANCELED" | "PAST_DUE"
+  status             String   @default("ACTIVE")
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+  canceledAt         DateTime?
+
+  provider           String   @default("yookassa")
+  // ЮKassa "saved payment method" id. Required for server-initiated auto
+  // renewals — populated from the first interactive payment if the user
+  // opted into auto-renew.
+  providerPaymentMethodId String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+// One row per attempted purchase. Idempotent on `idempotenceKey` — both
+// the create-payment call and the webhook handler use upsert against this
+// key so retries don't double-charge or double-credit.
+model Payment {
+  id                 String   @id @default(cuid())
+  orgId              String
+  subscriptionId     String?
+  // The user who initiated the checkout — used for receipt routing.
+  userId             String
+
+  provider           String   @default("yookassa")
+  // ЮKassa-side payment id. Populated after the create-payment call
+  // returns. Unique so the webhook can upsert by it.
+  providerPaymentId  String?  @unique
+
+  // Stored as integer kopecks to avoid float drift.
+  amountKopecks      Int
+  currency           String   @default("RUB")
+
+  plan               String
+  periodMonths       Int      @default(1)
+
+  // "PENDING" | "WAITING_FOR_CAPTURE" | "SUCCEEDED" | "CANCELED" | "FAILED"
+  status             String   @default("PENDING")
+  failureReason      String?
+
+  // Idempotence key sent with the create-payment call. Stored so we can
+  // diagnose retries and never repeat a charge for the same intent.
+  idempotenceKey     String   @unique
+
+  // Snapshot of the customer's email at purchase time — used for the
+  // 54-ФЗ receipt and to address the "thank you for paying" email.
+  customerEmail      String
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  succeededAt        DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@index([userId, createdAt])
 }
 
 // User <-> Organization join with role. A user can belong to many orgs;

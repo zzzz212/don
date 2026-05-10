@@ -1,7 +1,12 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-export type RateLimitEndpoint = "analyze" | "chat" | "generate" | "default";
+export type RateLimitEndpoint =
+  | "analyze"
+  | "chat"
+  | "generate"
+  | "billing.checkout"
+  | "default";
 
 export interface RateLimitResult {
   ok: boolean;
@@ -14,6 +19,10 @@ const LIMITS: Record<RateLimitEndpoint, { max: number; windowSec: number }> = {
   analyze: { max: 10, windowSec: 60 },
   chat: { max: 30, windowSec: 60 },
   generate: { max: 10, windowSec: 60 },
+  // Checkout creates pending Payment rows + calls ЮKassa — keep loose so
+  // legitimate retries (network drop on confirmation page) don't trigger
+  // 429s but still cap brute-force attempts.
+  "billing.checkout": { max: 10, windowSec: 60 },
   default: { max: 60, windowSec: 60 },
 };
 

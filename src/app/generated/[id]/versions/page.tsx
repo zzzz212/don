@@ -12,6 +12,8 @@ import {
   Clock,
   Users,
   RotateCcw,
+  GitCompareArrows,
+  X,
 } from "lucide-react";
 
 interface DocumentVersion {
@@ -26,6 +28,17 @@ interface DocumentVersion {
   };
 }
 
+function pluralVersions(n: number): string {
+  if (n % 10 === 1 && n % 100 !== 11) return `${n} версия`;
+  if (
+    [2, 3, 4].includes(n % 10) &&
+    ![12, 13, 14].includes(n % 100)
+  ) {
+    return `${n} версии`;
+  }
+  return `${n} версий`;
+}
+
 export default function DocumentVersionsPage() {
   const params = useParams();
   const router = useRouter();
@@ -33,8 +46,8 @@ export default function DocumentVersionsPage() {
 
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedV1, setSelectedV1] = useState<string | null>(null);
-  const [selectedV2, setSelectedV2] = useState<string | null>(null);
+  // Up to 2 selected ids — picking a 3rd evicts the oldest selection.
+  const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -57,33 +70,44 @@ export default function DocumentVersionsPage() {
     loadVersions();
   }, [docId, router]);
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length < 2) return [...prev, id];
+      // Evict the first picked when picking a third.
+      return [prev[1], id];
+    });
+  };
+
   const handleCompare = () => {
-    if (selectedV1 && selectedV2) {
-      router.push(
-        `/generated/${docId}/compare/${selectedV1}/${selectedV2}`
-      );
-    }
+    if (selected.length !== 2) return;
+    // Keep version-number order so older → newer in the diff direction.
+    const versionsById = new Map(versions.map((v) => [v.id, v]));
+    const sorted = [...selected].sort(
+      (a, b) =>
+        (versionsById.get(a)?.versionNumber ?? 0) -
+        (versionsById.get(b)?.versionNumber ?? 0)
+    );
+    router.push(`/generated/${docId}/compare/${sorted[0]}/${sorted[1]}`);
   };
 
   const handleRevert = async (versionId: string) => {
-    if (!confirm("Вы уверены? Будет создана новая версия на основе выбранной."))
+    if (!confirm("Будет создана новая версия на основе выбранной. Продолжить?"))
       return;
-
     try {
       const response = await fetch("/api/versions/revert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ versionId }),
       });
-
       if (response.ok) {
         const data = await response.json();
-        setVersions([...versions, data.version]);
+        router.push(`/generated/${data.documentId ?? docId}`);
       } else {
-        setError("Ошибка при восстановлении версии");
+        setError("Не удалось восстановить версию");
       }
     } catch (err) {
-      setError("Ошибка при восстановлении версии");
+      setError("Не удалось восстановить версию");
       console.error(err);
     }
   };
@@ -99,13 +123,17 @@ export default function DocumentVersionsPage() {
     );
   }
 
+  const selectedVersions = selected
+    .map((id) => versions.find((v) => v.id === id))
+    .filter((v): v is DocumentVersion => !!v)
+    .sort((a, b) => a.versionNumber - b.versionNumber);
+
   return (
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main className="flex-1 bg-surface/30 pb-24">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
           <Link
             href={`/generated/${docId}`}
             className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
@@ -114,119 +142,145 @@ export default function DocumentVersionsPage() {
             Вернуться к документу
           </Link>
 
-          <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-2">
+          <h1 className="mb-2 flex items-center gap-3 text-3xl font-bold text-foreground">
             <GitBranch className="h-8 w-8" />
             История версий
           </h1>
-          <p className="text-muted mb-8">
-            {versions.length} версия{versions.length % 10 === 1 && versions.length % 100 !== 11 ? "" : "й"}
+          <p className="mb-8 text-muted">
+            {pluralVersions(versions.length)}. Отметьте две, чтобы сравнить
+            изменения.
           </p>
 
           {error && (
-            <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-800">
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
               <p className="text-sm font-medium">{error}</p>
             </div>
           )}
 
           {versions.length === 0 ? (
-            <div className="text-center py-12">
-              <GitBranch className="h-16 w-16 text-muted mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">
+            <div className="rounded-2xl border border-border bg-white py-16 text-center">
+              <GitBranch className="mx-auto mb-4 h-12 w-12 text-muted opacity-50" />
+              <h3 className="mb-2 text-lg font-semibold text-foreground">
                 Нет версий
               </h3>
-              <p className="text-muted">
-                Начните редактировать документ, чтобы создать первую версию
+              <p className="text-sm text-muted">
+                Отредактируйте документ — система автоматически создаст версию.
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Version list */}
-              <div className="bg-white rounded-lg border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">
-                  Все версии
-                </h2>
-                <div className="space-y-3">
-                  {versions.map((version) => (
-                    <div
-                      key={version.id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-surface transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-1">
-                          <input
-                            type="radio"
-                            name="v1"
-                            value={version.id}
-                            checked={selectedV1 === version.id}
-                            onChange={(e) => setSelectedV1(e.target.value)}
-                            className="cursor-pointer"
-                          />
-                          <span className="text-sm font-semibold text-foreground">
-                            v{version.versionNumber}: {version.title}
-                          </span>
-                        </div>
-                        {version.changesSummary && (
-                          <p className="text-xs text-muted ml-6 mb-2">
-                            {version.changesSummary}
-                          </p>
-                        )}
-                        <div className="flex gap-3 text-xs text-muted ml-6">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {new Date(version.createdAt).toLocaleDateString(
-                              "ru-RU"
-                            )}
-                          </span>
-                          {version.creator && (
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {version.creator.name || version.creator.email}
-                            </span>
-                          )}
-                        </div>
+            <div className="space-y-3">
+              {versions.map((version) => {
+                const isSelected = selected.includes(version.id);
+                return (
+                  <div
+                    key={version.id}
+                    className={`flex items-start gap-3 rounded-xl border bg-white p-4 transition-colors ${
+                      isSelected
+                        ? "border-primary ring-1 ring-primary"
+                        : "border-border hover:bg-surface"
+                    }`}
+                  >
+                    <label className="mt-1 inline-flex shrink-0 cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(version.id)}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30"
+                        aria-label={`Выбрать v${version.versionNumber} для сравнения`}
+                      />
+                    </label>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-sm font-semibold text-foreground">
+                          v{version.versionNumber}
+                        </span>
+                        <span className="text-sm text-foreground">
+                          {version.title}
+                        </span>
                       </div>
-                      <div className="flex gap-2 ml-4">
-                        <input
-                          type="radio"
-                          name="v2"
-                          value={version.id}
-                          checked={selectedV2 === version.id}
-                          onChange={(e) => setSelectedV2(e.target.value)}
-                          className="cursor-pointer"
-                        />
-                        <button
-                          onClick={() => handleRevert(version.id)}
-                          className="rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-surface"
-                          title="Восстановить эту версию"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </button>
+                      {version.changesSummary && (
+                        <p className="mt-1 text-xs text-muted">
+                          {version.changesSummary}
+                        </p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {new Date(version.createdAt).toLocaleString("ru-RU", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                        {version.creator && (
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {version.creator.name || version.creator.email}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Compare section */}
-              <div className="bg-white rounded-lg border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">
-                  Сравнить версии
-                </h2>
-                <p className="text-sm text-muted mb-4">
-                  Выберите две версии для сравнения (отметьте на левой и правой стороне)
-                </p>
-                <button
-                  onClick={handleCompare}
-                  disabled={!selectedV1 || !selectedV2}
-                  className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
-                >
-                  Сравнить выбранные версии
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRevert(version.id)}
+                      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                      title="Создать новую версию из этой"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Восстановить
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </main>
+
+      {/* Sticky compare bar — appears when 1+ version selected. */}
+      {selected.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white/95 backdrop-blur-md">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-sm">
+              <GitCompareArrows className="h-4 w-4 text-primary" />
+              {selected.length === 1 ? (
+                <span className="text-muted">
+                  Выбрана v{selectedVersions[0].versionNumber} —{" "}
+                  отметьте ещё одну для сравнения.
+                </span>
+              ) : (
+                <span className="text-foreground">
+                  Сравнение:{" "}
+                  <strong>
+                    v{selectedVersions[0].versionNumber} ↔ v
+                    {selectedVersions[1].versionNumber}
+                  </strong>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected([])}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface"
+              >
+                <X className="h-3.5 w-3.5" />
+                Сбросить
+              </button>
+              <button
+                type="button"
+                onClick={handleCompare}
+                disabled={selected.length !== 2}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+              >
+                Сравнить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Disclaimer />
     </div>

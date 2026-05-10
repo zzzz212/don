@@ -9,6 +9,7 @@ import {
 import { fetchFromDaData, fetchDaDataFinance } from "@/lib/dadata";
 import { ensureActiveOrg } from "@/lib/org";
 import { NextResponse } from "next/server";
+import { captureEvent } from "@/lib/analytics/server";
 
 export async function POST(request: Request) {
   try {
@@ -204,6 +205,16 @@ export async function POST(request: Request) {
     };
 
     console.log(`[Counterparty] Response: name="${responseProfile.name}", source=${responseProfile.dataSource}, status=${responseProfile.statusCode}`);
+
+    void captureEvent({
+      userId: session?.user?.id ?? null,
+      event: "counterparty_checked",
+      properties: {
+        riskLevel: responseProfile.riskLevel,
+        riskScore: responseProfile.riskScore,
+        dataSource: responseProfile.dataSource,
+      },
+    });
 
     return NextResponse.json({ profile: responseProfile });
   } catch (error) {

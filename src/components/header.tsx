@@ -16,14 +16,12 @@ import {
   X,
   LogOut,
   Building2,
-  BookOpen,
 } from "lucide-react";
 
 const navigation = [
   { name: "Дашборд", href: "/dashboard", icon: LayoutDashboard },
   { name: "Анализ договора", href: "/analyze", icon: FileText },
   { name: "Шаблоны", href: "/templates", icon: FolderOpen },
-  { name: "Справочник", href: "/legal", icon: BookOpen },
   { name: "Контрагенты", href: "/counterparty", icon: Building2 },
   { name: "AI-консультант", href: "/chat", icon: MessageCircle },
 ];

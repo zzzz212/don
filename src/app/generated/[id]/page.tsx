@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { useToast } from "@/components/toast";
+import { RefinePanel } from "@/components/refine-panel";
 import { getTemplate } from "@/lib/templates";
 import {
   ArrowLeft,
@@ -15,6 +17,7 @@ import {
   Trash2,
   CheckCircle,
   GitBranch,
+  Pencil,
 } from "lucide-react";
 
 interface GeneratedDocument {
@@ -26,13 +29,70 @@ interface GeneratedDocument {
   createdAt: string;
 }
 
+/**
+ * Render the generated contract text with paragraph-aware typography.
+ * Generated documents use plain text with blank-line paragraph breaks
+ * and section headings written in ALL CAPS or beginning with a digit
+ * + dot. Detect the obvious cases so the preview reads like a real
+ * legal document instead of a monospaced wall of text.
+ */
+function renderDocumentParagraphs(content: string): React.ReactNode {
+  const blocks = content.split(/\n\s*\n/);
+  return blocks.map((rawBlock, i) => {
+    const block = rawBlock.trim();
+    if (!block) return null;
+
+    const isAllCapsHeading =
+      block.length > 1 &&
+      block.length < 100 &&
+      block === block.toUpperCase() &&
+      /[А-ЯA-Z]/.test(block);
+    const isNumberedSection = /^\d+\.\s+[А-ЯA-Z]/.test(block);
+
+    if (isAllCapsHeading) {
+      return (
+        <h2
+          key={i}
+          className="mb-3 mt-6 text-center text-base font-bold uppercase tracking-wide text-foreground first:mt-0"
+        >
+          {block}
+        </h2>
+      );
+    }
+    if (isNumberedSection) {
+      // Show first line as a section heading, rest as a justified paragraph.
+      const [firstLine, ...rest] = block.split("\n");
+      return (
+        <div key={i} className="mb-4 mt-5 first:mt-0">
+          <h3 className="mb-2 text-sm font-bold text-foreground">{firstLine}</h3>
+          {rest.length > 0 && (
+            <p className="whitespace-pre-line text-justify text-sm leading-relaxed text-foreground">
+              {rest.join("\n")}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return (
+      <p
+        key={i}
+        className="mb-3 whitespace-pre-line text-justify text-sm leading-relaxed text-foreground"
+      >
+        {block}
+      </p>
+    );
+  });
+}
+
 export default function ViewGeneratedPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const [doc, setDoc] = useState<GeneratedDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [versionCount, setVersionCount] = useState<number | null>(null);
 
   const docId = params.id as string;
   const template = doc ? getTemplate(doc.templateId) : null;
@@ -40,12 +100,19 @@ export default function ViewGeneratedPage() {
   useEffect(() => {
     async function loadDocument() {
       try {
-        const response = await fetch(`/api/generated/${docId}`);
-        if (response.ok) {
-          const data = await response.json();
+        const [docResp, versionsResp] = await Promise.all([
+          fetch(`/api/generated/${docId}`),
+          fetch(`/api/generated/${docId}/versions`),
+        ]);
+        if (docResp.ok) {
+          const data = await docResp.json();
           setDoc(data);
-        } else if (response.status === 401) {
+        } else if (docResp.status === 401) {
           router.push("/login");
+        }
+        if (versionsResp.ok) {
+          const v = await versionsResp.json();
+          setVersionCount(Array.isArray(v.versions) ? v.versions.length : 0);
         }
       } catch (error) {
         console.error("Error loading document:", error);
@@ -90,7 +157,7 @@ export default function ViewGeneratedPage() {
       }
     } catch (error) {
       console.error("Error downloading document:", error);
-      alert("Ошибка при скачивании документа");
+      toast.error("Не удалось скачать DOCX. Попробуйте ещё раз.");
     }
   };
 
@@ -104,11 +171,14 @@ export default function ViewGeneratedPage() {
       });
 
       if (response.ok) {
+        toast.success("Документ удалён");
         router.push("/dashboard");
+      } else {
+        toast.error("Не удалось удалить документ");
       }
     } catch (error) {
       console.error("Error deleting document:", error);
-      alert("Ошибка при удалении документа");
+      toast.error("Не удалось удалить документ. Проверьте соединение.");
     } finally {
       setDeleting(false);
     }
@@ -181,10 +251,17 @@ export default function ViewGeneratedPage() {
 
           {/* Header with actions */}
           <div className="mb-4 flex items-center justify-between">
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-              <FileText className="h-6 w-6 text-primary" />
-              {doc.name}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+                <FileText className="h-6 w-6 text-primary" />
+                {doc.name}
+              </h1>
+              {versionCount !== null && versionCount > 0 && (
+                <span className="rounded-md bg-primary-light px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary-dark">
+                  {`Версия ${versionCount}`}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleCopy}
@@ -215,19 +292,29 @@ export default function ViewGeneratedPage() {
               >
                 <GitBranch className="h-4 w-4" />
                 Версии
+                {versionCount !== null && versionCount > 0 && (
+                  <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-muted">
+                    {versionCount}
+                  </span>
+                )}
               </Link>
-              <button
-                onClick={() => {
-                  sessionStorage.setItem(
-                    `template_${doc.templateId}`,
-                    JSON.stringify(doc.formData)
-                  );
-                  router.push(`/templates/${doc.templateId}`);
-                }}
+              <Link
+                href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
                 className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
-                ✏️ Редактировать поля
-              </button>
+                <Pencil className="h-4 w-4" />
+                Изменить
+              </Link>
+              <RefinePanel
+                documentId={doc.id}
+                currentContent={doc.content}
+                onSaved={() => {
+                  // Full reload — refreshes the version count chip,
+                  // the document content, the dashboard sidebar, and
+                  // the new entry in the version history all at once.
+                  window.location.reload();
+                }}
+              />
               <button
                 onClick={handleDelete}
                 disabled={deleting}
@@ -239,15 +326,11 @@ export default function ViewGeneratedPage() {
             </div>
           </div>
 
-          {/* Document preview in A4 format */}
-          <div className="flex justify-center my-6">
-            <div className="w-full max-w-2xl" style={{ aspectRatio: "210/297" }}>
-              <div className="h-full bg-white rounded-lg shadow-2xl overflow-auto">
-                <div className="p-8 h-full">
-                  <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-foreground break-words">
-                    {doc.content}
-                  </pre>
-                </div>
+          {/* Document preview — A4 page chrome with proper typography. */}
+          <div className="my-6 flex justify-center">
+            <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
+              <div className="document-preview p-10 sm:p-12 lg:p-14">
+                {renderDocumentParagraphs(doc.content)}
               </div>
             </div>
           </div>

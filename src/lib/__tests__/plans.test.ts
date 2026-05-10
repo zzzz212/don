@@ -7,6 +7,7 @@ import {
   normalizePlan,
   getPlanLimits,
   isUnlimited,
+  getEffectivePlan,
 } from "../plans";
 
 describe("PLANS / DEFAULT_PLAN", () => {
@@ -89,5 +90,76 @@ describe("isUnlimited / UNLIMITED", () => {
     expect(isUnlimited(0)).toBe(false);
     expect(isUnlimited(3)).toBe(false);
     expect(isUnlimited(Number.MAX_SAFE_INTEGER)).toBe(false);
+  });
+});
+
+describe("legal-info trial constants stay in sync", () => {
+  it("TRIAL_DAYS numeric value matches the cyrillic label used on /offer", async () => {
+    const { TRIAL_DAYS, TRIAL_DAYS_LABEL } = await import("../legal-info");
+    const expected: Record<number, string> = {
+      1: "один",
+      3: "три",
+      5: "пять",
+      7: "семь",
+      10: "десять",
+      14: "четырнадцать",
+      30: "тридцать",
+    };
+    const allowed = expected[TRIAL_DAYS];
+    expect(
+      allowed,
+      `Если TRIAL_DAYS изменился — добавь сюда новое сопоставление и обнови TRIAL_DAYS_LABEL в legal-info.ts`
+    ).toBeDefined();
+    expect(TRIAL_DAYS_LABEL).toBe(allowed);
+  });
+});
+
+describe("getEffectivePlan", () => {
+  const NOW = new Date("2026-05-10T12:00:00Z");
+  const FUTURE = new Date("2026-05-20T12:00:00Z"); // 10 days ahead
+  const PAST = new Date("2026-05-01T12:00:00Z"); // 9 days behind
+
+  it("returns the stored plan when no trial is set", () => {
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt: null }, NOW);
+    expect(e.plan).toBe("FREE");
+    expect(e.baselinePlan).toBe("FREE");
+    expect(e.isTrial).toBe(false);
+    expect(e.trialDaysLeft).toBeNull();
+  });
+
+  it("upgrades FREE to PRO during an active trial", () => {
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt: FUTURE }, NOW);
+    expect(e.plan).toBe("PRO");
+    expect(e.baselinePlan).toBe("FREE");
+    expect(e.isTrial).toBe(true);
+    expect(e.trialDaysLeft).toBe(10);
+  });
+
+  it("falls back to FREE when the trial has expired", () => {
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt: PAST }, NOW);
+    expect(e.plan).toBe("FREE");
+    expect(e.isTrial).toBe(false);
+    expect(e.trialDaysLeft).toBeNull();
+  });
+
+  it("does NOT downgrade an already-paid plan during a stale trial flag", () => {
+    // Defensive: if a paid customer somehow has a trialEndsAt set, the
+    // paid plan still wins.
+    const e = getEffectivePlan({ plan: "PRO", trialEndsAt: FUTURE }, NOW);
+    expect(e.plan).toBe("PRO");
+    expect(e.baselinePlan).toBe("PRO");
+    expect(e.isTrial).toBe(false);
+  });
+
+  it("rounds up the days-left counter (so 'less than a day' shows as 1)", () => {
+    const trialEndsAt = new Date(NOW.getTime() + 1000); // 1 second left
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt }, NOW);
+    expect(e.trialDaysLeft).toBe(1);
+  });
+
+  it("trial of exactly 14 days at start shows 14", () => {
+    const trialEndsAt = new Date(NOW.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt }, NOW);
+    expect(e.trialDaysLeft).toBe(14);
   });
 });

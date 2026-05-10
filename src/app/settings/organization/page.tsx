@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/header";
+import Link from "next/link";
 import {
   Building2,
   Users,
@@ -15,6 +16,9 @@ import {
   Crown,
   Shield,
   User as UserIcon,
+  ShieldCheck,
+  TrendingUp,
+  ChevronRight,
 } from "lucide-react";
 
 interface Member {
@@ -342,6 +346,47 @@ export default function OrganizationSettingsPage() {
               </div>
             </dl>
           </section>
+
+          {/* Admin / Owner navigation tiles. Hidden for plain MEMBERs
+              since these views show team-wide data. */}
+          {canManage && (
+            <section className="mb-6 grid gap-3 sm:grid-cols-2">
+              <Link
+                href="/settings/organization/usage"
+                className="group flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary hover:bg-primary-light/30"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary-dark">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">
+                    Использование
+                  </p>
+                  <p className="text-xs text-muted">
+                    Кто сколько потратил квоты в этом месяце
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+              </Link>
+              <Link
+                href="/settings/organization/audit"
+                className="group flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary hover:bg-primary-light/30"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary-dark">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">
+                    Журнал событий
+                  </p>
+                  <p className="text-xs text-muted">
+                    Кто, когда, что изменил в workspace
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+              </Link>
+            </section>
+          )}
 
           {/* Members */}
           <section

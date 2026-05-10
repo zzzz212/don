@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     isGoogleAuthEnabled().then(setGoogleEnabled);
@@ -75,6 +76,13 @@ export default function RegisterPage() {
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setTouched({ email: true, password: true });
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError(
+        "Чтобы продолжить, подтвердите согласие с условиями и политикой конфиденциальности."
+      );
       return;
     }
 
@@ -217,10 +225,46 @@ export default function RegisterPage() {
               )}
             </div>
 
+            <label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary/30"
+              />
+              <span>
+                Я принимаю{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Пользовательское соглашение
+                </Link>
+                ,{" "}
+                <Link
+                  href="/offer"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Публичную оферту
+                </Link>{" "}
+                и даю согласие на обработку персональных данных в соответствии с{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Политикой конфиденциальности
+                </Link>
+                .
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={isLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+              disabled={isLoading || !acceptedTerms}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? (
                 <>
@@ -244,10 +288,20 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted">
-          Регистрируясь, вы принимаете{" "}
-          <span className="underline">условия использования</span> и{" "}
-          <span className="underline">политику конфиденциальности</span>
+        <p className="mt-6 text-center text-xs text-muted leading-relaxed">
+          Регистрируясь через Google, вы принимаете{" "}
+          <Link href="/terms" className="underline hover:text-foreground">
+            Пользовательское соглашение
+          </Link>
+          ,{" "}
+          <Link href="/offer" className="underline hover:text-foreground">
+            Публичную оферту
+          </Link>{" "}
+          и{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Политику конфиденциальности
+          </Link>
+          .
         </p>
       </div>
     </div>

@@ -7,6 +7,8 @@ import { Disclaimer } from "@/components/disclaimer";
 import { RiskBadge, type RiskLevel } from "@/components/risk-badge";
 import { UsageWidget } from "@/components/usage-widget";
 import { DocumentSearchBar } from "@/components/document-search-bar";
+import { DocumentRowSkeleton } from "@/components/skeleton";
+import { useToast } from "@/components/toast";
 import {
   FileText,
   Plus,
@@ -16,9 +18,10 @@ import {
   FileSearch,
   TrendingUp,
   Shield,
-  Loader2,
   Trash2,
   Download,
+  MessageCircle,
+  Building2,
 } from "lucide-react";
 
 interface DocumentItem {
@@ -51,6 +54,7 @@ function timeAgo(date: string): string {
 }
 
 export default function DashboardPage() {
+  const toast = useToast();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +103,7 @@ export default function DashboardPage() {
         }
       }
     } catch {
-      alert("Ошибка при удалении документа");
+      toast.error("Не удалось удалить документ");
     } finally {
       setDeleting(null);
     }
@@ -134,7 +138,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error downloading document:", error);
-      alert("Ошибка при скачивании документа");
+      toast.error("Не удалось скачать DOCX. Попробуйте ещё раз.");
     }
   }
 
@@ -270,26 +274,47 @@ export default function DashboardPage() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <div className="divide-y divide-border">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <DocumentRowSkeleton key={i} />
+                ))}
               </div>
             ) : tab === "analyses" ? (
               documents.length === 0 ? (
-                <div className="py-12 text-center">
-                  <FileText className="mx-auto h-10 w-10 text-muted/40 mb-3" />
-                  <p className="text-muted font-medium">
-                    Пока нет проанализированных документов
+                <div className="px-6 py-16 text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light">
+                    <FileSearch className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    Загрузите первый договор
+                  </h3>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+                    AI прочитает каждый пункт, оценит риски и подсветит опасные
+                    места. Поддерживаются PDF и DOCX, а на «Про» — даже сканы.
                   </p>
-                  <p className="text-sm text-muted/70 mt-1">
-                    Загрузите первый договор для анализа
-                  </p>
-                  <Link
-                    href="/analyze"
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Анализировать договор
-                  </Link>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <Link
+                      href="/analyze"
+                      className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Анализировать договор
+                    </Link>
+                    <Link
+                      href="/chat"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Спросить AI-юриста
+                    </Link>
+                    <Link
+                      href="/counterparty"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                    >
+                      <Building2 className="h-4 w-4" />
+                      Проверить контрагента
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <div className="divide-y divide-border">
@@ -350,20 +375,24 @@ export default function DashboardPage() {
                 </div>
               )
             ) : generatedDocs.length === 0 ? (
-              <div className="py-12 text-center">
-                <FileText className="mx-auto h-10 w-10 text-muted/40 mb-3" />
-                <p className="text-muted font-medium">
-                  Пока нет созданных документов
-                </p>
-                <p className="text-sm text-muted/70 mt-1">
+              <div className="px-6 py-16 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light">
+                  <FolderOpen className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">
                   Создайте первый документ из шаблона
+                </h3>
+                <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+                  9 готовых шаблонов: NDA, аренда, услуги, поставка, заём,
+                  трудовой и другие. Заполните форму — получите DOCX,
+                  юридически грамотный и готовый к подписанию.
                 </p>
                 <Link
                   href="/templates"
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
                 >
                   <Plus className="h-4 w-4" />
-                  Создать документ
+                  Открыть шаблоны
                 </Link>
               </div>
             ) : (

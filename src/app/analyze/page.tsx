@@ -156,7 +156,7 @@ export default function AnalyzePage() {
 
                   {error.upgradeNeeded && (
                     <Link
-                      href="/#pricing"
+                      href="/billing"
                       className="ml-8 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
                     >
                       <Crown className="h-4 w-4" />

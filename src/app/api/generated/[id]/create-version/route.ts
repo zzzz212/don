@@ -19,7 +19,18 @@ export async function POST(
     const params = await props.params;
     const { id } = params;
     const body = await request.json();
-    const { title, content, formData } = body;
+    const { title, content, formData } = body as {
+      title?: string;
+      content?: string;
+      formData?: Record<string, unknown>;
+    };
+
+    if (typeof content !== "string" || content.length < 100) {
+      return NextResponse.json(
+        { error: "Содержимое новой версии пустое или слишком короткое" },
+        { status: 400 }
+      );
+    }
 
     // Workspace-scoped: any member of the org can create a new version.
     const doc = await prisma.generatedDocument.findFirst({
@@ -33,36 +44,63 @@ export async function POST(
       );
     }
 
-    // Get the next version number
-    const lastVersion = await prisma.documentVersion.findMany({
-      where: { generatedDocId: id },
-      orderBy: { versionNumber: "desc" },
-      take: 1,
-    });
+    // Sanitize formData to a plain string-string record before Prisma —
+    // its Json scalar wants InputJsonValue, and our templates only ever
+    // collect string fields.
+    const safeFormData: Record<string, string> = {};
+    if (formData && typeof formData === "object") {
+      for (const [k, v] of Object.entries(formData)) {
+        if (typeof v === "string") safeFormData[k] = v;
+        else if (typeof v === "number" || typeof v === "boolean") {
+          safeFormData[k] = String(v);
+        }
+      }
+    }
 
-    const nextVersionNumber = (lastVersion[0]?.versionNumber || 0) + 1;
-
-    // Generate summary of changes
+    // Diff summary is computed against the current document content,
+    // which is the latest-version content (kept in sync via this same
+    // endpoint and the revert endpoint).
     const changesSummary = generateDiffSummary(doc.content, content);
 
-    // Create new version
-    const version = await prisma.documentVersion.create({
-      data: {
-        generatedDocId: id,
-        versionNumber: nextVersionNumber,
-        title: title || `v${nextVersionNumber}`,
-        content,
-        formData: formData || doc.formData,
-        changesSummary,
-        createdBy: session.user.id,
-      },
+    // Atomic: increment version + persist version + denormalize new
+    // content/formData onto the parent document so /generated/[id]
+    // always renders the latest version without an extra join.
+    const version = await prisma.$transaction(async (tx) => {
+      const lastVersion = await tx.documentVersion.findFirst({
+        where: { generatedDocId: id },
+        orderBy: { versionNumber: "desc" },
+        select: { versionNumber: true },
+      });
+      const nextVersionNumber = (lastVersion?.versionNumber ?? 0) + 1;
+
+      const created = await tx.documentVersion.create({
+        data: {
+          generatedDocId: id,
+          versionNumber: nextVersionNumber,
+          title:
+            (title && title.trim().length > 0
+              ? title.trim()
+              : `Версия ${nextVersionNumber}`),
+          content,
+          formData: safeFormData,
+          changesSummary,
+          createdBy: session.user.id,
+        },
+      });
+
+      await tx.generatedDocument.update({
+        where: { id },
+        data: { content, formData: safeFormData },
+      });
+
+      return created;
     });
 
-    return NextResponse.json({ version });
+    return NextResponse.json({ version, documentId: id });
   } catch (error) {
     console.error("Create version error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Не удалось создать версию документа" },
       { status: 500 }
     );
   }
