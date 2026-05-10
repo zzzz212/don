@@ -62,25 +62,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
       }
 
-      // Refresh activeOrgId from the DB on:
-      //   - first login (token.id just set, no orgId yet)
-      //   - explicit session refresh (trigger === "update", e.g. after the
-      //     user clicked "Switch workspace")
-      // Otherwise we trust the cached value and avoid a DB hit on every JWT
-      // verification.
+      // Always re-resolve activeOrgId from the DB on every jwt callback
+      // invocation. This callback runs only on:
+      //   - signIn / signUp (token creation)
+      //   - useSession.update() (explicit refresh)
+      //   - token rotation
+      // It does NOT run on every per-request JWT decode — those are
+      // signature-only and don't hit this callback. So the DB cost is
+      // bounded to ~once per session lifecycle event, not once per
+      // request.
+      //
+      // Why "always" vs "only on trigger === 'update'": NextAuth v5
+      // beta's update() doesn't reliably pass trigger === "update" in
+      // every code path, and `if (!token.activeOrgId)` short-circuit
+      // makes /switch + reload appear to do nothing because the JWT
+      // keeps the previous activeOrgId. Always re-reading is
+      // bullet-proof and the perf cost is negligible.
       const userId = token.id as string | undefined;
-      if (userId && (!token.activeOrgId || trigger === "update")) {
+      if (userId) {
         try {
           token.activeOrgId = await ensureActiveOrg(userId);
         } catch (e) {
-          // Don't block sign-in on a workspace bootstrap failure — the user
-          // can still see the auth-error UX and try again. Fall through with
-          // no activeOrgId so the app can show a recovery state.
+          // Don't block sign-in on a workspace bootstrap failure — the
+          // user can still see the auth-error UX and try again. Fall
+          // through with the previous activeOrgId (or undefined) so the
+          // app can show a recovery state.
           console.error("[auth] ensureActiveOrg failed:", e);
         }
       }
