@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandPalette } from "@/components/command-palette";
 import { useT } from "@/components/i18n-provider";
 import {
   Scale,
@@ -137,6 +138,7 @@ export function Header() {
                 >
                   {initials}
                 </div>
+                <CommandPalette />
                 <ThemeToggle />
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
