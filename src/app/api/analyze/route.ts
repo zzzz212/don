@@ -408,8 +408,21 @@ export async function POST(request: NextRequest) {
       event: "analysis_failed",
       properties: { reason: (error as Error).message?.slice(0, 100) ?? "unknown" },
     });
+    // Diagnostic surface: in addition to the user-facing string, ship a
+    // truncated `detail` field with the real exception message. Lets the
+    // browser-side DevTools tab (and us, when triaging) see "Anthropic
+    // 401 invalid api key" or "Prisma timeout" without digging Vercel
+    // logs. PII risk is low — we're throwing internal exceptions, not
+    // user-supplied data.
+    const detail =
+      error instanceof Error
+        ? `${error.name}: ${error.message}`.slice(0, 500)
+        : String(error).slice(0, 500);
     return NextResponse.json(
-      { error: "Ошибка при анализе документа. Попробуйте позже." },
+      {
+        error: "Ошибка при анализе документа. Попробуйте позже.",
+        detail,
+      },
       { status: 500 }
     );
   }
