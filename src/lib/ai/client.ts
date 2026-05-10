@@ -37,6 +37,15 @@ function getAvailableProviders(): Exclude<AIProvider, "demo">[] {
   return PROVIDER_PRIORITY.filter((p) => PROVIDERS[p].isAvailable());
 }
 
+// One-time diagnostic when the module first loads — shows in Vercel
+// function logs whether each provider's env var was actually picked up
+// at runtime. If you expect Anthropic but Groq is winning, this is the
+// first thing to check.
+if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
+  const seen = PROVIDER_PRIORITY.map((p) => `${p}=${PROVIDERS[p].isAvailable() ? "✓" : "✗"}`).join(" ");
+  console.info(`[ai/client] providers available at boot: ${seen}`);
+}
+
 // ── Public API ──────────────────────────────────────────────────────
 
 export async function generate<T extends z.ZodTypeAny>(
