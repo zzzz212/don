@@ -185,9 +185,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Пароль
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="block text-sm font-medium text-foreground">
+                  Пароль
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-primary hover:text-primary-dark"
+                >
+                  Забыли пароль?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
@@ -234,10 +242,16 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted">
+        <p className="mt-6 text-center text-xs text-muted leading-relaxed">
           Входя в сервис, вы принимаете{" "}
-          <span className="underline">условия использования</span> и{" "}
-          <span className="underline">политику конфиденциальности</span>
+          <Link href="/terms" className="underline hover:text-foreground">
+            Пользовательское соглашение
+          </Link>{" "}
+          и{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Политику конфиденциальности
+          </Link>
+          .
         </p>
       </div>
     </div>

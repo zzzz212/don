@@ -40,6 +40,25 @@ model User {
   legalReferences    LegalReference[]
   aiUsage            AiUsage[]
   memberships        Membership[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// Single-use, time-limited password-reset token. Only the SHA-256 hash is
+// stored; the plaintext value lives only in the email recipient's inbox.
+// On consume the row is marked used (not deleted) so a stolen email
+// arriving twice can't be replayed even within the validity window.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // A workspace shared by 1..N users. Plans, quotas, and document visibility
