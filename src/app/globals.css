@@ -299,6 +299,25 @@ body {
   text-indent: 0;
 }
 
+/* Document "page" wrapper — always white paper regardless of theme,
+   with a softer ring instead of a heavy 2xl-shadow (which on dark mode
+   reads as a muddy halo around the page). */
+.document-page {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.08);
+}
+.dark .document-page {
+  /* Subtle inner border + soft outer glow so the page reads as "lifted"
+     above the dark canvas without the gritty 2xl-black-shadow look. */
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
 /* Print styles for PDF export */
 @media print {
   header, footer {

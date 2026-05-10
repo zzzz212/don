@@ -241,22 +241,33 @@ export function OrgSwitcher() {
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex max-w-[260px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Workspace: ${active.name}. Открыть переключатель`}
+        // Compact form on mobile (avatar + chevron only) so the header bar
+        // doesn't overflow with the workspace name + plan + trial pill;
+        // expands to the full label on sm+ where there is room.
+        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-1.5 py-1 text-sm font-medium transition-colors hover:bg-surface sm:max-w-[260px] sm:gap-2 sm:px-3 sm:py-1.5"
       >
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-light text-xs font-bold text-primary-dark">
           {active.name.slice(0, 1).toUpperCase()}
         </div>
-        <span className="truncate text-foreground">{active.name}</span>
+        <span className="hidden truncate text-foreground sm:inline">
+          {active.name}
+        </span>
         {active.isTrial && typeof active.trialDaysLeft === "number" && (
-          <span className="shrink-0 rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
+          <span className="hidden shrink-0 rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning sm:inline">
             Триал {active.trialDaysLeft}д
           </span>
         )}
-        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" />
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+        >
           <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
             Ваши workspace
           </div>

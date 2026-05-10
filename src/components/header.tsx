@@ -7,7 +7,6 @@ import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LanguageToggle } from "@/components/language-toggle";
 import { useT } from "@/components/i18n-provider";
 import {
   Scale,
@@ -94,7 +93,6 @@ export function Header() {
             {isLanding && !user ? (
               <div className="flex items-center gap-1 sm:gap-2">
                 <ThemeToggle />
-                <LanguageToggle />
                 <Link
                   href="/login"
                   className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface sm:px-4"
@@ -111,7 +109,6 @@ export function Header() {
             ) : isLanding && user ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <ThemeToggle />
-                <LanguageToggle />
                 <span className="hidden md:inline text-sm text-muted truncate max-w-[12rem]">
                   {user.name || user.email}
                 </span>
@@ -140,7 +137,6 @@ export function Header() {
                   {initials}
                 </div>
                 <ThemeToggle />
-                <LanguageToggle />
                 <button
                   onClick={() => signOut({ callbackUrl: "/" })}
                   aria-label={t("auth.logout")}
@@ -176,14 +172,8 @@ export function Header() {
           className="md:hidden border-t border-border bg-card animate-fade-in"
         >
           <div className="px-4 py-3 space-y-1">
-            {/* Workspace switcher in mobile menu — clicking it opens its own
-                dropdown, then the user can switch / create / open settings. */}
-            {user && (
-              <div className="pb-3 mb-2 border-b border-border">
-                <OrgSwitcher />
-              </div>
-            )}
-
+            {/* OrgSwitcher already lives in the header bar (compact avatar
+                form on narrow widths) — no need to duplicate it here. */}
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (

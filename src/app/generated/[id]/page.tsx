@@ -326,9 +326,11 @@ export default function ViewGeneratedPage() {
             </div>
           </div>
 
-          {/* Document preview — A4 page chrome with proper typography. */}
+          {/* Document preview — A4 page chrome with proper typography.
+              Uses .document-page (always-white, theme-aware shadow) so the
+              page sits cleanly on a dark canvas without a muddy halo. */}
           <div className="my-6 flex justify-center">
-            <div className="w-full max-w-2xl rounded-lg bg-card shadow-2xl">
+            <div className="w-full max-w-2xl rounded-lg document-page">
               <div className="document-preview p-6 sm:p-10 lg:p-14">
                 {renderDocumentParagraphs(doc.content)}
               </div>
