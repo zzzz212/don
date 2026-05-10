@@ -44,11 +44,18 @@ export async function GET(
       fileSize: document.fileSize,
       mimeType: document.mimeType,
       hasOriginal: !!document.blobKey,
+      // Plain-text body of the contract — needed by the report page so
+      // the user can apply per-risk fixes (originalText → recommendedText)
+      // without round-tripping back to the OCR/extract step. Null for
+      // legacy rows that never stored rawText.
+      rawText: document.rawText ?? null,
       score: document.analysis?.score ?? 0,
       summary: document.analysis?.summary ?? "",
       risks: document.analysis ? JSON.parse(document.analysis.risks) : [],
       contractType: metadata.contractType,
       parties: metadata.parties,
+      verdict: metadata.verdict,
+      verdictReason: metadata.verdictReason,
       notarization: metadata.notarization,
       registration: metadata.registration,
       missingClauses: metadata.missingClauses,

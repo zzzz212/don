@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AnalysisRiskSchema } from "./analyze";
+import { AnalysisRiskSchema, VerdictSchema } from "./analyze";
 
 export const ChunkRisksSchema = z.object({
   risks: z.array(AnalysisRiskSchema),
@@ -16,6 +16,8 @@ export const SynthesisSchema = z.object({
   summary: z.string(),
   contractType: z.string(),
   parties: z.string(),
+  verdict: VerdictSchema,
+  verdictReason: z.string(),
   notarization: z.object({
     required: z.boolean(),
     reason: z.string(),

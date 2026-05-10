@@ -16,6 +16,7 @@ import { generateDemoAnalysis } from "./providers/demo";
 import { logUsage } from "./usage";
 import type { Usage } from "./types";
 import { dedupRisks, byRiskSeverity } from "./dedup";
+import { scoreAndVerdictFromCounts as calibrate } from "./score-calibration";
 
 export type {
   AnalysisRisk,
@@ -195,28 +196,27 @@ function fallbackSynthesis(
   counts: { critical: number; medium: number; low: number },
   total: number
 ) {
-  const score = Math.max(
-    1,
-    Math.min(
-      10,
-      Math.round(10 - counts.critical * 2 - counts.medium - counts.low * 0.5)
-    )
-  );
+  // Same calibration table the prompt uses, applied deterministically
+  // when synthesis fails. Lifted into one helper so prompt and fallback
+  // never drift apart.
+  const { score, verdict, verdictReason } = calibrate(counts);
 
-  const verdict =
-    counts.critical > 0
+  const summary =
+    verdict === "do_not_sign"
       ? `Договор содержит ${counts.critical} критичных и ${counts.medium} средних рисков. Подписывать в текущей редакции не рекомендуется.`
-      : counts.medium > 0
+      : verdict === "negotiate"
         ? `Договор содержит ${counts.medium} замечаний средней значимости, рекомендуется устранить до подписания.`
         : `Явных рисков по автоматической проверке не обнаружено (${total} замечаний).`;
 
   return {
     score,
-    summary: verdict,
+    summary,
     contractType: "Не определён автоматически",
     parties:
       preamble.match(/именуем\w+\s+в\s+дальнейшем\s+«[^»]+»/g)?.join(", ") ??
       "Стороны не определены автоматически",
+    verdict,
+    verdictReason,
     notarization: {
       required: false,
       reason:
@@ -240,6 +240,10 @@ function fallbackSynthesis(
     ],
   };
 }
+
+// Re-export the calibration helper so callers don't need to know it
+// lives in a sibling file.
+export { scoreAndVerdictFromCounts } from "./score-calibration";
 
 // Re-export for tests / callers that want to inspect chunks separately.
 export { chunkContract } from "./chunking";

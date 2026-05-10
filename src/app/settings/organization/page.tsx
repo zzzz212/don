@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/header";
+import { InlineEdit } from "@/components/inline-edit";
 import Link from "next/link";
 import {
   Building2,
@@ -70,7 +71,6 @@ export default function OrganizationSettingsPage() {
   const [details, setDetails] = useState<OrgDetails | null>(null);
   const [invites, setInvites] = useState<PendingInvite[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [renaming, setRenaming] = useState(false);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -109,30 +109,7 @@ export default function OrganizationSettingsPage() {
   const canManage = details?.myRole === "OWNER" || details?.myRole === "ADMIN";
   const isOwner = details?.myRole === "OWNER";
 
-  const handleRename = async () => {
-    if (!details) return;
-    const newName = window.prompt("Новое название workspace:", details.organization.name);
-    if (!newName || newName.trim() === details.organization.name) return;
-    setRenaming(true);
-    try {
-      const res = await fetch(`/api/organizations/${details.organization.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDetails({ ...details, organization: data.organization });
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "Ошибка при переименовании");
-      }
-    } finally {
-      setRenaming(false);
-    }
-  };
-
-  const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
+const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
     if (!details) return;
     setCreatingInvite(true);
     try {
@@ -307,15 +284,35 @@ export default function OrganizationSettingsPage() {
                   Название
                 </dt>
                 <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                  {details.organization.name}
-                  {canManage && (
-                    <button
-                      onClick={handleRename}
-                      disabled={renaming}
-                      className="text-xs text-primary hover:underline disabled:opacity-50"
-                    >
-                      {renaming ? "..." : "Изменить"}
-                    </button>
+                  {canManage ? (
+                    <InlineEdit
+                      value={details.organization.name}
+                      variant="body"
+                      editLabel="Переименовать workspace"
+                      minLength={2}
+                      maxLength={80}
+                      onSave={async (next) => {
+                        const res = await fetch(
+                          `/api/organizations/${details.organization.id}`,
+                          {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: next }),
+                          }
+                        );
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          throw new Error(data.error ?? "Не удалось переименовать");
+                        }
+                        setDetails((prev) =>
+                          prev
+                            ? { ...prev, organization: data.organization ?? { ...prev.organization, name: next } }
+                            : prev
+                        );
+                      }}
+                    />
+                  ) : (
+                    details.organization.name
                   )}
                 </dd>
               </div>

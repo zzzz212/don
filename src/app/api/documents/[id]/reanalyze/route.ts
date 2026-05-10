@@ -120,6 +120,8 @@ export async function POST(
     const metadata = JSON.stringify({
       contractType: analysis.contractType,
       parties: analysis.parties,
+      verdict: analysis.verdict,
+      verdictReason: analysis.verdictReason,
       notarization: analysis.notarization,
       registration: analysis.registration,
       missingClauses: analysis.missingClauses,

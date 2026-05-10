@@ -1,4 +1,5 @@
 import type { AnalysisResult, AnalysisRisk } from "../schemas/analyze";
+import { scoreAndVerdictFromCounts } from "../score-calibration";
 
 export function generateDemoAnalysis(contractText: string): AnalysisResult {
   const textLength = contractText.length;
@@ -102,10 +103,14 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
   const criticalCount = risks.filter((r) => r.level === "critical").length;
   const mediumCount = risks.filter((r) => r.level === "medium").length;
   const lowCount = risks.filter((r) => r.level === "low").length;
-  const score = Math.max(
-    1,
-    Math.min(10, Math.round(10 - criticalCount * 2 - mediumCount * 1 - lowCount * 0.5))
-  );
+  // Single source of truth for the calibration table — same helper the
+  // prompt enforces and the synthesis fallback uses.
+  const calibration = scoreAndVerdictFromCounts({
+    critical: criticalCount,
+    medium: mediumCount,
+    low: lowCount,
+  });
+  const score = calibration.score;
 
   const contractType = isLease
     ? "Договор аренды"
@@ -131,6 +136,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
     summary,
     contractType,
     parties: "Стороны не определены автоматически (демо-режим)",
+    verdict: calibration.verdict,
+    verdictReason: calibration.verdictReason,
     risks,
     notarization: {
       required: false,

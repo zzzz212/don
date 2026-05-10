@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { useToast } from "@/components/toast";
 import { RefinePanel } from "@/components/refine-panel";
+import { InlineEdit } from "@/components/inline-edit";
 import { getTemplate } from "@/lib/templates";
 import {
   ArrowLeft,
@@ -256,9 +257,28 @@ export default function ViewGeneratedPage() {
           {/* Header with actions */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="flex items-center gap-2 text-xl font-bold text-foreground sm:text-2xl">
-                <FileText className="h-6 w-6 text-primary" />
-                {doc.name}
+              <h1 className="flex items-center gap-2">
+                <FileText className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+                <InlineEdit
+                  value={doc.name}
+                  variant="h1"
+                  editLabel="Переименовать документ"
+                  minLength={1}
+                  maxLength={200}
+                  onSave={async (next) => {
+                    const r = await fetch(`/api/generated/${doc.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: next }),
+                    });
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                      throw new Error(j.error ?? "Не удалось переименовать");
+                    }
+                    setDoc((prev) => (prev ? { ...prev, name: j.name ?? next } : prev));
+                    toast.success("Название обновлено");
+                  }}
+                />
               </h1>
               {versionCount !== null && versionCount > 0 && (
                 <span className="rounded-md bg-primary-light px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary-dark">

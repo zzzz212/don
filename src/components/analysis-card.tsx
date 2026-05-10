@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
-import { Check, Copy, ScrollText, BookOpen } from "lucide-react";
+import { Check, Copy, ScrollText, BookOpen, Wand2, Undo2 } from "lucide-react";
 import { RiskBadge, type RiskLevel } from "./risk-badge";
 
 export interface RiskItem {
@@ -18,9 +18,27 @@ export interface RiskItem {
 interface AnalysisCardProps {
   risk: RiskItem;
   index: number;
+  /** Has the user applied this risk's recommended fix to the working
+   *  copy of the contract? When true, the card switches to "applied"
+   *  mode (green pill, undo button instead of apply). */
+  applied?: boolean;
+  /** Click handler for the "Apply fix" / "Undo" button. When undefined,
+   *  the apply UI is hidden — same card is used in print/PDF where
+   *  inline editing makes no sense. */
+  onApply?: () => void;
+  /** True when the original text genuinely appears in the working copy
+   *  of the contract — without it, applying would be a no-op. The
+   *  parent computes this once per render. */
+  applicable?: boolean;
 }
 
-export function AnalysisCard({ risk, index }: AnalysisCardProps) {
+export function AnalysisCard({
+  risk,
+  index,
+  applied,
+  onApply,
+  applicable,
+}: AnalysisCardProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -29,9 +47,13 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const showApply = onApply && risk.originalText && risk.originalText !== "—";
+
   return (
     <div
-      className="animate-slide-up rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md"
+      className={`animate-slide-up rounded-xl border bg-card p-5 transition-shadow hover:shadow-md ${
+        applied ? "border-success/40 ring-1 ring-success/20" : "border-border"
+      }`}
       style={{ animationDelay: `${index * 0.1}s`, opacity: 0 }}
     >
       {/* Header: badge + clause number + legal reference */}
@@ -41,9 +63,15 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
           {risk.clauseNumber}
         </span>
         <span className="inline-flex items-center gap-1 rounded-md bg-primary-light px-2 py-0.5 text-xs font-medium text-primary-dark">
-          <BookOpen className="h-3 w-3" />
+          <BookOpen className="h-3 w-3" aria-hidden="true" />
           {risk.legalReference}
         </span>
+        {applied && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-success-light px-2 py-0.5 text-xs font-semibold text-success">
+            <Check className="h-3 w-3" aria-hidden="true" />
+            Правка применена
+          </span>
+        )}
       </div>
 
       {/* Title */}
@@ -58,7 +86,7 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
       {risk.originalText && risk.originalText !== "—" && (
         <div className="mb-3 rounded-lg border border-danger/20 bg-danger-light/50 p-3">
           <div className="mb-1 flex items-center gap-1.5">
-            <ScrollText className="h-3.5 w-3.5 text-danger" />
+            <ScrollText className="h-3.5 w-3.5 text-danger" aria-hidden="true" />
             <p className="text-xs font-semibold text-danger">
               Что написано сейчас
             </p>
@@ -72,26 +100,58 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
       {/* Recommended replacement text */}
       {risk.recommendedText && risk.recommendedText !== "—" && (
         <div className="mb-3 rounded-lg border border-success/20 bg-success-light/50 p-3">
-          <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold text-success">
               Готовая формулировка для замены
             </p>
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-card px-2 py-1 text-xs font-medium text-success transition-colors hover:bg-success-light print:hidden"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3 w-3" />
-                  Скопировано
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3 w-3" />
-                  Скопировать
-                </>
+            <div className="flex flex-wrap items-center gap-1.5 print:hidden">
+              <button
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-card px-2 py-1 text-xs font-medium text-success transition-colors hover:bg-success-light"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3 w-3" aria-hidden="true" />
+                    Скопировано
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" aria-hidden="true" />
+                    Скопировать
+                  </>
+                )}
+              </button>
+              {showApply && (
+                <button
+                  onClick={onApply}
+                  disabled={!applied && !applicable}
+                  className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    applied
+                      ? "border border-success/30 bg-card text-success hover:bg-success-light"
+                      : "bg-success text-white hover:bg-success/90"
+                  }`}
+                  title={
+                    applied
+                      ? "Откатить правку в рабочей копии"
+                      : applicable
+                        ? "Заменить «Что написано сейчас» на эту формулировку в рабочей копии договора"
+                        : "Цитата не найдена в тексте договора — применить автоматически нельзя"
+                  }
+                >
+                  {applied ? (
+                    <>
+                      <Undo2 className="h-3 w-3" aria-hidden="true" />
+                      Откатить
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="h-3 w-3" aria-hidden="true" />
+                      Применить
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </div>
           <p className="text-sm leading-relaxed text-success/90">
             {risk.recommendedText}

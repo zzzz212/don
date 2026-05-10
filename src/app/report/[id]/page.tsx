@@ -11,6 +11,7 @@ import {
   FileText,
   AlertTriangle,
   AlertCircle,
+  AlertOctagon,
   CheckCircle,
   Loader2,
   Info,
@@ -35,12 +36,16 @@ interface RegistrationInfo {
   reason: string;
 }
 
+type Verdict = "sign" | "negotiate" | "do_not_sign";
+
 interface AnalysisData {
   fileName: string;
   score: number;
   summary: string;
   contractType?: string;
   parties?: string;
+  verdict?: Verdict;
+  verdictReason?: string;
   risks: RiskItem[];
   notarization?: NotarizationInfo;
   registration?: RegistrationInfo;
@@ -50,6 +55,9 @@ interface AnalysisData {
   documentId?: string;
   hasOriginal?: boolean;
   usedOcr?: boolean;
+  /** Plain-text body of the contract — used by the apply-fix flow.
+   *  Null on legacy rows that didn't store rawText. */
+  rawText?: string | null;
 }
 
 export default function ReportPage({
@@ -64,6 +72,73 @@ export default function ReportPage({
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const [reanalyzing, setReanalyzing] = useState(false);
   const loadedRef = useRef(false);
+
+  // Apply-fix flow: a Set of risk indices the user has accepted, and
+  // the current "working copy" of the contract text (original with
+  // accepted replacements substituted in). Source-of-truth for both is
+  // analysis.rawText; we only ever transform a derived view of it.
+  const [appliedFixes, setAppliedFixes] = useState<Set<number>>(new Set());
+  const [downloading, setDownloading] = useState(false);
+
+  // Compute the working copy by replaying the applied-fix set on top of
+  // the original text. Recomputed cheaply on each render — N small
+  // replaceAlls, no DB round trip.
+  const workingCopy = (() => {
+    if (!analysis?.rawText) return null;
+    let text = analysis.rawText;
+    appliedFixes.forEach((idx) => {
+      const risk = analysis.risks[idx];
+      if (!risk?.originalText || risk.originalText === "—") return;
+      // String replace, not regex — originalText comes from the model
+      // and might contain regex-special characters. replaceAll handles
+      // every occurrence (safer than only the first).
+      if (text.includes(risk.originalText)) {
+        text = text.split(risk.originalText).join(risk.recommendedText);
+      }
+    });
+    return text;
+  })();
+
+  const handleApplyFix = (idx: number) => {
+    setAppliedFixes((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const handleDownloadPatched = async () => {
+    if (!analysis?.rawText || workingCopy === null) return;
+    setDownloading(true);
+    try {
+      const response = await fetch("/api/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${analysis.fileName.replace(/\.(pdf|docx?|txt)$/i, "")} — с правками`,
+          content: workingCopy,
+        }),
+      });
+      if (!response.ok) {
+        console.error("Apply-fix download failed:", response.status);
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${analysis.fileName.replace(/\.[^.]+$/, "")}_с_правками.docx`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    } catch (e) {
+      console.error("Apply-fix download error:", e);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleExportPDF = async () => {
     if (!analysis) return;
@@ -358,6 +433,70 @@ export default function ReportPage({
                   {analysis.summary}
                 </p>
 
+                {/* Verdict callout — the binary "can I sign this?" answer.
+                    Colour-coded on a band that matches the score, so the
+                    user catches the headline message at a glance. */}
+                {analysis.verdict && (
+                  <div
+                    className={`mt-4 flex items-start gap-3 rounded-xl border p-3 text-left ${
+                      analysis.verdict === "sign"
+                        ? "border-success/30 bg-success-light"
+                        : analysis.verdict === "negotiate"
+                          ? "border-warning/30 bg-warning-light"
+                          : "border-danger/30 bg-danger-light"
+                    }`}
+                  >
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                        analysis.verdict === "sign"
+                          ? "bg-success text-white"
+                          : analysis.verdict === "negotiate"
+                            ? "bg-warning text-white"
+                            : "bg-danger text-white"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {analysis.verdict === "sign" ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : analysis.verdict === "negotiate" ? (
+                        <AlertTriangle className="h-4 w-4" />
+                      ) : (
+                        <AlertOctagon className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`text-sm font-bold ${
+                          analysis.verdict === "sign"
+                            ? "text-success"
+                            : analysis.verdict === "negotiate"
+                              ? "text-warning"
+                              : "text-danger"
+                        }`}
+                      >
+                        {analysis.verdict === "sign"
+                          ? "Можно подписывать"
+                          : analysis.verdict === "negotiate"
+                            ? "Нужно обсудить и согласовать правки"
+                            : "Подписывать НЕ рекомендуется"}
+                      </p>
+                      {analysis.verdictReason && (
+                        <p
+                          className={`mt-1 text-xs leading-relaxed ${
+                            analysis.verdict === "sign"
+                              ? "text-success/90"
+                              : analysis.verdict === "negotiate"
+                                ? "text-warning/90"
+                                : "text-danger/90"
+                          }`}
+                        >
+                          {analysis.verdictReason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Risk counters */}
                 <div className="mt-4 flex flex-wrap justify-center gap-4 sm:justify-start">
                   <div className="flex items-center gap-1.5 text-sm">
@@ -450,10 +589,82 @@ export default function ReportPage({
             <h2 className="text-lg font-bold text-foreground">
               Обнаруженные риски
             </h2>
-            {analysis.risks.map((risk, i) => (
-              <AnalysisCard key={i} risk={risk} index={i} />
-            ))}
+            {analysis.risks.map((risk, i) => {
+              const applicable =
+                Boolean(analysis.rawText) &&
+                Boolean(risk.originalText) &&
+                risk.originalText !== "—" &&
+                analysis.rawText!.includes(risk.originalText);
+              return (
+                <AnalysisCard
+                  key={i}
+                  risk={risk}
+                  index={i}
+                  applied={appliedFixes.has(i)}
+                  applicable={applicable}
+                  onApply={
+                    analysis.rawText ? () => handleApplyFix(i) : undefined
+                  }
+                />
+              );
+            })}
           </div>
+
+          {/* Sticky apply-fix toolbar — shows once the user has applied at
+              least one suggestion. Floats at the bottom so it follows the
+              user as they scroll through the risk list, with one CTA to
+              download the patched contract as DOCX. */}
+          {appliedFixes.size > 0 && (
+            <div className="sticky bottom-4 z-20 mt-6 print:hidden">
+              <div className="mx-auto flex max-w-3xl flex-col items-stretch gap-3 rounded-2xl border border-success/40 bg-card p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3 text-sm">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-success text-white"
+                    aria-hidden="true"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      Применено {appliedFixes.size}{" "}
+                      {appliedFixes.size === 1
+                        ? "правка"
+                        : appliedFixes.size < 5
+                          ? "правки"
+                          : "правок"}
+                    </p>
+                    <p className="text-xs text-muted">
+                      Скачайте договор с уже подставленными формулировками —
+                      его можно сразу отправить контрагенту.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAppliedFixes(new Set())}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                  >
+                    Сбросить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPatched}
+                    disabled={downloading}
+                    aria-busy={downloading}
+                    className="inline-flex items-center gap-2 rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+                  >
+                    {downloading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Download className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    Скачать договор с правками (DOCX)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Missing clauses */}
           {analysis.missingClauses && analysis.missingClauses.length > 0 && (
