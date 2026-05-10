@@ -49,9 +49,15 @@ export async function POST(request: NextRequest) {
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
 
-    // Plan-based quota check (anonymous users skip; rate limit already applied)
+    // Plan-based quota check (anonymous users skip; rate limit already applied).
+    // Also captured for the model-tier selector below — same effective plan
+    // (FREE / PRO / BUSINESS) drives both quota AND which Claude model runs.
+    let effectivePlan: string | null = null;
     if (orgId) {
       const quota = await checkQuotaSafe(orgId, "analyze");
+      if (quota) {
+        effectivePlan = quota.plan;
+      }
       if (quota && !quota.allowed) {
         return NextResponse.json(
           {
@@ -244,7 +250,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysis = await analyzeContract(contractText, userId ?? null, orgId);
+    const analysis = await analyzeContract(
+      contractText,
+      userId ?? null,
+      orgId,
+      effectivePlan
+    );
 
     // Upload original file to object storage in parallel with DB save below.
     // Storage failure must not fail the request — the user still gets their

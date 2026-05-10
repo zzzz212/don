@@ -17,6 +17,7 @@ import { logUsage } from "./usage";
 import type { Usage } from "./types";
 import { dedupRisks, byRiskSeverity } from "./dedup";
 import { scoreAndVerdictFromCounts as calibrate } from "./score-calibration";
+import { pickTier } from "./tier-policy";
 
 export type {
   AnalysisRisk,
@@ -33,17 +34,23 @@ const PREAMBLE_CHARS = 8_000;
 export async function analyzeContract(
   contractText: string,
   userId: string | null = null,
-  orgId: string | null = null
+  orgId: string | null = null,
+  /** Effective plan of the workspace owner. Drives the tier selector
+   *  via tier-policy.ts — FREE/PRO get Sonnet, BUSINESS escalates to
+   *  Opus on this step. Null = treat as FREE (safer for cost). */
+  plan: string | null | undefined = null
 ): Promise<AnalysisResult> {
   if (getActiveProvider() === "demo") {
     return generateDemoAnalysis(contractText);
   }
 
+  const tier = pickTier("analyze", plan);
+
   if (isShortDocument(contractText)) {
-    return analyzeSinglePass(contractText, userId, orgId);
+    return analyzeSinglePass(contractText, userId, orgId, tier);
   }
 
-  return analyzeMultiPass(contractText, userId, orgId);
+  return analyzeMultiPass(contractText, userId, orgId, tier);
 }
 
 // ── Short doc: single pass against the full ANALYZE prompt ──────────
@@ -51,13 +58,14 @@ export async function analyzeContract(
 async function analyzeSinglePass(
   text: string,
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  tier: "fast" | "smart" | "deep"
 ): Promise<AnalysisResult> {
   const result = await generate({
     schema: AnalysisResultSchema,
     system: ANALYZE_CONTRACT_SYSTEM,
     prompt: `Проанализируй следующий договор и найди все юридические риски:\n\n${text}`,
-    model: "smart",
+    model: tier,
     maxTokens: 4096,
     temperature: 0.1,
   });
@@ -71,18 +79,23 @@ async function analyzeSinglePass(
 async function analyzeMultiPass(
   text: string,
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  tier: "fast" | "smart" | "deep"
 ): Promise<AnalysisResult> {
   const chunks = chunkContract(text);
 
   // Map phase: extract risks per chunk in parallel, capped concurrency.
+  // Per-chunk extraction is intentionally pinned to "smart" (Sonnet)
+  // even when the top-level tier is "deep" — Opus on every chunk would
+  // be wildly expensive and the marginal accuracy gain is tiny on
+  // single-chunk extraction. The reduce step gets the higher tier.
   const chunkRisks = await mapChunks(chunks, userId, orgId);
 
   // Flatten + dedup; sort by severity.
   const allRisks = dedupRisks(chunkRisks).sort(byRiskSeverity);
 
   // Reduce phase: ask AI to fill structural fields based on preamble + risks.
-  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId);
+  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId, tier);
 
   return {
     ...synthesis,
@@ -137,7 +150,8 @@ async function synthesizeStructure(
   fullText: string,
   risks: AnalysisRisk[],
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  tier: "fast" | "smart" | "deep"
 ) {
   const preamble = fullText.slice(0, PREAMBLE_CHARS);
   const counts = {
@@ -178,7 +192,7 @@ ${riskList || "(рисков не найдено)"}
       schema: SynthesisSchema,
       system: SYNTHESIZE_SYSTEM,
       prompt,
-      model: "smart",
+      model: tier,
       maxTokens: 2048,
       temperature: 0.1,
     });

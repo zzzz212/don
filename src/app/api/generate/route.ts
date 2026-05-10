@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateText, getActiveProvider } from "@/lib/ai/client";
 import { GENERATE_DOCUMENT_SYSTEM } from "@/lib/ai/prompts";
 import { logUsage } from "@/lib/ai/usage";
+import { pickTier } from "@/lib/ai/tier-policy";
 import { getTemplate } from "@/lib/templates";
 import { rateLimit } from "@/lib/rate-limit";
 import { auth } from "@/lib/auth";
@@ -53,8 +54,10 @@ export async function POST(request: NextRequest) {
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
 
+    let effectivePlan: string | null = null;
     if (orgId) {
       const quota = await checkQuotaSafe(orgId, "generate");
+      if (quota) effectivePlan = quota.plan;
       if (quota && !quota.allowed) {
         return NextResponse.json(
           {
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest) {
     const result = await generateText({
       system: GENERATE_DOCUMENT_SYSTEM,
       prompt: `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
-      model: "fast",
+      model: pickTier("generate", effectivePlan),
       maxTokens: 4096,
     });
 
