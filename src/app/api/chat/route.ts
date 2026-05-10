@@ -4,7 +4,6 @@ import { CHAT_SYSTEM } from "@/lib/ai/prompts";
 import { logUsage } from "@/lib/ai/usage";
 import { SSE_HEADERS, streamToSSE } from "@/lib/ai/sse";
 import type { StreamEvent } from "@/lib/ai/types";
-import { buildLegalContext } from "@/lib/ai/rag";
 import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
@@ -51,24 +50,11 @@ export async function POST(request: NextRequest) {
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
 
-    // RAG: retrieve top-K relevant statutes for the latest user question and
-    // inject them into the system prompt so the AI cites real articles
-    // instead of hallucinating. Failures are silent — chat works either way.
-    const lastUserMessage = [...messages]
-      .reverse()
-      .find((m: { role: string; content: string }) => m.role === "user");
-    const ragContext = lastUserMessage
-      ? await buildLegalContext(lastUserMessage.content)
-      : { hits: [], systemAppendix: "" };
-    const augmentedSystem = ragContext.systemAppendix
-      ? {
-          ...CHAT_SYSTEM,
-          text: CHAT_SYSTEM.text + ragContext.systemAppendix,
-          // RAG context changes per question — opting out of cache_control
-          // for the augmented part so we don't poison the prompt cache.
-          cacheable: false,
-        }
-      : CHAT_SYSTEM;
+    // (RAG removed — see commit dropping /legal. The 6-article seed
+    // wasn't enough corpus for citation to be useful, and Anthropic's
+    // base model already knows ГК РФ well enough to answer freely.
+    // pgvector + Voyage stay in place for the per-user contract
+    // semantic search on the dashboard.)
 
     // The browser cancels the fetch when the user navigates away or hits
     // stop. request.signal is forwarded into the AI SDK so we stop the
@@ -81,7 +67,7 @@ export async function POST(request: NextRequest) {
     //   3. delta / done events pass through untouched to the client
     async function* withTelemetry(): AsyncGenerator<StreamEvent> {
       const source = streamChat({
-        system: augmentedSystem,
+        system: CHAT_SYSTEM,
         messages: messages.map((m: { role: string; content: string }) => ({
           role:
             m.role === "assistant"
