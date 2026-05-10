@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { signIn } from "@/lib/auth";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { sendEmail } from "@/lib/email";
+import { buildWelcomeEmail } from "@/lib/email/templates/welcome";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -32,6 +34,10 @@ export async function registerUser(formData: FormData) {
       password: hashedPassword,
     },
   });
+
+  // Fire-and-forget: don't block sign-in if mail fails. sendEmail() never
+  // throws — errors are reported to telemetry inside the helper.
+  void sendEmail(buildWelcomeEmail({ to: email, name: name || null }));
 
   try {
     await signIn("credentials", {
