@@ -61,12 +61,19 @@ async function analyzeSinglePass(
   orgId: string | null,
   tier: "fast" | "smart" | "deep"
 ): Promise<AnalysisResult> {
+  // 8192 because the schema now carries verdict + verdictReason on top
+  // of the original risks/missingClauses/checklist arrays, AND the
+  // system prompt got the 14-trap checklist + a worked example. With
+  // 4096 the model occasionally truncates the JSON object mid-array
+  // and zod rejects the half-built result with "expected array,
+  // received undefined" on the trailing fields. 8192 leaves plenty of
+  // headroom on both Sonnet and Opus (their output cap is 8192).
   const result = await generate({
     schema: AnalysisResultSchema,
     system: ANALYZE_CONTRACT_SYSTEM,
     prompt: `Проанализируй следующий договор и найди все юридические риски:\n\n${text}`,
     model: tier,
-    maxTokens: 4096,
+    maxTokens: 8192,
     temperature: 0.1,
   });
 
@@ -133,12 +140,17 @@ async function extractRisksForChunk(
   userId: string | null,
   orgId: string | null
 ): Promise<AnalysisRisk[]> {
+  // 4096 instead of 2048: with the expanded prompt (14 traps + worked
+  // example) a chunk that genuinely contains 4-5 risks blows past 2k
+  // output tokens, and the trailing risk gets cut. The risks array
+  // is the only top-level field in ChunkRisksSchema so a partial
+  // response means the entire chunk's worth of work is lost.
   const result = await generate({
     schema: ChunkRisksSchema,
     system: EXTRACT_CHUNK_SYSTEM,
     prompt: `Фрагмент договора (фрагмент ${chunk.index + 1}, символы ${chunk.startChar}-${chunk.endChar}):\n\n${chunk.text}`,
     model: "smart",
-    maxTokens: 2048,
+    maxTokens: 4096,
     temperature: 0.1,
   });
 
@@ -193,7 +205,12 @@ ${riskList || "(рисков не найдено)"}
       system: SYNTHESIZE_SYSTEM,
       prompt,
       model: tier,
-      maxTokens: 2048,
+      // Synthesis output is small in the happy path (≈ 300-500 tokens
+      // — type + parties + verdict + missingClauses + checklist) but
+      // the addition of verdict / verdictReason / longer reasoning
+      // bumped real responses to ~1500 tokens. Bumping to 4096 leaves
+      // 2x headroom against truncation on Sonnet.
+      maxTokens: 4096,
       temperature: 0.1,
     });
 
