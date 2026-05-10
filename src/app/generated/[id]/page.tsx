@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { useToast } from "@/components/toast";
+import { RefinePanel } from "@/components/refine-panel";
 import { getTemplate } from "@/lib/templates";
 import {
   ArrowLeft,
@@ -304,6 +305,16 @@ export default function ViewGeneratedPage() {
                 <Pencil className="h-4 w-4" />
                 Изменить
               </Link>
+              <RefinePanel
+                documentId={doc.id}
+                currentContent={doc.content}
+                onSaved={() => {
+                  // Full reload — refreshes the version count chip,
+                  // the document content, the dashboard sidebar, and
+                  // the new entry in the version history all at once.
+                  window.location.reload();
+                }}
+              />
               <button
                 onClick={handleDelete}
                 disabled={deleting}
