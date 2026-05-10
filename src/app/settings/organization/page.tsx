@@ -393,13 +393,13 @@ export default function OrganizationSettingsPage() {
             id="members"
             className="mb-6 rounded-xl border border-border bg-card p-6"
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Users className="h-5 w-5 text-muted" />
+                <Users className="h-5 w-5 text-muted" aria-hidden="true" />
                 Участники ({details.members.length})
               </h2>
               {canManage && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => handleCreateInvite("MEMBER")}
                     disabled={creatingInvite}
@@ -433,9 +433,9 @@ export default function OrganizationSettingsPage() {
                 return (
                   <li
                     key={m.userId}
-                    className="flex items-center justify-between py-3"
+                    className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-light text-sm font-bold text-primary">
                         {(m.name || m.email)[0]?.toUpperCase()}
                       </div>

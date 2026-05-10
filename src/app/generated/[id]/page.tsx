@@ -250,9 +250,9 @@ export default function ViewGeneratedPage() {
           </div>
 
           {/* Header with actions */}
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+              <h1 className="flex items-center gap-2 text-xl font-bold text-foreground sm:text-2xl">
                 <FileText className="h-6 w-6 text-primary" />
                 {doc.name}
               </h1>
@@ -329,7 +329,7 @@ export default function ViewGeneratedPage() {
           {/* Document preview — A4 page chrome with proper typography. */}
           <div className="my-6 flex justify-center">
             <div className="w-full max-w-2xl rounded-lg bg-card shadow-2xl">
-              <div className="document-preview p-10 sm:p-12 lg:p-14">
+              <div className="document-preview p-6 sm:p-10 lg:p-14">
                 {renderDocumentParagraphs(doc.content)}
               </div>
             </div>

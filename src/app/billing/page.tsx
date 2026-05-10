@@ -219,7 +219,7 @@ export default function BillingPage() {
       <main id="main-content" className="flex-1">
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
               Биллинг и тарифы
             </h1>
             <p className="mt-2 text-base text-muted">

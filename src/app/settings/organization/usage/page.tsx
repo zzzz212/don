@@ -261,7 +261,7 @@ export default function OrgUsagePage() {
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                       <thead>
                         <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-muted">
                           <th className="py-2 pr-3">Участник</th>
@@ -349,7 +349,7 @@ export default function OrgUsagePage() {
                           </td>
                         </tr>
                       </tfoot>
-                    </table>
+                    </table></div>
                   </div>
                 )}
               </section>

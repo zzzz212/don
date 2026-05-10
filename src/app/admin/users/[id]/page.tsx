@@ -335,7 +335,7 @@ export default function AdminUserDetailPage() {
                     <CreditCard className="h-4 w-4" />
                     Платежи (последние 30 дней)
                   </h2>
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-muted">
                         <th className="py-2 pr-3">Дата</th>
@@ -370,7 +370,7 @@ export default function AdminUserDetailPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </section>
               )}
             </div>

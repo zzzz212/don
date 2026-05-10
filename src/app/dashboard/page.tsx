@@ -180,26 +180,26 @@ export default function DashboardPage() {
       <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Дашборд</h1>
               <p className="mt-1 text-sm text-muted">
                 Обзор ваших документов и анализов
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Link
                 href="/templates"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface sm:flex-none"
               >
-                <FolderOpen className="h-4 w-4" />
+                <FolderOpen className="h-4 w-4" aria-hidden="true" />
                 Шаблоны
               </Link>
               <Link
                 href="/analyze"
-                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark sm:flex-none"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4" aria-hidden="true" />
                 Новый анализ
               </Link>
             </div>
@@ -321,7 +321,7 @@ export default function DashboardPage() {
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-card-hover"
+                      className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover sm:gap-4 sm:px-6"
                     >
                       <Link
                         href={`/report/${doc.id}`}
@@ -365,10 +365,11 @@ export default function DashboardPage() {
                       <button
                         onClick={() => deleteDocument(doc.id, "analysis")}
                         disabled={deleting === doc.id}
-                        className="shrink-0 p-2 text-muted transition-colors hover:text-danger disabled:opacity-50"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-danger disabled:opacity-50"
+                        aria-label="Удалить анализ"
                         title="Удалить анализ"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                   ))}
@@ -400,7 +401,7 @@ export default function DashboardPage() {
                 {generatedDocs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-card-hover group"
+                    className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover sm:gap-4 sm:px-6 group"
                   >
                     <Link
                       href={`/generated/${doc.id}`}

@@ -200,7 +200,7 @@ function UsersPageInner() {
           {data && !loading && (
             <>
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-border bg-surface/50 text-left text-xs font-semibold uppercase tracking-wider text-muted">
                       <th className="px-4 py-3">Email</th>
@@ -275,7 +275,7 @@ function UsersPageInner() {
                       );
                     })}
                   </tbody>
-                </table>
+                </table></div>
               </div>
 
               {/* Pagination */}
