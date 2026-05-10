@@ -11,6 +11,11 @@ import { checkQuotaSafe } from "@/lib/quota";
 import { reportError } from "@/lib/telemetry";
 import { ensureActiveOrg } from "@/lib/org";
 
+// Pro-tier max function duration. Doc generation on Sonnet for a long
+// template can take 30-60s; the Hobby 60s default is too tight when
+// the model retries on the structured-output schema.
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";

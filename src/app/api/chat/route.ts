@@ -13,6 +13,11 @@ import { ensureActiveOrg } from "@/lib/org";
 import { getEffectiveUserPlan } from "@/lib/plans";
 import { captureEvent } from "@/lib/analytics/server";
 
+// Streaming chat with long answers (Sonnet on PRO can generate 1500+
+// tokens, ~40-60s). Hobby plan caps this at 60s anyway, but on Pro
+// the headroom keeps long legal explanations from getting cut off.
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";

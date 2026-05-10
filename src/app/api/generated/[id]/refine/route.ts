@@ -58,6 +58,10 @@ function extractJsonObject(text: string): string | null {
 // Both paths share the same SSE wire format. The client distinguishes
 // them via the "mode" event we emit at the start of each path.
 
+// Regen-mode streams the whole rewritten contract — 80-150s on long
+// documents. Patch mode is usually <15s but the route serves both.
+export const maxDuration = 300;
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

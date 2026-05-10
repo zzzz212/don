@@ -19,6 +19,20 @@ import { embedDocumentChunks } from "@/lib/document-search";
 import { ensureActiveOrg } from "@/lib/org";
 import { captureEvent } from "@/lib/analytics/server";
 
+// Vercel function timeout. Default Hobby = 60s, Pro = 300s, Enterprise =
+// 900s. We ask for 300 because:
+//   • A typical analysis on Sonnet runs 20-60s for a single-pass short
+//     contract.
+//   • Map-reduce on a long contract (40+ KB) does 5-10 chunks of
+//     ~15s each + a synthesis step → easily 80-150s wall-clock.
+//   • Anthropic streaming would dodge the timeout, but our analyze
+//     path needs the full structured result before persisting, so we
+//     can't trade structure for streaming here.
+// Hobby plan caps this at 60 regardless. The Pro plan ($20/mo) is the
+// production-grade choice; on Hobby long contracts will still time out
+// and the user should chunk them manually or wait for Vercel upgrade.
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
