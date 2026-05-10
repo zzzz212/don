@@ -25,7 +25,7 @@ export default function TemplateFillPage() {
 
   const [formData, setFormData] = useState<Record<string, string>>(() => {
     if (typeof window !== "undefined") {
-      const saved = sessionStorage.getItem(`template_${templateId}`);
+      const saved = localStorage.getItem(`template_${templateId}`);
       return saved ? JSON.parse(saved) : {};
     }
     return {};
@@ -37,7 +37,7 @@ export default function TemplateFillPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && Object.keys(formData).length > 0) {
-      sessionStorage.setItem(`template_${templateId}`, JSON.stringify(formData));
+      localStorage.setItem(`template_${templateId}`, JSON.stringify(formData));
     }
   }, [formData, templateId]);
 

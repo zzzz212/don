@@ -177,6 +177,20 @@ body {
   font-size: 0.85em;
 }
 
+/* Generated-document preview chrome — Times-style serif so legal copy
+   feels familiar to lawyers reviewing it. */
+.document-preview {
+  font-family: "Times New Roman", "Liberation Serif", Georgia, serif;
+  color: var(--foreground);
+}
+.document-preview p {
+  text-indent: 1.25em;
+}
+.document-preview h2,
+.document-preview h3 {
+  text-indent: 0;
+}
+
 /* Print styles for PDF export */
 @media print {
   header, footer {

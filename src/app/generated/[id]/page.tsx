@@ -26,6 +26,61 @@ interface GeneratedDocument {
   createdAt: string;
 }
 
+/**
+ * Render the generated contract text with paragraph-aware typography.
+ * Generated documents use plain text with blank-line paragraph breaks
+ * and section headings written in ALL CAPS or beginning with a digit
+ * + dot. Detect the obvious cases so the preview reads like a real
+ * legal document instead of a monospaced wall of text.
+ */
+function renderDocumentParagraphs(content: string): React.ReactNode {
+  const blocks = content.split(/\n\s*\n/);
+  return blocks.map((rawBlock, i) => {
+    const block = rawBlock.trim();
+    if (!block) return null;
+
+    const isAllCapsHeading =
+      block.length > 1 &&
+      block.length < 100 &&
+      block === block.toUpperCase() &&
+      /[А-ЯA-Z]/.test(block);
+    const isNumberedSection = /^\d+\.\s+[А-ЯA-Z]/.test(block);
+
+    if (isAllCapsHeading) {
+      return (
+        <h2
+          key={i}
+          className="mb-3 mt-6 text-center text-base font-bold uppercase tracking-wide text-foreground first:mt-0"
+        >
+          {block}
+        </h2>
+      );
+    }
+    if (isNumberedSection) {
+      // Show first line as a section heading, rest as a justified paragraph.
+      const [firstLine, ...rest] = block.split("\n");
+      return (
+        <div key={i} className="mb-4 mt-5 first:mt-0">
+          <h3 className="mb-2 text-sm font-bold text-foreground">{firstLine}</h3>
+          {rest.length > 0 && (
+            <p className="whitespace-pre-line text-justify text-sm leading-relaxed text-foreground">
+              {rest.join("\n")}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return (
+      <p
+        key={i}
+        className="mb-3 whitespace-pre-line text-justify text-sm leading-relaxed text-foreground"
+      >
+        {block}
+      </p>
+    );
+  });
+}
+
 export default function ViewGeneratedPage() {
   const params = useParams();
   const router = useRouter();
@@ -218,7 +273,7 @@ export default function ViewGeneratedPage() {
               </Link>
               <button
                 onClick={() => {
-                  sessionStorage.setItem(
+                  localStorage.setItem(
                     `template_${doc.templateId}`,
                     JSON.stringify(doc.formData)
                   );
@@ -239,15 +294,11 @@ export default function ViewGeneratedPage() {
             </div>
           </div>
 
-          {/* Document preview in A4 format */}
-          <div className="flex justify-center my-6">
-            <div className="w-full max-w-2xl" style={{ aspectRatio: "210/297" }}>
-              <div className="h-full bg-white rounded-lg shadow-2xl overflow-auto">
-                <div className="p-8 h-full">
-                  <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-foreground break-words">
-                    {doc.content}
-                  </pre>
-                </div>
+          {/* Document preview — A4 page chrome with proper typography. */}
+          <div className="my-6 flex justify-center">
+            <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
+              <div className="document-preview p-10 sm:p-12 lg:p-14">
+                {renderDocumentParagraphs(doc.content)}
               </div>
             </div>
           </div>
