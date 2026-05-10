@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, AdminAccessError } from "@/lib/admin";
 import { reportError } from "@/lib/telemetry";
 import { isPaidPlan, type PaidPlan } from "@/lib/legal-info";
+import { logAudit, attribution } from "@/lib/audit";
 
 // POST /api/admin/users/[id]/change-plan  { orgId, plan, periodMonths?: number }
 //
@@ -92,6 +93,15 @@ export async function POST(
           },
         }),
       ]);
+      void logAudit({
+        orgId,
+        userId: session!.user!.id,
+        action: "billing.plan_changed_manually",
+        target: orgId,
+        targetType: "subscription",
+        payload: { previousPlan: org.plan, newPlan: "FREE", targetUserId: userId },
+        ...attribution(request),
+      });
       return NextResponse.json({
         ok: true,
         plan: "FREE" as const,
@@ -128,6 +138,21 @@ export async function POST(
         },
       }),
     ]);
+
+    void logAudit({
+      orgId,
+      userId: session!.user!.id,
+      action: "billing.plan_changed_manually",
+      target: orgId,
+      targetType: "subscription",
+      payload: {
+        previousPlan: org.plan,
+        newPlan: paidPlan,
+        periodMonths,
+        targetUserId: userId,
+      },
+      ...attribution(request),
+    });
 
     return NextResponse.json({
       ok: true,

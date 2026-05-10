@@ -11,6 +11,7 @@ import {
 } from "@/lib/billing";
 import { isPaidPlan } from "@/lib/legal-info";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit, attribution } from "@/lib/audit";
 
 // POST /api/billing/checkout  { plan: "PRO" | "BUSINESS" }
 //   Creates a pending Payment + ЮKassa payment, returns the confirmation
@@ -104,6 +105,15 @@ export async function POST(request: NextRequest) {
       orgId,
       event: "checkout_started",
       properties: { plan, paymentId: sessionResult.paymentId },
+    });
+    void logAudit({
+      orgId,
+      userId,
+      action: "billing.checkout_started",
+      target: sessionResult.paymentId,
+      targetType: "payment",
+      payload: { plan },
+      ...attribution(request),
     });
 
     return NextResponse.json({

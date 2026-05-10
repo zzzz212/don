@@ -3,6 +3,7 @@ import { applySucceededPayment, markPaymentCanceled } from "@/lib/billing";
 import { prisma } from "@/lib/db";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit } from "@/lib/audit";
 
 // POST /api/billing/webhook  (called by ЮKassa)
 //
@@ -62,6 +63,17 @@ export async function POST(request: NextRequest) {
             orgId: persisted.orgId,
             event: "payment_succeeded",
             properties: {
+              plan: persisted.plan,
+              amountRub: Math.round(persisted.amountKopecks / 100),
+            },
+          });
+          void logAudit({
+            orgId: persisted.orgId,
+            userId: persisted.userId,
+            action: "billing.payment_succeeded",
+            target: paymentId,
+            targetType: "payment",
+            payload: {
               plan: persisted.plan,
               amountRub: Math.round(persisted.amountKopecks / 100),
             },

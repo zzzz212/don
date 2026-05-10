@@ -50,6 +50,7 @@ model User {
   memberships        Membership[]
   passwordResetTokens PasswordResetToken[]
   payments           Payment[]
+  auditEvents        AuditEvent[]
 }
 
 // Single-use, time-limited password-reset token. Only the SHA-256 hash is
@@ -68,6 +69,42 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// Workspace + account audit log. One row per security/billing-relevant
+// action. Actor is always identified (userId not nullable) so we can
+// answer "who did X" definitively. orgId is nullable for account-level
+// events (2FA enabled, password changed) and deleted-workspace events
+// (onDelete: SetNull keeps the audit row visible after the org is gone).
+//
+// PII rules: payload may contain ids and categorical labels but never
+// emails, names, document content, or auth secrets. The redact helper
+// in src/lib/audit.ts strips known sensitive fields before insert.
+model AuditEvent {
+  id         String   @id @default(cuid())
+  orgId      String?
+  userId     String
+  // Controlled vocabulary — see AuditAction in src/lib/audit.ts.
+  action     String
+  // Affected entity reference — e.g. membershipId, paymentId, inviteId.
+  target     String?
+  // Hint for what `target` refers to — e.g. "membership" | "payment" |
+  // "invite" | "document" | "workspace".
+  targetType String?
+  // Free-form context. JSON. Old/new values, role, plan, etc.
+  payload    Json?
+  // Best-effort attribution from request headers. Useful for "alert me
+  // if my account is signed in from a new IP" features later.
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action])
 }
 
 // A workspace shared by 1..N users. Plans, quotas, and document visibility
@@ -97,6 +134,7 @@ model Organization {
   aiUsage            AiUsage[]
   subscription       Subscription?
   payments           Payment[]
+  auditEvents        AuditEvent[]
 }
 
 // One row per Organization that has ever paid. Updated in place on every

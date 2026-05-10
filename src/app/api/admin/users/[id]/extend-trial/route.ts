@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, AdminAccessError } from "@/lib/admin";
 import { reportError } from "@/lib/telemetry";
 import { TRIAL_DAYS } from "@/lib/legal-info";
+import { logAudit, attribution } from "@/lib/audit";
 
 // POST /api/admin/users/[id]/extend-trial  { orgId, days?: number }
 //
@@ -91,6 +92,20 @@ export async function POST(
         data: { trialActivatedAt: now },
       }),
     ]);
+
+    void logAudit({
+      orgId,
+      userId: session!.user!.id,
+      action: "trial.extended",
+      target: orgId,
+      targetType: "workspace",
+      payload: {
+        days,
+        targetUserId: userId,
+        newTrialEndsAt: newTrialEndsAt.toISOString(),
+      },
+      ...attribution(request),
+    });
 
     return NextResponse.json({
       ok: true,

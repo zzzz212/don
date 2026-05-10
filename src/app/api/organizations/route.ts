@@ -9,6 +9,7 @@ import {
 import { getEffectivePlan } from "@/lib/plans";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit, attribution } from "@/lib/audit";
 
 // GET /api/organizations
 //   List the workspaces the current user is a member of, with their role
@@ -172,6 +173,15 @@ export async function POST(request: Request) {
       orgId: org.id,
       event: "workspace_created",
       properties: { plan: org.plan },
+    });
+    void logAudit({
+      orgId: org.id,
+      userId: session.user.id,
+      action: "workspace.created",
+      target: org.id,
+      targetType: "workspace",
+      payload: { name: org.name, plan: org.plan },
+      ...attribution(request),
     });
 
     // No trial for additional orgs — the trial is granted exactly once,

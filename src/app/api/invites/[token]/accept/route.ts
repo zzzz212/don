@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit, attribution } from "@/lib/audit";
 
 // POST /api/invites/[token]/accept
 //   Convert an invite into a Membership for the logged-in user. Idempotent
@@ -11,7 +12,7 @@ import { captureEvent } from "@/lib/analytics/server";
 //   stamped so the same link can't be reused by someone else later.
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
@@ -90,6 +91,15 @@ export async function POST(
       orgId: invite.orgId,
       event: "invite_accepted",
       properties: { role: invite.role },
+    });
+    void logAudit({
+      orgId: invite.orgId,
+      userId,
+      action: "member.invite_accepted",
+      target: invite.id,
+      targetType: "invite",
+      payload: { role: invite.role },
+      ...attribution(request),
     });
 
     return NextResponse.json({ success: true, orgId: invite.orgId });

@@ -6,6 +6,7 @@ import { reportError } from "@/lib/telemetry";
 import { sendEmail } from "@/lib/email";
 import { buildInviteEmail } from "@/lib/email/templates/invite";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit, attribution } from "@/lib/audit";
 
 // Token is 32 random bytes hex-encoded — 256 bits of entropy, unguessable.
 const TOKEN_BYTES = 32;
@@ -154,6 +155,16 @@ export async function POST(
         emailProvided: !!email,
         emailDelivered: emailDelivered?.ok ?? null,
       },
+    });
+    void logAudit({
+      orgId: id,
+      userId: session.user.id,
+      action: "member.invited",
+      target: invite.id,
+      targetType: "invite",
+      // Don't log raw email — redact() catches it but defensive double-check.
+      payload: { role, emailProvided: !!email },
+      ...attribution(request),
     });
 
     return NextResponse.json({

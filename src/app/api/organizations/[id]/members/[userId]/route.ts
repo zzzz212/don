@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OrgAccessError, requireMembership, type Role } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
+import { logAudit, attribution } from "@/lib/audit";
 
 const VALID_ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER"];
 
@@ -64,9 +65,20 @@ export async function PATCH(
       }
     }
 
+    const previousRole = target.role;
     const updated = await prisma.membership.update({
       where: { userId_orgId: { userId: targetUserId, orgId } },
       data: { role: newRole },
+    });
+
+    void logAudit({
+      orgId,
+      userId: session.user.id,
+      action: "member.role_changed",
+      target: targetUserId,
+      targetType: "membership",
+      payload: { previousRole, newRole },
+      ...attribution(request),
     });
 
     return NextResponse.json({
@@ -91,7 +103,7 @@ export async function PATCH(
 //   themselves (leave the workspace) regardless of role, except the last
 //   OWNER (same rule).
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; userId: string }> }
 ) {
   try {
@@ -185,6 +197,16 @@ export async function DELETE(
           });
         }
       }
+    });
+
+    void logAudit({
+      orgId,
+      userId: session.user.id,
+      action: removingSelf ? "member.left" : "member.removed",
+      target: targetUserId,
+      targetType: "membership",
+      payload: { previousRole: targetMembership.role, removingSelf },
+      ...attribution(request),
     });
 
     return NextResponse.json({ success: true });

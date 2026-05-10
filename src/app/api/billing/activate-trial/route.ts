@@ -8,6 +8,7 @@ import {
 import { activateTrial } from "@/lib/billing/trial";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit } from "@/lib/audit";
 
 // POST /api/billing/activate-trial
 //   Manually claim the trial — only for legacy accounts that existed
@@ -64,6 +65,14 @@ export async function POST() {
       orgId,
       event: "trial_activated_manually",
       properties: { trialEndsAt: result.trialEndsAt ?? null },
+    });
+    void logAudit({
+      orgId,
+      userId,
+      action: "trial.activated",
+      target: orgId,
+      targetType: "workspace",
+      payload: { trialEndsAt: result.trialEndsAt },
     });
 
     return NextResponse.json({
