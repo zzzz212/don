@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
 
 // POST /api/invites/[token]/accept
 //   Convert an invite into a Membership for the logged-in user. Idempotent
@@ -82,6 +83,13 @@ export async function POST(
         where: { id: userId },
         data: { activeOrgId: invite.orgId },
       });
+    });
+
+    void captureEvent({
+      userId,
+      orgId: invite.orgId,
+      event: "invite_accepted",
+      properties: { role: invite.role },
     });
 
     return NextResponse.json({ success: true, orgId: invite.orgId });

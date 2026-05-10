@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { applySucceededPayment, markPaymentCanceled } from "@/lib/billing";
+import { prisma } from "@/lib/db";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
 
 // POST /api/billing/webhook  (called by ЮKassa)
 //
@@ -48,6 +50,24 @@ export async function POST(request: NextRequest) {
   try {
     if (event === "payment.succeeded") {
       const result = await applySucceededPayment(paymentId);
+      if (result.ok) {
+        // Re-read the payment to attach userId/orgId/plan for analytics.
+        const persisted = await prisma.payment.findUnique({
+          where: { providerPaymentId: paymentId },
+          select: { userId: true, orgId: true, plan: true, amountKopecks: true },
+        });
+        if (persisted) {
+          void captureEvent({
+            userId: persisted.userId,
+            orgId: persisted.orgId,
+            event: "payment_succeeded",
+            properties: {
+              plan: persisted.plan,
+              amountRub: Math.round(persisted.amountKopecks / 100),
+            },
+          });
+        }
+      }
       if (!result.ok) {
         // Don't return 5xx for "status not actually succeeded" — that's
         // a legitimate no-op (e.g. notification arrived before the
@@ -67,6 +87,21 @@ export async function POST(request: NextRequest) {
         paymentId,
         body.object?.cancellation_details?.reason
       );
+      const persisted = await prisma.payment.findUnique({
+        where: { providerPaymentId: paymentId },
+        select: { userId: true, orgId: true, plan: true },
+      });
+      if (persisted) {
+        void captureEvent({
+          userId: persisted.userId,
+          orgId: persisted.orgId,
+          event: "payment_failed",
+          properties: {
+            plan: persisted.plan,
+            reason: body.object?.cancellation_details?.reason ?? event,
+          },
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 

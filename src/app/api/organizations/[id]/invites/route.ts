@@ -5,6 +5,7 @@ import { OrgAccessError, requireMembership, type Role } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
 import { sendEmail } from "@/lib/email";
 import { buildInviteEmail } from "@/lib/email/templates/invite";
+import { captureEvent } from "@/lib/analytics/server";
 
 // Token is 32 random bytes hex-encoded — 256 bits of entropy, unguessable.
 const TOKEN_BYTES = 32;
@@ -143,6 +144,17 @@ export async function POST(
         emailDelivered = { ok: result.ok, error: result.error };
       }
     }
+
+    void captureEvent({
+      userId: session.user.id,
+      orgId: id,
+      event: "member_invited",
+      properties: {
+        role,
+        emailProvided: !!email,
+        emailDelivered: emailDelivered?.ok ?? null,
+      },
+    });
 
     return NextResponse.json({
       invite: {

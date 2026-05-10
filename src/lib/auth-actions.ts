@@ -13,6 +13,7 @@ import {
   MIN_PASSWORD_LEN,
 } from "@/lib/password-reset";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -34,17 +35,25 @@ export async function registerUser(formData: FormData) {
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
-  await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       name: name || null,
       email,
       password: hashedPassword,
     },
+    select: { id: true },
   });
 
   // Fire-and-forget: don't block sign-in if mail fails. sendEmail() never
   // throws — errors are reported to telemetry inside the helper.
   void sendEmail(buildWelcomeEmail({ to: email, name: name || null }));
+
+  // Analytics: fire-and-forget. captureEvent never throws.
+  void captureEvent({
+    userId: newUser.id,
+    event: "signup_completed",
+    properties: { provider: "credentials" },
+  });
 
   try {
     await signIn("credentials", {
@@ -139,6 +148,10 @@ export async function requestPasswordReset(formData: FormData): Promise<{ ok: tr
   try {
     const baseUrl = await resolveBaseUrl();
     await doRequestPasswordReset(email, baseUrl);
+    void captureEvent({
+      userId: null,
+      event: "password_reset_requested",
+    });
     return { ok: true };
   } catch (e) {
     await reportError(e, { op: "auth.password-reset.request" });
@@ -163,7 +176,13 @@ export async function confirmPasswordReset(
 
   try {
     const result = await doConsumePasswordResetToken(token, password);
-    if (result.ok) return { ok: true };
+    if (result.ok) {
+      void captureEvent({
+        userId: null,
+        event: "password_reset_completed",
+      });
+      return { ok: true };
+    }
 
     switch (result.reason) {
       case "WEAK_PASSWORD":

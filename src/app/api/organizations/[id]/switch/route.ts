@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OrgAccessError, requireMembership } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
 
 // POST /api/organizations/[id]/switch
 //   Set this workspace as the user's active context. Membership is required
@@ -25,6 +26,12 @@ export async function POST(
     await prisma.user.update({
       where: { id: session.user.id },
       data: { activeOrgId: id },
+    });
+
+    void captureEvent({
+      userId: session.user.id,
+      orgId: id,
+      event: "workspace_switched",
     });
 
     return NextResponse.json({ success: true, activeOrgId: id });

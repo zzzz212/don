@@ -17,6 +17,7 @@ import { logOcrUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks } from "@/lib/document-search";
 import { ensureActiveOrg } from "@/lib/org";
+import { captureEvent } from "@/lib/analytics/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -341,6 +342,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    void captureEvent({
+      userId: userId ?? null,
+      orgId: orgId ?? null,
+      event: "analysis_completed",
+      properties: {
+        textLength: contractText.length,
+        usedOcr,
+        score: analysis.score,
+        risksCount: analysis.risks?.length ?? 0,
+        savedToDb: documentId !== null,
+      },
+    });
+    if (usedOcr) {
+      void captureEvent({
+        userId: userId ?? null,
+        orgId: orgId ?? null,
+        event: "ocr_used",
+        properties: { textLength: contractText.length },
+      });
+    }
+
     return NextResponse.json({
       ...analysis,
       documentId,
@@ -354,6 +376,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     await reportError(error, { op: "analyze" });
+    void captureEvent({
+      userId: null,
+      event: "analysis_failed",
+      properties: { reason: (error as Error).message?.slice(0, 100) ?? "unknown" },
+    });
     return NextResponse.json(
       { error: "Ошибка при анализе документа. Попробуйте позже." },
       { status: 500 }

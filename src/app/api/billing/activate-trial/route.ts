@@ -7,6 +7,7 @@ import {
 } from "@/lib/org";
 import { activateTrial } from "@/lib/billing/trial";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
 
 // POST /api/billing/activate-trial
 //   Manually claim the trial — only for legacy accounts that existed
@@ -57,6 +58,13 @@ export async function POST() {
       };
       return NextResponse.json({ error: m.msg }, { status: m.code });
     }
+
+    void captureEvent({
+      userId,
+      orgId,
+      event: "trial_activated_manually",
+      properties: { trialEndsAt: result.trialEndsAt ?? null },
+    });
 
     return NextResponse.json({
       ok: true,

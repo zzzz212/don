@@ -8,6 +8,7 @@ import {
 } from "@/lib/org";
 import { getEffectivePlan } from "@/lib/plans";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
 
 // GET /api/organizations
 //   List the workspaces the current user is a member of, with their role
@@ -164,6 +165,13 @@ export async function POST(request: Request) {
         data: { userId: session.user.id, orgId: created.id, role: "OWNER" },
       });
       return created;
+    });
+
+    void captureEvent({
+      userId: session.user.id,
+      orgId: org.id,
+      event: "workspace_created",
+      properties: { plan: org.plan },
     });
 
     // No trial for additional orgs — the trial is granted exactly once,

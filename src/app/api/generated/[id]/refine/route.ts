@@ -22,6 +22,7 @@ import {
   applyRefinePatch,
   type RefineOperation,
 } from "@/lib/contracts/patch";
+import { captureEvent } from "@/lib/analytics/server";
 
 // Strip markdown / prose around a JSON object so we can z.parse it. AI
 // providers vary on JSON-mode strictness — some return ```json ...```
@@ -275,6 +276,17 @@ export async function POST(
             summaryFromAi: patch.summary,
             opsApplied: apply.appliedOps,
           });
+          void captureEvent({
+            userId,
+            orgId,
+            event: "document_refined",
+            properties: {
+              mode: "patch",
+              opsApplied: apply.appliedOps.length,
+              versionNumber: saved.versionNumber,
+              templateId: doc.templateId,
+            },
+          });
           yield {
             kind: "saved",
             payload: {
@@ -398,6 +410,16 @@ async function* runRegenAndPersist(
       originalFormData: doc.formData,
       instruction: userPrompt,
       mode: "regen",
+    });
+    void captureEvent({
+      userId,
+      orgId,
+      event: "document_refined",
+      properties: {
+        mode: "regen",
+        versionNumber: saved.versionNumber,
+        templateId: doc.templateId,
+      },
     });
     yield {
       kind: "saved",

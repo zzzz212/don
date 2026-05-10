@@ -10,6 +10,7 @@ import {
   isBillingConfigured,
 } from "@/lib/billing";
 import { isPaidPlan } from "@/lib/legal-info";
+import { captureEvent } from "@/lib/analytics/server";
 
 // POST /api/billing/checkout  { plan: "PRO" | "BUSINESS" }
 //   Creates a pending Payment + ЮKassa payment, returns the confirmation
@@ -96,6 +97,13 @@ export async function POST(request: NextRequest) {
       userEmail,
       plan,
       returnUrl,
+    });
+
+    void captureEvent({
+      userId,
+      orgId,
+      event: "checkout_started",
+      properties: { plan, paymentId: sessionResult.paymentId },
     });
 
     return NextResponse.json({

@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
 import { ensureActiveOrg } from "@/lib/org";
+import { captureEvent } from "@/lib/analytics/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,6 +50,15 @@ export async function POST(request: NextRequest) {
     const orgId = userId
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
+
+    // Track at the request level, not per token. One event per user
+    // message is the unit a funnel actually cares about.
+    void captureEvent({
+      userId,
+      orgId,
+      event: "chat_message_sent",
+      properties: { messagesInThread: messages.length },
+    });
 
     // (RAG removed — see commit dropping /legal. The 6-article seed
     // wasn't enough corpus for citation to be useful, and Anthropic's

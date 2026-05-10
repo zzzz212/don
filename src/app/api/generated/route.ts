@@ -5,6 +5,7 @@ import { ensureActiveOrg } from "@/lib/org";
 import { checkQuotaSafe } from "@/lib/quota";
 import { reportError } from "@/lib/telemetry";
 import { getTemplate } from "@/lib/templates";
+import { captureEvent } from "@/lib/analytics/server";
 
 export async function GET() {
   try {
@@ -183,6 +184,16 @@ export async function POST(request: NextRequest) {
         inputTokens: 0,
         outputTokens: 0,
         latencyMs: 0,
+      },
+    });
+
+    void captureEvent({
+      userId,
+      orgId,
+      event: "document_generated",
+      properties: {
+        templateId,
+        contentLength: content.length,
       },
     });
 
