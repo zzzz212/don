@@ -159,10 +159,12 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
   // Grant the trial only on the user's *first* org. Subsequent orgs they
   // explicitly create later must not re-extend the trial — that's the
   // anti-abuse guard. We're inside the bootstrap branch (no other
-  // memberships) so this is the first-org case by construction.
-  const trialEndsAt = new Date(
-    Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000
-  );
+  // memberships) so this is the first-org case by construction. The
+  // trial is now user-scoped (User.trialEndsAt is authoritative); the
+  // Organization.trialEndsAt copy is kept in sync only so legacy
+  // queries don't break.
+  const now = new Date();
+  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
   const orgId = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
@@ -183,9 +185,12 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
       where: { id: userId },
       data: {
         activeOrgId: org.id,
-        // Mark the trial as claimed for this account — guards against the
-        // user later deleting and re-bootstrapping to farm a second trial.
-        trialActivatedAt: new Date(),
+        // Mark the trial as claimed (lifetime flag) and grant the trial
+        // window on the user record itself — single source of truth for
+        // quota lookups. Mirrors Organization.trialEndsAt above for
+        // legacy compatibility.
+        trialActivatedAt: now,
+        trialEndsAt,
       },
     });
 

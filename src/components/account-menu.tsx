@@ -68,20 +68,19 @@ export function AccountMenu() {
     };
   }, [user]);
 
-  // Lightweight billing snapshot for the trial pill + plan label. Lives
-  // here, not in OrgSwitcher, because the plan is a user-scoped concept
-  // (a single subscription gives you PRO across every workspace you
-  // own — see the billing/plan-on-user migration). Quietly skips on
-  // error; chip just won't render.
+  // Lightweight USER-scoped plan probe. Hits /api/account/plan, not
+  // /api/billing/status — the latter requires OWNER on the active
+  // workspace and would 403 for a MEMBER who's sitting in someone
+  // else's org. Plan + trial belong to the user account itself.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    fetch("/api/billing/status")
+    fetch("/api/account/plan")
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
         if (cancelled || !json) return;
         setBilling({
-          plan: json.effectivePlan ?? "FREE",
+          plan: json.plan ?? "FREE",
           isTrial: Boolean(json.isTrial),
           trialDaysLeft:
             typeof json.trialDaysLeft === "number" ? json.trialDaysLeft : null,

@@ -10,21 +10,23 @@ datasource db {
 }
 
 model User {
-  id                 String                @id @default(cuid())
-  name               String?
-  email              String                @unique
-  emailVerified      DateTime?
-  image              String?
-  password           String?
-  // Deprecated — kept for backward compatibility during the rollout.
-  // The source of truth for plan is now Organization.plan; this field
-  // becomes the seed for the user's auto-created personal workspace.
-  plan               String                @default("FREE")
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  // Authoritative plan for this user account. A single PRO/BUSINESS
+  // subscription unlocks the tier in EVERY workspace they own — quotas,
+  // OCR, etc. all read from here. Legacy column on Organization.plan is
+  // still written-through for backwards compatibility with existing
+  // billing routes; getEffectiveUserPlan() prefers User.plan.
+  plan          String    @default("FREE")
 
   // Currently active workspace. Set lazily on first authenticated request
   // (see ensureActiveOrg in src/lib/org.ts) so existing users transparently
   // get a "Personal workspace" with all their existing data attached.
-  activeOrgId        String?
+  activeOrgId String?
 
   // Lifetime per-user "trial used" flag. Set when the trial is granted
   // (either automatically on first-org bootstrap or manually via the
@@ -32,26 +34,34 @@ model User {
   // pre-dates the trial feature). Once non-null, the user can never
   // re-claim the trial — prevents recreating workspaces to farm extra
   // free PRO time.
-  trialActivatedAt   DateTime?
+  trialActivatedAt DateTime?
 
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  // While this is in the future, the user gets PRO-tier features across
+  // all workspaces they own. Set on first-time bootstrap of the user's
+  // personal workspace, or via /api/billing/activate-trial for legacy
+  // accounts. Cleared when a paid subscription takes over (the user is
+  // already on PRO via .plan, no need for the trial bridge).
+  trialEndsAt DateTime?
 
-  accounts           Account[]
-  sessions           Session[]
-  documents          Document[]
-  generatedDocuments GeneratedDocument[]
-  chats              Chat[]
-  counterpartyChecks CounterpartyCheck[]
-  documentVersions   DocumentVersion[]
-  versionComparisons VersionComparison[]
-  legalReferences    LegalReference[]
-  aiUsage            AiUsage[]
-  memberships        Membership[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  documents           Document[]
+  generatedDocuments  GeneratedDocument[]
+  chats               Chat[]
+  counterpartyChecks  CounterpartyCheck[]
+  documentVersions    DocumentVersion[]
+  versionComparisons  VersionComparison[]
+  legalReferences     LegalReference[]
+  aiUsage             AiUsage[]
+  memberships         Membership[]
   passwordResetTokens PasswordResetToken[]
-  payments           Payment[]
-  auditEvents        AuditEvent[]
-  totp               TotpCredential?
+  payments            Payment[]
+  subscriptions       Subscription[]
+  auditEvents         AuditEvent[]
+  totp                TotpCredential?
 }
 
 // Time-based One-Time Password (TOTP) credential for 2FA. One row per
@@ -135,23 +145,25 @@ model AuditEvent {
   @@index([action])
 }
 
-// A workspace shared by 1..N users. Plans, quotas, and document visibility
-// are scoped here. Every user always has at least one Organization (their
-// personal workspace, auto-created on first login).
+// A workspace shared by 1..N users. Documents and audit are scoped here.
+// Plan & trial are NO LONGER authoritative on Organization (User.plan /
+// User.trialEndsAt now own those concepts) but the columns remain for
+// backwards compatibility — existing billing webhooks still write through,
+// and old admin tooling reads them. New code path: getEffectiveUserPlan().
 model Organization {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  plan        String   @default("FREE")
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+  // Deprecated authority: kept so existing routes don't break mid-rollout.
+  // Source of truth is now User.plan (one subscription = PRO across all
+  // owned workspaces).
+  plan String @default("FREE")
 
-  // While this is in the future, the workspace gets PRO-tier features
-  // even if `plan == "FREE"`. Set on first-time bootstrap of a user's
-  // personal workspace (one trial per user) and never extended for
-  // additional workspaces created by the same user. Null = no trial.
+  // Deprecated authority: see User.trialEndsAt for the new source of truth.
   trialEndsAt DateTime?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   memberships        Membership[]
   invites            Invite[]
@@ -165,36 +177,44 @@ model Organization {
   auditEvents        AuditEvent[]
 }
 
-// One row per Organization that has ever paid. Updated in place on every
-// renewal — keeps things simple. Historical record of what was bought
-// when lives in Payment[].
+// Per-user paid subscription. One row per user — the plan applies to
+// every workspace they own. orgId is denormalised onto the row (the
+// workspace they were on when they checked out) but is NOT what the
+// quota check reads — User.plan is.
+//
+// During rollout, both the legacy per-org column and the new userId
+// column exist; getEffectiveUserPlan() reads via userId. The unique on
+// orgId stays to prevent the legacy code path from creating duplicate
+// rows for the same workspace.
 model Subscription {
-  id                 String   @id @default(cuid())
-  orgId              String   @unique
-  // The plan the customer is paying for. Distinct from Organization.plan
-  // (which is the *currently effective* tier) so a future "scheduled
-  // downgrade at period end" can be expressed without lying about the
-  // current state.
+  id                 String    @id @default(cuid())
+  orgId              String    @unique
+  // Owner of the subscription. Nullable during rollout (legacy rows
+  // pre-date this column); new rows always set it. Once backfill
+  // completes we'll tighten this and add @@unique([userId]).
+  userId             String?
   plan               String
   // "ACTIVE" | "CANCELED" | "PAST_DUE"
-  status             String   @default("ACTIVE")
+  status             String    @default("ACTIVE")
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
-  cancelAtPeriodEnd  Boolean  @default(false)
+  cancelAtPeriodEnd  Boolean   @default(false)
   canceledAt         DateTime?
 
-  provider           String   @default("yookassa")
+  provider                String  @default("yookassa")
   // ЮKassa "saved payment method" id. Required for server-initiated auto
   // renewals — populated from the first interactive payment if the user
   // opted into auto-renew.
   providerPaymentMethodId String?
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   payments     Payment[]
 
+  @@index([userId])
   @@index([status])
   @@index([currentPeriodEnd])
 }
@@ -203,43 +223,43 @@ model Subscription {
 // the create-payment call and the webhook handler use upsert against this
 // key so retries don't double-charge or double-credit.
 model Payment {
-  id                 String   @id @default(cuid())
-  orgId              String
-  subscriptionId     String?
+  id             String  @id @default(cuid())
+  orgId          String
+  subscriptionId String?
   // The user who initiated the checkout — used for receipt routing.
-  userId             String
+  userId         String
 
-  provider           String   @default("yookassa")
+  provider          String  @default("yookassa")
   // ЮKassa-side payment id. Populated after the create-payment call
   // returns. Unique so the webhook can upsert by it.
-  providerPaymentId  String?  @unique
+  providerPaymentId String? @unique
 
   // Stored as integer kopecks to avoid float drift.
-  amountKopecks      Int
-  currency           String   @default("RUB")
+  amountKopecks Int
+  currency      String @default("RUB")
 
-  plan               String
-  periodMonths       Int      @default(1)
+  plan         String
+  periodMonths Int    @default(1)
 
   // "PENDING" | "WAITING_FOR_CAPTURE" | "SUCCEEDED" | "CANCELED" | "FAILED"
-  status             String   @default("PENDING")
-  failureReason      String?
+  status        String  @default("PENDING")
+  failureReason String?
 
   // Idempotence key sent with the create-payment call. Stored so we can
   // diagnose retries and never repeat a charge for the same intent.
-  idempotenceKey     String   @unique
+  idempotenceKey String @unique
 
   // Snapshot of the customer's email at purchase time — used for the
   // 54-ФЗ receipt and to address the "thank you for paying" email.
-  customerEmail      String
+  customerEmail String
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  succeededAt        DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  succeededAt DateTime?
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([orgId, status])
   @@index([userId, createdAt])
@@ -270,13 +290,13 @@ model Membership {
 // acceptedAt becomes non-null on acceptance and the invite is then a no-op.
 // Email is optional in this MVP — invites work as a plain shareable link.
 model Invite {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   orgId      String
   email      String?
-  role       String   @default("MEMBER")
-  token      String   @unique
+  role       String    @default("MEMBER")
+  token      String    @unique
   expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   acceptedAt DateTime?
   createdBy  String?
 
@@ -323,7 +343,7 @@ model VerificationToken {
 }
 
 model Document {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
   // Workspace that owns this document. Nullable during the rollout — the
   // first time an existing user signs in, ensureActiveOrg() back-fills this
@@ -337,7 +357,7 @@ model Document {
   blobKey   String?
   analysis  Analysis?
   chunks    DocumentChunk[]
-  createdAt DateTime  @default(now())
+  createdAt DateTime        @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -347,19 +367,19 @@ model Document {
 }
 
 model DocumentChunk {
-  id          String   @id @default(cuid())
-  documentId  String
-  chunkIndex  Int
-  text        String
+  id         String @id @default(cuid())
+  documentId String
+  chunkIndex Int
+  text       String
 
   // pgvector embedding for semantic search across the user's own contracts.
   // 1024-dim matches Voyage voyage-3-large (same model as LegalKnowledge).
   // Nullable so a Document can exist before its chunks are embedded.
-  embedding   Unsupported("vector(1024)")?
+  embedding Unsupported("vector(1024)")?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, chunkIndex])
   @@index([documentId])
@@ -387,8 +407,8 @@ model GeneratedDocument {
   formData   Json
   createdAt  DateTime @default(now())
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   versions     DocumentVersion[]
 
   @@index([userId])
@@ -397,39 +417,39 @@ model GeneratedDocument {
 }
 
 model DocumentVersion {
-  id              String   @id @default(cuid())
-  generatedDocId  String
-  versionNumber   Int
-  title           String
-  content         String
-  formData        Json
-  changesSummary  String?
+  id             String  @id @default(cuid())
+  generatedDocId String
+  versionNumber  Int
+  title          String
+  content        String
+  formData       Json
+  changesSummary String?
 
-  createdAt       DateTime @default(now())
-  createdBy       String?
+  createdAt DateTime @default(now())
+  createdBy String?
 
-  generatedDoc    GeneratedDocument @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
-  creator         User?     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
-  v1Comparisons   VersionComparison[] @relation("v1")
-  v2Comparisons   VersionComparison[] @relation("v2")
+  generatedDoc  GeneratedDocument   @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
+  creator       User?               @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  v1Comparisons VersionComparison[] @relation("v1")
+  v2Comparisons VersionComparison[] @relation("v2")
 
   @@unique([generatedDocId, versionNumber])
   @@index([generatedDocId])
 }
 
 model VersionComparison {
-  id        String   @id @default(cuid())
-  v1Id      String
-  v2Id      String
-  userId    String
+  id     String @id @default(cuid())
+  v1Id   String
+  v2Id   String
+  userId String
 
-  diffs     String
+  diffs String
 
   createdAt DateTime @default(now())
 
   v1   DocumentVersion @relation("v1", fields: [v1Id], references: [id], onDelete: Cascade)
   v2   DocumentVersion @relation("v2", fields: [v2Id], references: [id], onDelete: Cascade)
-  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([v1Id, v2Id, userId])
   @@index([userId])
@@ -464,89 +484,89 @@ model ChatMessage {
 }
 
 model LegalKnowledge {
-  id            String   @id @default(cuid())
-  code          String   @unique
-  type          String   // "statute" | "article" | "clause"
+  id            String  @id @default(cuid())
+  code          String  @unique
+  type          String // "statute" | "article" | "clause"
   title         String
   shortTitle    String
   fullText      String
   commentary    String?
   practiceNotes String?
-  relatedCodes  String   @default("[]") // JSON array as string
+  relatedCodes  String  @default("[]") // JSON array as string
 
-  tags          String   @default("[]") // JSON array as string
-  searchVector  String
+  tags         String @default("[]") // JSON array as string
+  searchVector String
 
   // pgvector embedding (1024-dim, voyage-3-large). Nullable so rows can
   // exist before being indexed. Filled by /api/admin/embed-legal.
   // Prisma can't represent vector types natively yet, so we use Unsupported
   // and query through raw SQL in src/lib/legal-search.ts.
-  embedding     Unsupported("vector(1024)")?
+  embedding Unsupported("vector(1024)")?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  references    LegalReference[]
+  references LegalReference[]
 
   @@index([code])
 }
 
 model LegalReference {
-  id        String   @id @default(cuid())
-  userId    String
-  knownId   String
+  id      String @id @default(cuid())
+  userId  String
+  knownId String
 
-  note      String?
+  note String?
 
   createdAt DateTime @default(now())
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  knowledge LegalKnowledge  @relation(fields: [knownId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledge LegalKnowledge @relation(fields: [knownId], references: [id], onDelete: Cascade)
 
   @@unique([userId, knownId])
   @@index([userId])
 }
 
 model CounterpartyProfile {
-  id                  String   @id @default(cuid())
-  inn                 String   @unique
-  name                String
-  organizationType    String?  // "ООО" | "ИП" | "АО" etc.
+  id               String  @id @default(cuid())
+  inn              String  @unique
+  name             String
+  organizationType String? // "ООО" | "ИП" | "АО" etc.
 
   // From ЕГРЮЛ
-  registrationDate    DateTime?
-  address             String?
-  okved               String?
-  capitalSize         Int?
-  statusCode          String?
+  registrationDate DateTime?
+  address          String?
+  okved            String?
+  capitalSize      Int?
+  statusCode       String?
 
   // From court registries
-  activeLawsuits      Int      @default(0)
-  completedLawsuits   Int      @default(0)
-  lossesCount         Int      @default(0)
+  activeLawsuits    Int @default(0)
+  completedLawsuits Int @default(0)
+  lossesCount       Int @default(0)
 
   // Debts and payments
-  debtFound           Boolean  @default(false)
-  debtAmount          BigInt?
-  debtSources         String   @default("") // JSON array as string
+  debtFound   Boolean @default(false)
+  debtAmount  BigInt?
+  debtSources String  @default("") // JSON array as string
 
   // Risk calculation
-  riskScore           Int      @default(50)
-  riskLevel           String   @default("medium")
-  riskFactors         String   @default("") // JSON array as string
+  riskScore   Int    @default(50)
+  riskLevel   String @default("medium")
+  riskFactors String @default("") // JSON array as string
 
-  lastUpdated         DateTime @updatedAt
-  dataSource          String   @default("egrul")
+  lastUpdated DateTime @updatedAt
+  dataSource  String   @default("egrul")
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  checks              CounterpartyCheck[]
+  checks CounterpartyCheck[]
 
   @@index([inn])
 }
 
 model AiUsage {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   userId       String
   orgId        String?
   feature      String
@@ -554,10 +574,10 @@ model AiUsage {
   model        String
   inputTokens  Int
   outputTokens Int
-  cachedTokens Int      @default(0)
+  cachedTokens Int     @default(0)
   latencyMs    Int
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -569,14 +589,14 @@ model AiUsage {
 }
 
 model CounterpartyCheck {
-  id           String   @id @default(cuid())
-  userId       String
-  orgId        String?
-  inn          String
+  id     String  @id @default(cuid())
+  userId String
+  orgId  String?
+  inn    String
 
-  notes        String?
+  notes String?
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization?       @relation(fields: [orgId], references: [id], onDelete: Cascade)

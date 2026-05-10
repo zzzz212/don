@@ -223,7 +223,8 @@ export default function BillingPage() {
               Биллинг и тарифы
             </h1>
             <p className="mt-2 text-base text-muted">
-              Текущая подписка, история платежей и переход на платный тариф.
+              Тариф привязан к вашему аккаунту — одна подписка действует во
+              всех ваших workspace. Ниже история платежей и смена тарифа.
             </p>
           </div>
 
@@ -251,10 +252,10 @@ export default function BillingPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                      Workspace
+                      Ваш аккаунт
                     </p>
                     <h2 className="mt-1 text-xl font-bold text-foreground">
-                      {data.orgName}
+                      Тариф «{PLAN_LABEL[data.effectivePlan] ?? data.effectivePlan}»
                     </h2>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span

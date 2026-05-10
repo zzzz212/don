@@ -255,11 +255,15 @@ export async function applySucceededPayment(
     const periodEndAt = periodEnd(periodStart, payment.periodMonths);
 
     // Upsert subscription. If the org has a prior CANCELED sub, this
-    // reactivates it with new period boundaries.
+    // reactivates it with new period boundaries. Subscription.userId is
+    // the new authoritative link (one paid seat = PRO across every
+    // workspace they own); orgId stays so the legacy unique constraint
+    // and "which workspace bought this" history don't break.
     await tx.subscription.upsert({
       where: { orgId: payment.orgId },
       create: {
         orgId: payment.orgId,
+        userId: payment.userId,
         plan: payment.plan,
         status: "ACTIVE",
         currentPeriodStart: periodStart,
@@ -272,6 +276,7 @@ export async function applySucceededPayment(
             : null,
       },
       update: {
+        userId: payment.userId,
         plan: payment.plan,
         status: "ACTIVE",
         cancelAtPeriodEnd: false,
@@ -301,8 +306,18 @@ export async function applySucceededPayment(
       },
     });
 
-    // Promote the workspace to the paid plan and burn any active trial
-    // — they paid, no need to keep gifting them PRO via trial flag.
+    // Promote the USER to the paid plan (authoritative for quota) and
+    // burn the user-level trial. Also write the legacy Org columns so
+    // pre-rollout admin queries keep working — single source of truth
+    // is User.plan but we double-write until the legacy columns are
+    // dropped in a later migration.
+    await tx.user.update({
+      where: { id: payment.userId },
+      data: {
+        plan: payment.plan,
+        trialEndsAt: null,
+      },
+    });
     await tx.organization.update({
       where: { id: payment.orgId },
       data: {

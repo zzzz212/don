@@ -82,6 +82,11 @@ export interface EffectivePlan {
  * into account. During the trial: returns PRO regardless of stored plan;
  * outside it: returns the stored plan as-is. Pure function — `now` is
  * injected for deterministic testing.
+ *
+ * NOTE: as of the user-level-plan rollout this is now a thin shim — the
+ * ergonomic input is User { plan, trialEndsAt }. We keep this signature
+ * because every legacy caller already passes Org-shaped objects; new
+ * callers should prefer getEffectiveUserPlan().
  */
 export function getEffectivePlan(
   ctx: PlanContext,
@@ -112,4 +117,28 @@ export function getEffectivePlan(
     trialEndsAt: ctx.trialEndsAt ?? null,
     trialDaysLeft: null,
   };
+}
+
+// ── User-level plan (new authoritative path) ───────────────────────────
+
+export interface UserPlanContext {
+  /** Raw `plan` column from User. */
+  plan: string | null | undefined;
+  /** User-level trial end timestamp, or null if no trial was ever granted. */
+  trialEndsAt?: Date | null;
+}
+
+/**
+ * Same shape as getEffectivePlan, but reads from a User row. This is the
+ * authoritative path post-rollout: plan and trial belong to the user
+ * account, and the same tier applies across every workspace they own.
+ */
+export function getEffectiveUserPlan(
+  ctx: UserPlanContext,
+  now: Date = new Date()
+): EffectivePlan {
+  // Same shape, same logic — the only difference is which row we read.
+  // Keeping this as a separate name so call-sites are explicit about
+  // "this is the user-level decision, not the workspace-level one".
+  return getEffectivePlan(ctx, now);
 }
