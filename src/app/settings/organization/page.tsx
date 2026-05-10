@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Header } from "@/components/header";
 import {
   Building2,
@@ -54,6 +55,10 @@ const ROLE_META = {
 };
 
 export default function OrganizationSettingsPage() {
+  // Used after delete-workspace and leave-workspace to refresh the JWT
+  // so the next page load doesn't keep using a cookie that points to the
+  // workspace we just removed ourselves from.
+  const { update } = useSession();
   const [orgs, setOrgs] = useState<{
     activeOrgId: string;
     organizations: Array<{ id: string; name: string; isActive: boolean }>;
@@ -187,9 +192,14 @@ export default function OrganizationSettingsPage() {
     );
     if (res.ok) {
       if (member.isMe) {
-        // Leaving the workspace flips activeOrgId on the server. A hard
-        // navigation to /dashboard ensures every component re-fetches with
-        // the new active workspace context — same pattern as OrgSwitcher.
+        // Leaving the workspace flips activeOrgId on the server. Refresh
+        // the JWT first so the cookie stops pointing to the workspace we
+        // just left, then hard-navigate so all client state resets.
+        try {
+          await update();
+        } catch {
+          // non-fatal — server has the new value, JWT will catch up
+        }
         window.location.href = "/dashboard";
       } else {
         setDetails({
@@ -213,9 +223,15 @@ export default function OrganizationSettingsPage() {
       method: "DELETE",
     });
     if (res.ok) {
-      // Hard navigate so every cached client component (OrgSwitcher,
-      // dashboard list, usage widget) re-initialises against the
-      // fallback workspace the server just switched us into.
+      // Refresh JWT so the cookie stops pointing to the deleted workspace,
+      // then hard navigate so every cached client component (OrgSwitcher,
+      // dashboard list, usage widget) re-initialises against the fallback
+      // workspace the server just switched us into.
+      try {
+        await update();
+      } catch {
+        // non-fatal — server has the new value
+      }
       window.location.href = "/dashboard";
     } else {
       const data = await res.json().catch(() => ({}));

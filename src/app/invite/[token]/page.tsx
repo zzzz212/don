@@ -34,7 +34,7 @@ export default function InviteAcceptPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = use(params);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
 
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +75,13 @@ export default function InviteAcceptPage({
       const data = await res.json();
       if (res.ok) {
         setAccepted(true);
-        // Hard reload to /dashboard after a brief success-state pause so
-        // the JWT, OrgSwitcher state, and every workspace-scoped query
-        // re-initialise cleanly in the new workspace context.
+        // Refresh JWT in the background so the cookie carries the new
+        // activeOrgId by the time the navigation below sends it. Without
+        // this, the user would land on /dashboard with a stale cookie
+        // pointing at the previous workspace.
+        update().catch(() => undefined);
+        // Brief pause for the success state to be visible, then hard
+        // reload so every workspace-scoped query re-initialises cleanly.
         setTimeout(() => {
           window.location.href = "/dashboard";
         }, 800);
