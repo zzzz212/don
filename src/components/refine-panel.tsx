@@ -15,6 +15,7 @@
 // panel knows which UI state to show.
 
 import { useRef, useState } from "react";
+import { motion } from "motion/react";
 import {
   Sparkles,
   Loader2,
@@ -209,8 +210,20 @@ export function RefinePanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 py-6 sm:items-center">
-      <div className="flex w-full max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-2xl">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 backdrop-blur-sm px-4 py-6 sm:items-center"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
+        className="flex w-full max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
@@ -375,7 +388,7 @@ export function RefinePanel({
             </>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Check,
   ChevronsUpDown,
@@ -263,9 +264,15 @@ export function OrgSwitcher() {
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
       </button>
 
-      {open && (
-        <div
+      <AnimatePresence>
+        {open && (
+        <motion.div
           role="menu"
+          initial={{ opacity: 0, y: -6, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.12 } }}
+          transition={{ type: "spring", stiffness: 600, damping: 40, mass: 0.6 }}
+          style={{ transformOrigin: "top left" }}
           className="absolute left-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
         >
           <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
@@ -362,8 +369,9 @@ export function OrgSwitcher() {
               Создать workspace
             </button>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

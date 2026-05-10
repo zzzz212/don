@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // Tiny in-app toast system. Replaces window.alert() for non-blocking
 // error / success feedback. Keep it minimal — single global provider,
@@ -17,6 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, AlertCircle, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -73,9 +74,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         aria-atomic="true"
         className="pointer-events-none fixed inset-x-0 top-20 z-[100] flex flex-col items-center gap-2 px-4 sm:items-end sm:px-6"
       >
-        {toasts.map((t) => (
-          <ToastCard key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
-        ))}
+        <AnimatePresence initial={false}>
+          {toasts.map((t) => (
+            <ToastCard key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   );
@@ -119,30 +122,33 @@ function ToastCard({
   const s = styles[toast.variant];
   const Icon = s.icon;
 
-  // Mount-time fade-in. Tailwind's `animate-fade-in` keyframe is in
-  // globals.css; reusing it keeps the look consistent with other UI.
   return (
-    <div
+    <motion.div
       role="status"
+      layout
+      initial={{ opacity: 0, y: -12, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 24, scale: 0.96, transition: { duration: 0.15 } }}
+      transition={{ type: "spring", stiffness: 500, damping: 38, mass: 0.7 }}
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-card p-3 pr-2 shadow-lg animate-fade-in",
+        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-card p-3 pr-2 shadow-lg",
         s.bg,
         s.border
       )}
     >
-      <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", s.text)} />
+      <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", s.text)} aria-hidden="true" />
       <p className={cn("flex-1 text-sm leading-relaxed", s.text)}>
         {toast.message}
       </p>
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 rounded p-1 text-muted transition-colors hover:bg-black/5 hover:text-foreground"
+        className="shrink-0 rounded p-1 text-muted transition-colors hover:bg-foreground/5 hover:text-foreground"
         aria-label="Закрыть уведомление"
       >
-        <X className="h-3.5 w-3.5" />
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
-    </div>
+    </motion.div>
   );
 }
 

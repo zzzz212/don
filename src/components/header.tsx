@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -166,10 +167,15 @@ export function Header() {
       </div>
 
       {/* Mobile menu */}
-      {mobileOpen && !isLanding && (
-        <div
+      <AnimatePresence>
+        {mobileOpen && !isLanding && (
+        <motion.div
           id="mobile-nav"
-          className="md:hidden border-t border-border bg-card animate-fade-in"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }}
+          transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.7 }}
+          className="md:hidden overflow-hidden border-t border-border bg-card"
         >
           <div className="px-4 py-3 space-y-1">
             {/* OrgSwitcher already lives in the header bar (compact avatar
@@ -215,8 +221,9 @@ export function Header() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
