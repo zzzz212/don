@@ -17,6 +17,11 @@ import {
   ArrowRight,
   Clock,
   Sparkles,
+  FilePlus,
+  ClipboardCheck,
+  FileCheck,
+  Receipt,
+  Scissors,
 } from "lucide-react";
 
 const iconMap: Record<string, typeof Shield> = {
@@ -28,6 +33,11 @@ const iconMap: Record<string, typeof Shield> = {
   truck: Truck,
   wallet: Wallet,
   hammer: Hammer,
+  "file-plus": FilePlus,
+  "clipboard-check": ClipboardCheck,
+  "file-check": FileCheck,
+  receipt: Receipt,
+  scissors: Scissors,
 };
 
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -37,6 +47,7 @@ const categoryColors: Record<string, { bg: string; text: string; border: string 
   "Финансы": { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
   "Услуги": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
   "Кадры": { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
+  "Документооборот": { bg: "bg-slate-50", text: "text-slate-700", border: "border-slate-200" },
 };
 
 export default function TemplatesPage() {
