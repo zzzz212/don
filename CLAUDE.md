@@ -61,7 +61,7 @@ AI-доработкой + чат-юрист + проверка контраге�
 `node_modules/next/dist/docs/`** перед изменением Next.js паттернов —
 это Next 16, не та Next.js которую помнит твоё обучение.
 
-**Тесты**: 186 unit-тестов через vitest. `npm test`.
+**Тесты**: 207 unit-тестов через vitest. `npm test`.
 
 ---
 
@@ -351,6 +351,71 @@ AI-доработкой + чат-юрист + проверка контраге�
   (Next 16 app-router не работает с auto-capture). На login — identify
   + group, на logout — reset.
 
+### Audit log — `src/lib/audit.ts` + `AuditEvent` модель
+- One row per security/billing-relevant action. Не для analytics
+  (PostHog туда) — для compliance / b2b accountability.
+- `logAudit({orgId, userId, action, target, targetType, payload, ip,
+  userAgent})` — fire-and-forget, никогда не throws (failures → Sentry).
+- **AuditAction controlled vocab** (см. union в audit.ts): workspace.*,
+  member.*, billing.*, trial.*, document.*, auth.*. Незарегистрированный
+  action в TS не пройдёт.
+- **`redact()`** рекурсивно стрипает sensitive keys (password, secret,
+  token, email, phone) из payload перед insert. Защита от случайной
+  PII даже если caller передал `email: u.email`.
+- **`attribution(request)`** возвращает `{ip, userAgent}` из
+  request headers — call sites не повторяют boilerplate.
+- **`onDelete: SetNull`** на `AuditEvent.orgId` — журнал ПЕРЕЖИВАЕТ
+  удаление workspace'а (accountability не должна исчезать вместе с
+  организацией, в которой кто-то нашалил).
+- Wired в 10 точек: workspace.created / member.invited /
+  invite_accepted / role_changed / removed / left /
+  billing.checkout_started / payment_succeeded / trial.activated /
+  trial.extended / billing.plan_changed_manually /
+  auth.2fa_enabled / auth.2fa_disabled.
+- UI: `/settings/organization/audit` с 5 quick-filter chips
+  (Все / Участники / Биллинг / Документы / Безопасность). ADMIN+ only.
+
+### 2FA TOTP — `src/lib/totp.ts` + `TotpCredential` модель
+- **otplib v13 functional API** (v12 `authenticator` singleton удалён).
+  6-digit codes, 30s period, ±1 step (=±30s) tolerance.
+- `TotpCredential` (1:1 с User): `secret` (base32 plaintext —
+  security model полагается на encryption-at-rest у Neon),
+  `enabledAt: DateTime?` (null = pending setup, login flow НЕ требует
+  кода пока null), `recoveryCodes: String[]` (SHA-256 хэши).
+- **Recovery codes**: 10 кодов формата `xxxx-xxxx` (8 hex), показываются
+  юзеру **один раз** при verify. `consumeRecoveryCode()` constant-time
+  scan + remove on match. `hashRecoveryCode()` case+whitespace+dash
+  insensitive (юзер может ввести "a1b2-c3d4" / "a1b2c3d4" / "A1B2 C3D4").
+- Endpoints:
+  - `POST /api/account/2fa/setup` — generate secret, return QR-uri.
+    Refuses 409 ALREADY_ENABLED if уже включена (надо disable first).
+  - `POST /api/account/2fa/verify {code}` — flip enabledAt + return
+    plaintext recovery codes (показываются один раз).
+  - `POST /api/account/2fa/disable {code|password|recoveryCode}` —
+    три приёма proof. Recovery code consume'ится из массива.
+  - `GET /api/account/2fa/status` — для UI.
+- **Login flow** двухшаговый без multi-step auth: `POST
+  /api/auth/check-2fa {email, password}` returns `{requires2FA: bool}`
+  PRE-сабмит. Если true — UI показывает поле кода, потом второй submit
+  с `totpCode` через обычный signIn. Credentials provider в authorize()
+  валидирует все три.
+- UI: `/account/security` — 4-фазная state machine (off / setting-up /
+  showing-recovery / on). QR рендерится клиентом через `qrcode` npm
+  (~15 KB). Recovery codes можно скопировать или скачать .txt.
+- Audit: `auth.2fa_enabled` и `auth.2fa_disabled` логируются с IP/UA +
+  proofKind в payload (для disable).
+
+### Per-org usage analytics — `/settings/organization/usage`
+- ADMIN+ only. Показывает кто сколько потратил квоты в этом
+  календарном месяце по workspace'у.
+- `GET /api/organizations/[id]/usage` aggregates AiUsage в:
+  - per-feature totals (analyze/generate/chat/ocr) для quota-status
+    панели
+  - per-user × per-feature counts отсортированные по total desc.
+    Юзеры с 0 usage всё равно в таблице — видно кто не пользуется.
+- UI: 4 quota-card'а с progress-bar'ами, members-table с trophy-иконкой
+  у первой строки (топ-контрибьютор), totals row внизу.
+
 ### Rate limit — `src/lib/rate-limit.ts`
 - Upstash Redis с in-memory fallback для local dev.
 - Endpoints: `analyze` (10/min), `chat` (30/min), `generate` (10/min),
@@ -378,7 +443,16 @@ AI-доработкой + чат-юрист + проверка контраге�
 
 ## Все коммиты этой ветки (новейшие сверху, ~75)
 
-### Sprint 2 — Admin + Analytics (последние)
+### Sprint 4 — B2B Trust (последние)
+```
+e9630c5 Per-org usage analytics: who-spent-what-this-month for OWNER/ADMIN
+088179e 2FA login integration + /account/security UI
+b9d04b1 2FA core: TotpCredential schema + setup/verify/disable endpoints
+fd9ee7e Audit log UI: /settings/organization/audit + filtered API
+1d27cba Audit log: AuditEvent model + logAudit() + wire into 9 critical paths
+```
+
+### Sprint 2 — Admin + Analytics
 ```
 43c2cc7 PostHog client-side: pageviews + identify, person_profiles=identified_only
 3c3dbdd PostHog server-side analytics on critical user paths
@@ -574,6 +648,29 @@ curl -X POST -H "x-admin-key: dev-seed-key" \
     падает иначе. Используется в /offer:
     `сроком на {TRIAL_DAYS} ({TRIAL_DAYS_LABEL}) календарных дней`.
 
+20. **otplib v13 убрал `authenticator` singleton** — используем
+    functional API (`generateSecret`, `generateURI`, `generateSync`,
+    `verifySync`). `verifySync` возвращает `VerifyResult` (объект с
+    `valid` boolean), не plain bool — `verifyTotpCode()` это coerce'ит.
+
+21. **2FA login flow двухшаговый** — `/api/auth/check-2fa` сначала, потом
+    signIn с `totpCode`. Не сделать один pass: иначе UI не отличит
+    "wrong password" от "creds OK + need TOTP" (signIn collapse'ит обе
+    в `null`).
+
+22. **AuditEvent.orgId nullable + onDelete: SetNull** — журнал
+    переживает удаление workspace. Если меняешь cascade поведение,
+    подумай о том, что ты ломаешь accountability.
+
+23. **AuditAction — controlled vocab**, не любая строка. Новый action =
+    добавить в TS union в `src/lib/audit.ts` И в `ACTION_LABELS` в
+    `/settings/organization/audit/page.tsx` (иначе в UI будет raw key).
+
+24. **`logAudit.payload` гоняется через `redact()`** — sensitive keys
+    (password, secret, token, email, phone) автоматически становятся
+    `"[redacted]"`. Не паниковать если в audit-таблице видишь redacted —
+    скорее всего caller передал email "на всякий случай".
+
 ---
 
 ## Как дебажить когда что-то не работает
@@ -601,6 +698,8 @@ SELECT
   EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='Subscription') AS has_subscription,
   EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='Payment') AS has_payment,
   EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='PasswordResetToken') AS has_password_reset,
+  EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='AuditEvent') AS has_audit,
+  EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='TotpCredential') AS has_totp,
   EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='User' AND column_name='trialActivatedAt') AS has_trial_activated_at,
   EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='Organization' AND column_name='trialEndsAt') AS has_trial_ends_at,
   EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector') AS has_pgvector;
@@ -628,18 +727,7 @@ HAVING COUNT(*) > 1;
 
 ## Что НЕ сделано (TODO)
 
-### 🔐 B2B Trust (Sprint 4 — следующий)
-- **2FA TOTP** через `otplib`. Endpoints:
-  /api/account/2fa/{setup,verify,disable}. Recovery codes
-  (6 кодов, store hashed). Login flow integration. /account/security
-  UI с QR + backup codes. ~3-4ч.
-- **Audit log** `AuditEvent` модель. Wire: invite_*, member_*,
-  plan_changed, doc_deleted, settings_changed, billing actions. UI
-  на `/settings/organization/audit` для OWNER+ADMIN. ~2-3ч.
-- **Per-org analytics для OWNER** на /settings/organization — кто
-  сколько анализов/чатов делал, top users, остаток квоты. ~2ч.
-
-### 🚀 Расширения продукта (Sprint 5+)
+### 🚀 Расширения продукта (Sprint 5+ — СЛЕДУЮЩИЙ)
 - REST API + API keys
 - Webhooks
 - Slack/Telegram bot
@@ -689,11 +777,7 @@ HAVING COUNT(*) > 1;
 
 ## Приоритет следующих спринтов
 
-### Sprint 4 — B2B Trust (~7-8ч) ← **СЛЕДУЮЩИЙ**
-2FA + audit log + per-org analytics. После него можно подписываться с
-серьёзными корпоративными клиентами.
-
-### Sprint 5 — Public API + Webhooks (~7-9ч)
+### Sprint 5 — Public API + Webhooks (~7-9ч) ← **СЛЕДУЮЩИЙ**
 REST API + API keys → webhooks → внешние интеграции.
 
 ### Sprint 6 — Большие фичи продукта (~10-12ч)
@@ -710,18 +794,27 @@ Dark mode + mobile + a11y + i18n.
 
 ## Оперативный кэш (что свежо в голове у предыдущей сессии)
 
-- **Refine patch-mode** недавно отдебажен. Если на проде юзер видит
-  ~10000 токенов на одну refine — патч-аттемпт упал и фолбэк на
-  regen. Чек: `mode: regen` в SSE с `reason` — там написано почему.
-- **Admin доступ настроен через ADMIN_USER_IDS** (env var, CSV cuid'ов).
-  Найди свой id через `SELECT id, email FROM "User"`.
-- **PostHog только что подключили** — eu.i.posthog.com (или
-  us.i.posthog.com), 4 env vars: 2 server (`POSTHOG_API_KEY`/`HOST`)
-  + 2 client (`NEXT_PUBLIC_POSTHOG_KEY`/`HOST`). И серверный, и
-  клиентский ключ — один и тот же `phc_...`.
-- **20 шаблонов** теперь, с тестами на каждый. Если добавлять новый
-  — обновить `iconMap` в /templates/page.tsx + `generateContract()`
-  switch + тест в `__tests__/templates.test.ts`.
+- **Sprint 4 (B2B trust) только что закрыт**: AuditEvent + 2FA TOTP +
+  per-org usage analytics. 5 новых коммитов: `e9630c5 → 1d27cba`.
+  Если будешь wire'ить новые actions в audit log — добавь action key
+  в `AuditAction` union в `src/lib/audit.ts` И в `ACTION_LABELS`
+  в `/settings/organization/audit/page.tsx`.
+- **2FA login flow**: двухшаговый. Сначала `POST /api/auth/check-2fa`
+  возвращает `requires2FA`, потом обычный signIn с totpCode. Если
+  будешь рефакторить login — не сломай этот контракт; UI рассчитывает
+  на pre-flight.
+- **Refine patch-mode** отдебажен. Если на проде юзер видит ~10000
+  токенов на одну refine — патч-аттемпт упал и фолбэк на regen. Чек:
+  `mode: regen` в SSE с `reason` — там написано почему.
+- **Admin доступ через ADMIN_USER_IDS** (env var, CSV cuid'ов). Найди
+  свой id через `SELECT id, email FROM "User"`.
+- **PostHog подключён** — eu.i.posthog.com (или us.), 4 env vars:
+  серверные (`POSTHOG_API_KEY`/`HOST`) + клиентские
+  (`NEXT_PUBLIC_POSTHOG_KEY`/`HOST`). Серверный и клиентский ключ — один
+  и тот же `phc_...`.
+- **20 шаблонов** с тестами. Если добавлять новый — обновить `iconMap`
+  в /templates/page.tsx + `generateContract()` switch + тест в
+  `__tests__/templates.test.ts`.
 - **Версионирование работает** — POST /api/generated создаёт v1
   атомарно, edit-flow через `?editDoc=X`, refine создаёт версии,
   revert денормализует. Self-heal на старых документах через первое
