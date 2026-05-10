@@ -59,10 +59,22 @@ export async function GET() {
   }
 }
 
+// Hard cap on total OWNED workspaces per user — anti-spam brake. Even
+// paying users don't have a legitimate reason to spawn dozens of
+// workspaces from a single account; if they do, support can lift the
+// cap manually after a conversation.
+const MAX_OWNED_WORKSPACES = 10;
+
 // POST /api/organizations  { name }
 //   Create a new workspace and make the caller its OWNER. The new
 //   workspace does NOT become active automatically — that's a separate
 //   /switch call so the UI can confirm with the user first.
+//
+// Anti-abuse: a user can OWN at most one effective-FREE workspace.
+// Without this guard, a free-tier user can spawn N workspaces and
+// effectively multiply their monthly quota by N (since AiUsage is
+// scoped per-org). Once they're on a paid plan, additional workspaces
+// are allowed up to MAX_OWNED_WORKSPACES.
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -79,6 +91,52 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Название workspace должно быть от 2 до 80 символов" },
         { status: 400 }
+      );
+    }
+
+    // Pull every workspace the user is OWNER of in one go. We need plan
+    // and trialEndsAt to compute the effective plan and decide whether
+    // a free workspace already exists.
+    const ownedMemberships = await prisma.membership.findMany({
+      where: { userId: session.user.id, role: "OWNER" },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            plan: true,
+            trialEndsAt: true,
+          },
+        },
+      },
+    });
+
+    if (ownedMemberships.length >= MAX_OWNED_WORKSPACES) {
+      return NextResponse.json(
+        {
+          error: `Достигнут лимит в ${MAX_OWNED_WORKSPACES} workspace на аккаунт. Свяжитесь с поддержкой, если нужно больше.`,
+        },
+        { status: 403 }
+      );
+    }
+
+    const existingFree = ownedMemberships.find((m) => {
+      const eff = getEffectivePlan({
+        plan: m.organization.plan,
+        trialEndsAt: m.organization.trialEndsAt,
+      });
+      return eff.plan === "FREE";
+    });
+
+    if (existingFree) {
+      return NextResponse.json(
+        {
+          error: `На бесплатном тарифе можно иметь только один workspace. Чтобы создать ещё один — оплатите тариф для существующего workspace «${existingFree.organization.name}».`,
+          code: "FREE_WORKSPACE_LIMIT",
+          existingWorkspaceId: existingFree.organization.id,
+          existingWorkspaceName: existingFree.organization.name,
+        },
+        { status: 403 }
       );
     }
 

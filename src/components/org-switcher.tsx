@@ -174,7 +174,21 @@ export function OrgSwitcher() {
         body: JSON.stringify({ name: name.trim() }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string;
+        };
+        // Soft-redirect to /billing when the user hit the FREE workspace
+        // limit — turning the error into a productive next step.
+        if (data.code === "FREE_WORKSPACE_LIMIT") {
+          const ok = window.confirm(
+            `${data.error}\n\nПерейти в раздел оплаты?`
+          );
+          if (ok) {
+            window.location.href = "/billing";
+          }
+          return;
+        }
         alert(data.error ?? "Не удалось создать workspace");
         return;
       }
