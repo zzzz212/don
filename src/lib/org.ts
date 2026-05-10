@@ -89,7 +89,10 @@ interface UserSeed {
  * Returns the user's active organization id, creating their personal
  * workspace and migrating any pre-workspaces data into it on first call.
  *
- * Idempotent: subsequent calls just return user.activeOrgId.
+ * Idempotent: subsequent calls just return user.activeOrgId — but with a
+ * couple of safety checks so a stale activeOrgId pointing to a deleted
+ * org (which produces ugly FK violations on every Document.create) gets
+ * silently healed.
  */
 export async function ensureActiveOrg(userId: string): Promise<string> {
   const user = (await prisma.user.findUnique({
@@ -104,10 +107,47 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
   })) as UserSeed | null;
 
   if (!user) throw new Error(`User ${userId} not found`);
-  if (user.activeOrgId) return user.activeOrgId;
 
-  // First-time bootstrap. Pick a friendly workspace name from the user's
-  // display name or email local-part.
+  // 1. Happy path — activeOrgId is set AND points to a real org we still
+  //    belong to. Verify both because activeOrgId is just a String field
+  //    (not a FK), so it can drift if an org was deleted out from under us.
+  if (user.activeOrgId) {
+    const stillValid = await prisma.membership.findUnique({
+      where: { userId_orgId: { userId, orgId: user.activeOrgId } },
+      select: { orgId: true },
+    });
+    if (stillValid) return user.activeOrgId;
+
+    // Stale activeOrgId — clear it so we don't keep returning it on
+    // future calls. Fall through to the recovery branches below.
+    console.warn(
+      `[ensureActiveOrg] user ${userId} had stale activeOrgId ${user.activeOrgId}, healing…`
+    );
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activeOrgId: null },
+    });
+  }
+
+  // 2. Recovery — maybe they belong to other orgs (e.g. accepted an invite
+  //    while their personal workspace was being deleted). Pick the oldest
+  //    membership as the new active and return.
+  const fallback = await prisma.membership.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    select: { orgId: true },
+  });
+  if (fallback) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { activeOrgId: fallback.orgId },
+    });
+    return fallback.orgId;
+  }
+
+  // 3. First-time bootstrap (no active, no other memberships). Pick a
+  //    friendly workspace name from the user's display name or email
+  //    local-part.
   const local = user.email.split("@")[0] ?? "workspace";
   const candidateName =
     user.name && user.name.trim().length > 0
