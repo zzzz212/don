@@ -60,7 +60,11 @@ export type StreamEvent =
   | { kind: "usage"; usage: Usage }
   | { kind: "error"; message: string }
   | { kind: "done" }
-  | { kind: "saved"; payload: Record<string, unknown> };
+  | { kind: "saved"; payload: Record<string, unknown> }
+  // Lifecycle hint emitted by the refine route so the UI can switch
+  // between "applying patches" and "streaming a regenerated document"
+  // states without guessing from the absence of delta events.
+  | { kind: "mode"; mode: "patch" | "regen"; reason?: string };
 
 export type GenerateResult<T extends z.ZodTypeAny | undefined> = {
   data: T extends z.ZodTypeAny ? z.infer<T> : string;

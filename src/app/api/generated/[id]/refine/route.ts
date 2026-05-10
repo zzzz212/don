@@ -6,23 +6,45 @@ import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
 import { checkQuotaSafe } from "@/lib/quota";
 import { logUsage } from "@/lib/ai/usage";
-import { streamChat, getActiveProvider } from "@/lib/ai/client";
-import { REFINE_DOCUMENT_SYSTEM } from "@/lib/ai/prompts";
+import { generate, streamChat, getActiveProvider } from "@/lib/ai/client";
+import {
+  REFINE_DOCUMENT_SYSTEM,
+  REFINE_PATCH_SYSTEM,
+} from "@/lib/ai/prompts";
 import { SSE_HEADERS, streamToSSE } from "@/lib/ai/sse";
 import { generateDiffSummary } from "@/lib/diff";
 import type { StreamEvent } from "@/lib/ai/types";
+import {
+  RefinePatchSchema,
+  type RefinePatch,
+} from "@/lib/ai/schemas/refine-patch";
+import {
+  applyRefinePatch,
+  type RefineOperation,
+} from "@/lib/contracts/patch";
 
-// POST /api/generated/[id]/refine  { instruction: string }
+// POST /api/generated/[id]/refine  { instruction: string, mode?: "auto" | "regen" }
 //
-// Streams an AI-rewritten version of the document according to the user's
-// natural-language instruction, then commits it as a new DocumentVersion.
-// Wire format is SSE — same as /api/chat — so the browser can render
-// tokens as they arrive without waiting for the whole document.
+// Two execution paths:
 //
-// Quota: applies the "generate" plan limit (FREE: 2/month). Rate limit:
-// uses the "generate" key (10/min/IP) — refinement is generation by
-// another name and we don't want to give it a separate quota that could
-// be farmed against the regular template path.
+//   1. PATCH MODE (default, cheap):
+//      AI returns a small JSON of edit operations against the source
+//      document (`replace`/`insert_after`/`insert_before`/`delete` with
+//      anchor strings). Server applies the operations and saves the
+//      result. Output tokens are typically 5-10x smaller than full
+//      regen — for a 12 KB contract that's the difference between
+//      ~3000 output tokens and ~300.
+//
+//   2. REGEN MODE (fallback OR explicit):
+//      AI streams a full rewritten document (the original behavior).
+//      Used when:
+//        • patch mode returns refused=true (illegal/too-large edit)
+//        • patch mode produces a structurally invalid response
+//        • any operation's anchor doesn't match the document
+//        • the client explicitly requests mode="regen"
+//
+// Both paths share the same SSE wire format. The client distinguishes
+// them via the "mode" event we emit at the start of each path.
 
 export async function POST(
   request: NextRequest,
@@ -42,8 +64,6 @@ export async function POST(
     const orgId =
       session.user.activeOrgId ?? (await ensureActiveOrg(userId));
 
-    // Workspace member check — anyone in the org with at least MEMBER
-    // role can refine documents owned by the workspace.
     try {
       await requireMembership(userId, orgId, "MEMBER");
     } catch (e) {
@@ -81,9 +101,11 @@ export async function POST(
 
     const body = (await request.json().catch(() => ({}))) as {
       instruction?: unknown;
+      mode?: unknown;
     };
     const instruction =
       typeof body.instruction === "string" ? body.instruction.trim() : "";
+    const requestedMode = body.mode === "regen" ? "regen" : "auto";
 
     if (instruction.length < 5) {
       return NextResponse.json(
@@ -101,8 +123,6 @@ export async function POST(
       );
     }
 
-    // Quota gate AFTER input validation — don't burn a quota slot on a
-    // request that's going to fail validation.
     const quota = await checkQuotaSafe(orgId, "generate");
     if (quota && !quota.allowed) {
       return NextResponse.json(
@@ -130,140 +150,120 @@ export async function POST(
         { status: 404 }
       );
     }
-    // Re-bind to a non-nullable local so the async generator below
-    // can close over the value without TypeScript losing the
-    // narrowing across the closure boundary.
     const doc = docRow;
-
-    // Build the user message: full document + instruction. The system
-    // prompt explains the contract; we just give the model the inputs.
     const userPrompt = `# ИСХОДНЫЙ ДОГОВОР\n\n${doc.content}\n\n# ИНСТРУКЦИЯ ПО ПРАВКЕ\n\n${instruction}`;
-
     const signal = request.signal;
 
-    // Wrap streamChat so that we can:
-    //   1. Buffer delta text into `accumulated` for the final save
-    //   2. Log usage when the provider reports it
-    //   3. Persist the new version atomically AFTER the stream completes
-    //   4. Emit a custom "saved" event with versionNumber + versionId so
-    //      the client can navigate or refresh state without an extra fetch
-    //
-    // The version commit happens server-side regardless of whether the
-    // browser is still listening — once the provider has billed us for the
-    // tokens we want to keep the result.
     async function* refineStream(): AsyncGenerator<StreamEvent> {
-      let accumulated = "";
+      // ── Path 1: patch mode (cheap) ──────────────────────────
+      if (requestedMode === "auto") {
+        yield { kind: "mode", mode: "patch" };
 
-      try {
-        const source = streamChat({
-          system: REFINE_DOCUMENT_SYSTEM,
-          messages: [{ role: "user", content: userPrompt }],
-          model: "smart",
-          maxTokens: 8192,
-          signal,
-        });
-
-        for await (const event of source) {
-          if (event.kind === "delta") {
-            accumulated += event.text;
-          }
-          if (event.kind === "usage") {
-            void logUsage(userId, orgId, event.usage, "generate");
-          }
-          if (event.kind === "error") {
-            await reportError(new Error(event.message), {
-              op: "generated.refine.stream",
-              userId,
-              tags: { docId: id },
-            });
-          }
-          yield event;
+        let patch: RefinePatch | null = null;
+        try {
+          const result = await generate({
+            schema: RefinePatchSchema,
+            system: REFINE_PATCH_SYSTEM,
+            prompt: userPrompt,
+            model: "fast",
+            temperature: 0.2,
+            maxTokens: 2048,
+          });
+          void logUsage(userId, orgId, result.usage, "generate");
+          patch = result.data;
+        } catch (e) {
+          // Schema parse failure or provider error — fall through to
+          // the regen path with the AI error as the reason. We don't
+          // double-charge: the failed structured attempt's tokens are
+          // already accounted for via logUsage in the success path
+          // (here we never reached it, so nothing to log).
+          await reportError(e, {
+            op: "generated.refine.patch",
+            userId,
+            tags: { docId: id },
+          });
+          yield {
+            kind: "mode",
+            mode: "regen",
+            reason:
+              "AI вернул структурно неверный ответ — переключаемся на полную перегенерацию.",
+          };
+          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+          return;
         }
-      } catch (e) {
-        await reportError(e, {
-          op: "generated.refine.stream",
-          userId,
-          tags: { docId: id },
-        });
-        yield { kind: "error", message: (e as Error).message };
-        return;
-      }
 
-      // Defensive: don't try to save an empty / suspiciously short
-      // result. Most useful refinements produce 1k+ characters; under
-      // 200 is almost certainly a model failure or a "I refuse" answer.
-      if (accumulated.trim().length < 200) {
-        yield {
-          kind: "error",
-          message:
-            "AI вернул слишком короткий ответ. Попробуйте переформулировать инструкцию.",
-        };
-        return;
-      }
+        if (patch.refused) {
+          yield {
+            kind: "mode",
+            mode: "regen",
+            reason: patch.refusalReason
+              ? `AI: ${patch.refusalReason} Переключаемся на полную перегенерацию.`
+              : "AI отказался выполнять точечную правку — переключаемся на полную перегенерацию.",
+          };
+          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+          return;
+        }
 
-      try {
-        const safeFormData =
-          doc.formData && typeof doc.formData === "object"
-            ? (doc.formData as Record<string, string>)
-            : {};
-        const summary = generateDiffSummary(doc.content, accumulated);
-        // Truncate the instruction at 80 chars for the changes summary
-        // headline — full instruction stays in the prompt but the UI
-        // line should fit on one row.
-        const headline =
-          instruction.length <= 80
-            ? instruction
-            : `${instruction.slice(0, 77)}…`;
+        const apply = applyRefinePatch(
+          doc.content,
+          patch.operations as RefineOperation[]
+        );
+        if (!apply.ok) {
+          // Anchor mismatch — most common failure mode. Tell the user
+          // we're falling back instead of just succeeding silently
+          // with the wrong result.
+          yield {
+            kind: "mode",
+            mode: "regen",
+            reason: `Не удалось применить точечную правку (${apply.reason}) — переключаемся на полную перегенерацию.`,
+          };
+          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+          return;
+        }
 
-        const newVersion = await prisma.$transaction(async (tx) => {
-          const last = await tx.documentVersion.findFirst({
-            where: { generatedDocId: id },
-            orderBy: { versionNumber: "desc" },
-            select: { versionNumber: true },
+        // Patch succeeded — persist and emit the saved event. No
+        // streaming text payload for this path; the UI fetches the
+        // updated document on reload.
+        try {
+          const saved = await persistNewVersion({
+            docId: id,
+            userId,
+            originalContent: doc.content,
+            newContent: apply.result,
+            originalFormData: doc.formData,
+            instruction,
+            summaryFromAi: patch.summary,
+            opsApplied: apply.appliedOps,
           });
-          const nextVersionNumber = (last?.versionNumber ?? 0) + 1;
-
-          const created = await tx.documentVersion.create({
-            data: {
-              generatedDocId: id,
-              versionNumber: nextVersionNumber,
-              title: `AI: ${headline}`,
-              content: accumulated,
-              formData: safeFormData,
-              changesSummary: `AI-доработка: «${headline}». ${summary}`,
-              createdBy: userId,
+          yield {
+            kind: "saved",
+            payload: {
+              documentId: id,
+              versionId: saved.id,
+              versionNumber: saved.versionNumber,
+              mode: "patch",
+              opsApplied: apply.appliedOps.length,
             },
-            select: { id: true, versionNumber: true },
+          };
+          return;
+        } catch (e) {
+          await reportError(e, {
+            op: "generated.refine.persist",
+            userId,
+            tags: { docId: id, mode: "patch" },
           });
-
-          await tx.generatedDocument.update({
-            where: { id },
-            data: { content: accumulated },
-          });
-
-          return created;
-        });
-
-        yield {
-          kind: "saved",
-          payload: {
-            documentId: id,
-            versionId: newVersion.id,
-            versionNumber: newVersion.versionNumber,
-          },
-        };
-      } catch (e) {
-        await reportError(e, {
-          op: "generated.refine.persist",
-          userId,
-          tags: { docId: id },
-        });
-        yield {
-          kind: "error",
-          message:
-            "AI завершил работу, но мы не смогли сохранить версию. Попробуйте ещё раз.",
-        };
+          yield {
+            kind: "error",
+            message:
+              "Правка применена, но сохранить версию не удалось. Попробуйте ещё раз.",
+          };
+          return;
+        }
       }
+
+      // ── Path 2: regen mode (explicit) ─────────────────────────
+      yield { kind: "mode", mode: "regen" };
+      yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
     }
 
     return new Response(streamToSSE(refineStream()), {
@@ -277,4 +277,184 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+
+interface RegenArgs {
+  doc: {
+    id: string;
+    name: string;
+    content: string;
+    formData: unknown;
+    templateId: string;
+  };
+  userPrompt: string;
+  userId: string;
+  orgId: string;
+  signal: AbortSignal;
+}
+
+/**
+ * Streaming full-regen path. Wraps streamChat, accumulates tokens, and
+ * commits a new DocumentVersion atomically when the stream completes.
+ */
+async function* runRegenAndPersist(
+  args: RegenArgs
+): AsyncGenerator<StreamEvent> {
+  const { doc, userPrompt, userId, orgId, signal } = args;
+  let accumulated = "";
+
+  try {
+    const source = streamChat({
+      system: REFINE_DOCUMENT_SYSTEM,
+      messages: [{ role: "user", content: userPrompt }],
+      model: "fast",
+      maxTokens: 8192,
+      signal,
+    });
+
+    for await (const event of source) {
+      if (event.kind === "delta") {
+        accumulated += event.text;
+      }
+      if (event.kind === "usage") {
+        void logUsage(userId, orgId, event.usage, "generate");
+      }
+      if (event.kind === "error") {
+        await reportError(new Error(event.message), {
+          op: "generated.refine.regen.stream",
+          userId,
+          tags: { docId: doc.id },
+        });
+      }
+      yield event;
+    }
+  } catch (e) {
+    await reportError(e, {
+      op: "generated.refine.regen.stream",
+      userId,
+      tags: { docId: doc.id },
+    });
+    yield { kind: "error", message: (e as Error).message };
+    return;
+  }
+
+  if (accumulated.trim().length < 200) {
+    yield {
+      kind: "error",
+      message:
+        "AI вернул слишком короткий ответ. Попробуйте переформулировать инструкцию.",
+    };
+    return;
+  }
+
+  try {
+    const saved = await persistNewVersion({
+      docId: doc.id,
+      userId,
+      originalContent: doc.content,
+      newContent: accumulated,
+      originalFormData: doc.formData,
+      instruction: userPrompt,
+      mode: "regen",
+    });
+    yield {
+      kind: "saved",
+      payload: {
+        documentId: doc.id,
+        versionId: saved.id,
+        versionNumber: saved.versionNumber,
+        mode: "regen",
+      },
+    };
+  } catch (e) {
+    await reportError(e, {
+      op: "generated.refine.persist",
+      userId,
+      tags: { docId: doc.id, mode: "regen" },
+    });
+    yield {
+      kind: "error",
+      message:
+        "AI завершил работу, но мы не смогли сохранить версию. Попробуйте ещё раз.",
+    };
+  }
+}
+
+interface PersistArgs {
+  docId: string;
+  userId: string;
+  originalContent: string;
+  newContent: string;
+  originalFormData: unknown;
+  instruction: string;
+  /** Used in the version title prefix. */
+  mode?: "patch" | "regen";
+  /** Pre-computed summary from the AI (patch mode only). */
+  summaryFromAi?: string;
+  /** Ops list for patch-mode summary. */
+  opsApplied?: Array<{ op: string; preview: string }>;
+}
+
+async function persistNewVersion(args: PersistArgs) {
+  const safeFormData =
+    args.originalFormData && typeof args.originalFormData === "object"
+      ? (args.originalFormData as Record<string, string>)
+      : {};
+
+  const headline =
+    args.summaryFromAi && args.summaryFromAi.length > 0
+      ? args.summaryFromAi.length <= 80
+        ? args.summaryFromAi
+        : `${args.summaryFromAi.slice(0, 77)}…`
+      : args.instruction.length <= 80
+        ? args.instruction
+        : `${args.instruction.slice(0, 77)}…`;
+
+  const baseSummary = generateDiffSummary(args.originalContent, args.newContent);
+  const opsLine = args.opsApplied
+    ? args.opsApplied.map((o) => o.preview).join("; ")
+    : "";
+
+  const changesSummary = args.opsApplied
+    ? `AI-правка (${args.opsApplied.length} ${pluralize(args.opsApplied.length, ["операция", "операции", "операций"])}): ${opsLine}. ${baseSummary}`
+    : `AI-доработка: «${headline}». ${baseSummary}`;
+
+  return prisma.$transaction(async (tx) => {
+    const last = await tx.documentVersion.findFirst({
+      where: { generatedDocId: args.docId },
+      orderBy: { versionNumber: "desc" },
+      select: { versionNumber: true },
+    });
+    const nextVersionNumber = (last?.versionNumber ?? 0) + 1;
+
+    const created = await tx.documentVersion.create({
+      data: {
+        generatedDocId: args.docId,
+        versionNumber: nextVersionNumber,
+        title: `AI: ${headline}`,
+        content: args.newContent,
+        formData: safeFormData,
+        changesSummary,
+        createdBy: args.userId,
+      },
+      select: { id: true, versionNumber: true },
+    });
+
+    await tx.generatedDocument.update({
+      where: { id: args.docId },
+      data: { content: args.newContent },
+    });
+
+    return created;
+  });
+}
+
+function pluralize(n: number, forms: [string, string, string]): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1];
+  return forms[2];
 }

@@ -23,7 +23,9 @@ export function encodeStreamEvent(event: StreamEvent): Uint8Array {
           ? { message: event.message }
           : event.kind === "saved"
             ? event.payload
-            : {}
+            : event.kind === "mode"
+              ? { mode: event.mode, reason: event.reason }
+              : {}
   );
   return ENCODER.encode(`event: ${event.kind}\ndata: ${data}\n\n`);
 }

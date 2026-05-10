@@ -1,10 +1,18 @@
 "use client";
 
-// "Доработать AI" panel for /generated/[id]. Drops a textarea + submit
-// button, opens a streaming preview when fired, persists as a new
-// DocumentVersion server-side, and on completion either reloads the
-// page (so the version count, content, badges all refresh together)
-// or surfaces the error.
+// "Доработать AI" panel for /generated/[id]. Two execution modes:
+//
+//   • PATCH (default): tiny output, AI returns a list of edit operations
+//     and the server applies them. UI shows a quick "Применяем точечные
+//     правки..." spinner — no streaming preview because there's nothing
+//     to stream (the result is just patches against the existing doc).
+//
+//   • REGEN (fallback or user-forced): full document is streamed as the
+//     AI types it. UI shows the live token-by-token preview so the user
+//     sees progress on a long generation.
+//
+// The route emits a "mode" SSE event at the start of each path so this
+// panel knows which UI state to show.
 
 import { useRef, useState } from "react";
 import {
@@ -12,8 +20,9 @@ import {
   Loader2,
   X,
   AlertCircle,
-  CheckCircle2,
   Wand2,
+  Zap,
+  RefreshCw,
 } from "lucide-react";
 import { parseSseStream } from "@/lib/sse-client";
 import { useToast } from "@/components/toast";
@@ -27,6 +36,12 @@ interface Props {
    *  or a full reload so the versions sidebar updates. */
   onSaved: () => void;
 }
+
+type Phase =
+  | "idle"
+  | "patch-running"
+  | "regen-streaming"
+  | "saved";
 
 const SUGGESTIONS = [
   "Добавить пункт о коммерческой тайне с штрафом за разглашение",
@@ -43,19 +58,19 @@ export function RefinePanel({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
-  const [streaming, setStreaming] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [streamedText, setStreamedText] = useState("");
+  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const toast = useToast();
 
   const reset = () => {
     setInstruction("");
-    setStreaming(false);
+    setPhase("idle");
     setStreamedText("");
+    setFallbackReason(null);
     setError(null);
-    setSaved(false);
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
@@ -67,10 +82,12 @@ export function RefinePanel({
     setOpen(false);
   };
 
+  const isWorking = phase === "patch-running" || phase === "regen-streaming";
+
   const handleStop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
-    setStreaming(false);
+    setPhase("idle");
   };
 
   const handleSubmit = async () => {
@@ -81,8 +98,10 @@ export function RefinePanel({
 
     setError(null);
     setStreamedText("");
-    setSaved(false);
-    setStreaming(true);
+    setFallbackReason(null);
+    // We don't know yet whether the route will choose patch or regen —
+    // start in patch-running and switch on the first "mode" event.
+    setPhase("patch-running");
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -97,7 +116,7 @@ export function RefinePanel({
       });
     } catch (e) {
       const aborted = (e as Error).name === "AbortError";
-      setStreaming(false);
+      setPhase("idle");
       if (!aborted) {
         setError("Сеть недоступна. Попробуйте ещё раз.");
       }
@@ -106,33 +125,48 @@ export function RefinePanel({
 
     if (!response.ok) {
       const json = await response.json().catch(() => ({}));
-      setStreaming(false);
+      setPhase("idle");
       setError(json.error ?? `Ошибка ${response.status}`);
       return;
     }
 
     if (!response.body) {
-      setStreaming(false);
+      setPhase("idle");
       setError("Сервер не вернул поток. Попробуйте ещё раз.");
       return;
     }
 
     try {
       for await (const event of parseSseStream(response.body)) {
-        if (event.kind === "delta") {
+        if (event.kind === "mode") {
+          if (event.mode === "patch") {
+            setPhase("patch-running");
+          } else {
+            setPhase("regen-streaming");
+            if (event.reason) setFallbackReason(event.reason);
+          }
+        } else if (event.kind === "delta") {
           setStreamedText((prev) => prev + event.text);
         } else if (event.kind === "error") {
           setError(event.message);
-          setStreaming(false);
+          setPhase("idle");
           return;
         } else if (event.kind === "saved") {
-          setSaved(true);
-          setStreaming(false);
-          toast.success(
-            `Создана версия ${event.payload.versionNumber ?? ""}. Документ обновлён.`
-          );
-          // Give the user a beat to see the green confirmation card
-          // before we reload the page.
+          setPhase("saved");
+          const versionNumber = event.payload.versionNumber as
+            | number
+            | undefined;
+          const mode = (event.payload.mode as string) ?? "regen";
+          const opsApplied = event.payload.opsApplied as number | undefined;
+          if (mode === "patch" && opsApplied) {
+            toast.success(
+              `Создана версия ${versionNumber ?? ""}: применено ${opsApplied} ${pluralize(opsApplied, ["правка", "правки", "правок"])}.`
+            );
+          } else {
+            toast.success(
+              `Создана версия ${versionNumber ?? ""}. Документ переписан AI.`
+            );
+          }
           setTimeout(() => {
             close();
             onSaved();
@@ -146,10 +180,19 @@ export function RefinePanel({
         setError("Соединение прервалось. Попробуйте ещё раз.");
       }
     } finally {
-      setStreaming(false);
+      // If the loop exited without saved/error, settle.
+      setPhase((p) => (p === "saved" ? p : "idle"));
       abortRef.current = null;
     }
   };
+
+  function pluralize(n: number, f: [string, string, string]): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return f[0];
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return f[1];
+    return f[2];
+  }
 
   if (!open) {
     return (
@@ -179,15 +222,15 @@ export function RefinePanel({
                 Доработать документ AI
               </h2>
               <p className="text-xs text-muted">
-                Напишите, что нужно изменить — AI перепишет договор и
-                сохранит как новую версию.
+                Сначала пробуем точечную правку — экономит токены в 5–10 раз.
+                Если не получится, AI перепишет документ целиком.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={close}
-            disabled={streaming}
+            disabled={isWorking}
             className="rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-foreground disabled:opacity-50"
             aria-label="Закрыть"
           >
@@ -197,7 +240,7 @@ export function RefinePanel({
 
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-4">
-          {!streaming && !saved && streamedText.length === 0 && (
+          {phase === "idle" && (
             <>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -217,9 +260,7 @@ export function RefinePanel({
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-muted">
-                  Примеры:
-                </p>
+                <p className="mb-2 text-xs font-medium text-muted">Примеры:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SUGGESTIONS.map((s) => (
                     <button
@@ -243,38 +284,68 @@ export function RefinePanel({
             </div>
           )}
 
-          {(streaming || streamedText.length > 0) && (
-            <div className="rounded-xl border border-border bg-surface/50 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
-                  {saved ? (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                      Готово · сохраняем
-                    </>
-                  ) : streaming ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      AI пишет…
-                    </>
-                  ) : (
-                    "Превью результата"
-                  )}
+          {phase === "patch-running" && (
+            <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary-light/30 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
+                <Zap className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-primary-dark">
+                  Применяем точечные правки…
                 </p>
-                <p className="text-xs text-muted tabular-nums">
-                  {streamedText.length} симв · из {currentContent.length}
+                <p className="mt-0.5 text-xs text-muted">
+                  AI описывает изменения как небольшой набор операций — это
+                  экономит токены и работает в 3–5 раз быстрее, чем
+                  переписывать документ целиком.
                 </p>
               </div>
-              <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
-                {streamedText || "—"}
-              </pre>
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
+            </div>
+          )}
+
+          {phase === "regen-streaming" && (
+            <>
+              {fallbackReason && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{fallbackReason}</span>
+                </div>
+              )}
+              <div className="rounded-xl border border-border bg-surface/50 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    AI переписывает документ…
+                  </p>
+                  <p className="text-xs text-muted tabular-nums">
+                    {streamedText.length} симв · из {currentContent.length}
+                  </p>
+                </div>
+                <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
+                  {streamedText || "—"}
+                </pre>
+              </div>
+            </>
+          )}
+
+          {phase === "saved" && (
+            <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/10 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success text-white">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-success">Готово!</p>
+                <p className="mt-0.5 text-xs text-emerald-900">
+                  Сохраняем версию и обновляем страницу…
+                </p>
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-          {streaming ? (
+          {isWorking ? (
             <button
               type="button"
               onClick={handleStop}
@@ -282,6 +353,8 @@ export function RefinePanel({
             >
               Остановить
             </button>
+          ) : phase === "saved" ? (
+            <span className="text-xs text-muted">Перенаправляем…</span>
           ) : (
             <>
               <button
@@ -291,17 +364,15 @@ export function RefinePanel({
               >
                 Закрыть
               </button>
-              {!saved && (
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={instruction.trim().length < 5}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Запустить AI
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={instruction.trim().length < 5}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+              >
+                <Sparkles className="h-4 w-4" />
+                Запустить AI
+              </button>
             </>
           )}
         </div>
