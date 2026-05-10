@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // Tiny in-app toast system. Replaces window.alert() for non-blocking
 // error / success feedback. Keep it minimal — single global provider,
@@ -100,13 +100,13 @@ function ToastCard({
     success: {
       bg: "bg-success/10",
       border: "border-success/30",
-      text: "text-emerald-900",
+      text: "text-success",
       icon: CheckCircle2,
     },
     error: {
-      bg: "bg-red-50",
-      border: "border-red-200",
-      text: "text-red-900",
+      bg: "bg-danger-light",
+      border: "border-danger/30",
+      text: "text-danger",
       icon: AlertCircle,
     },
     info: {
@@ -125,7 +125,7 @@ function ToastCard({
     <div
       role="status"
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-white p-3 pr-2 shadow-lg animate-fade-in",
+        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border bg-card p-3 pr-2 shadow-lg animate-fade-in",
         s.bg,
         s.border
       )}

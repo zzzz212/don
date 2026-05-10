@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -228,7 +228,7 @@ export function OrgSwitcher() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-sm">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm">
         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" />
         <span className="text-muted">Загрузка…</span>
       </div>
@@ -241,14 +241,14 @@ export function OrgSwitcher() {
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex max-w-[260px] items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
+        className="flex max-w-[260px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
       >
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-light text-xs font-bold text-primary-dark">
           {active.name.slice(0, 1).toUpperCase()}
         </div>
         <span className="truncate text-foreground">{active.name}</span>
         {active.isTrial && typeof active.trialDaysLeft === "number" && (
-          <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+          <span className="shrink-0 rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
             Триал {active.trialDaysLeft}д
           </span>
         )}
@@ -256,7 +256,7 @@ export function OrgSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-white shadow-xl">
+        <div className="absolute left-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
           <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted">
             Ваши workspace
           </div>
@@ -307,7 +307,7 @@ export function OrgSwitcher() {
               <CreditCard className="h-4 w-4 text-muted" />
               Тариф и биллинг
               {active.isTrial && typeof active.trialDaysLeft === "number" && (
-                <span className="ml-auto rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                <span className="ml-auto rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
                   Триал {active.trialDaysLeft}д
                 </span>
               )}
@@ -334,7 +334,7 @@ export function OrgSwitcher() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
               >
-                <ShieldCheck className="h-4 w-4 text-amber-600" />
+                <ShieldCheck className="h-4 w-4 text-warning" />
                 Админ-панель
               </Link>
             )}

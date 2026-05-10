@@ -9,17 +9,17 @@ const config: Record<
 > = {
   critical: {
     label: "Критичный",
-    className: "bg-red-50 text-red-700 border-red-200",
+    className: "bg-danger-light text-danger border-danger/30",
     icon: AlertTriangle,
   },
   medium: {
     label: "Средний",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
+    className: "bg-warning-light text-warning border-warning/30",
     icon: AlertCircle,
   },
   low: {
     label: "Низкий",
-    className: "bg-green-50 text-green-700 border-green-200",
+    className: "bg-success-light text-success border-success/30",
     icon: CheckCircle,
   },
 };

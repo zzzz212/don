@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Header } from "@/components/header";
@@ -103,26 +103,26 @@ export default function CounterpartyPage() {
   const getRiskIcon = (level: string) => {
     switch (level) {
       case "critical":
-        return <AlertOctagon className="h-6 w-6 text-red-600" />;
+        return <AlertOctagon className="h-6 w-6 text-danger" />;
       case "high":
-        return <AlertTriangle className="h-6 w-6 text-orange-600" />;
+        return <AlertTriangle className="h-6 w-6 text-warning" />;
       case "medium":
-        return <AlertCircle className="h-6 w-6 text-yellow-600" />;
+        return <AlertCircle className="h-6 w-6 text-warning" />;
       default:
-        return <CheckCircle className="h-6 w-6 text-green-600" />;
+        return <CheckCircle className="h-6 w-6 text-success" />;
     }
   };
 
   const getRiskColor = (level: string) => {
     switch (level) {
       case "critical":
-        return "bg-red-50 border-red-200";
+        return "bg-danger-light border-danger/30";
       case "high":
-        return "bg-orange-50 border-orange-200";
+        return "bg-warning-light border-warning/30";
       case "medium":
-        return "bg-yellow-50 border-yellow-200";
+        return "bg-warning-light border-warning/30";
       default:
-        return "bg-green-50 border-green-200";
+        return "bg-success-light border-success/30";
     }
   };
 
@@ -137,7 +137,7 @@ export default function CounterpartyPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -158,7 +158,7 @@ export default function CounterpartyPage() {
                 onChange={(e) => setInn(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleCheck()}
                 maxLength={12}
-                className="flex-1 rounded-lg border border-border bg-white px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="flex-1 rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <button
                 onClick={handleCheck}
@@ -177,7 +177,7 @@ export default function CounterpartyPage() {
 
           {/* Error message */}
           {error && (
-            <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-800">
+            <div className="mb-6 rounded-lg bg-danger-light border border-danger/30 p-4 text-danger">
               <p className="text-sm font-medium">{error}</p>
             </div>
           )}
@@ -203,10 +203,10 @@ export default function CounterpartyPage() {
                         <span
                           className={
                             profile.dataSource === "dadata"
-                              ? "text-green-600 font-medium"
+                              ? "text-success font-medium"
                               : profile.dataSource === "egrul"
-                                ? "text-blue-600 font-medium"
-                                : "text-orange-600 font-medium"
+                                ? "text-primary font-medium"
+                                : "text-warning font-medium"
                           }
                         >
                           {profile.dataSource === "dadata"
@@ -230,7 +230,7 @@ export default function CounterpartyPage() {
                       {profile.riskScore}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-card-hover rounded-full h-3">
                     <div
                       className={`h-3 rounded-full transition-all ${getRiskPercentageColor(
                         profile.riskScore
@@ -270,7 +270,7 @@ export default function CounterpartyPage() {
               </div>
 
               {/* Company info */}
-              <div className="bg-white rounded-lg border border-border p-6">
+              <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">
                   Информация о компании
                 </h3>
@@ -332,7 +332,7 @@ export default function CounterpartyPage() {
               </div>
 
               {/* Risk factors */}
-              <div className="bg-white rounded-lg border border-border p-6">
+              <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">
                   Факторы риска
                 </h3>
@@ -375,7 +375,7 @@ export default function CounterpartyPage() {
                         {profile.riskFactors.map((factor) => (
                           <span
                             key={factor}
-                            className="inline-block px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs"
+                            className="inline-block px-2 py-1 rounded-full bg-danger-light text-danger text-xs"
                           >
                             ⚠️ {factor}
                           </span>
@@ -387,7 +387,7 @@ export default function CounterpartyPage() {
               </div>
 
               {/* Notes section */}
-              <div className="bg-white rounded-lg border border-border p-6">
+              <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <FileText className="h-5 w-5" />
                   Ваши комментарии
@@ -398,7 +398,7 @@ export default function CounterpartyPage() {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Добавьте свои заметки о контрагенте..."
                   rows={4}
-                  className="w-full rounded-lg border border-border bg-white px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
 
                 <button

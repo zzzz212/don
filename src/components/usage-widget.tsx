@@ -65,8 +65,8 @@ const PLAN_META: Record<
   },
   BUSINESS: {
     label: "Бизнес",
-    chipBg: "bg-amber-100",
-    chipText: "text-amber-800",
+    chipBg: "bg-warning-light",
+    chipText: "text-warning",
     icon: Crown,
   },
 };
@@ -163,7 +163,7 @@ export function UsageWidget() {
                 {planMeta.label}
               </p>
               {isTrial && typeof daysLeft === "number" && (
-                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                <span className="rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning">
                   Триал · {daysLeft} {pluralizeDays(daysLeft)}
                 </span>
               )}
@@ -217,7 +217,7 @@ export function UsageWidget() {
       {isTrial && typeof daysLeft === "number" ? (
         <Link
           href="/billing"
-          className="mt-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+          className="mt-4 flex items-center justify-between rounded-lg border border-warning/40 bg-warning-light px-4 py-2.5 text-sm font-semibold text-warning transition-colors hover:bg-warning-light"
         >
           <span>
             Пробный «Про» — осталось {daysLeft} {pluralizeDays(daysLeft)}. Оформите подписку, чтобы не потерять доступ.

@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import {
@@ -115,8 +115,7 @@ export default function LandingPage() {
       <Header />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/50 to-white py-20 lg:py-28">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(37,99,235,0.05),transparent_50%)]" />
+      <section className="relative overflow-hidden bg-hero-gradient py-20 lg:py-28">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary-light/50 px-4 py-1.5 text-sm font-medium text-primary-dark">
@@ -141,7 +140,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/templates"
-                className="flex items-center gap-2 rounded-xl border border-border bg-white px-8 py-3.5 text-base font-semibold text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-8 py-3.5 text-base font-semibold text-foreground transition-colors hover:bg-surface"
               >
                 <FileText className="h-4 w-4" />
                 Создать документ
@@ -152,7 +151,7 @@ export default function LandingPage() {
       </section>
 
       {/* Stats */}
-      <section className="border-y border-border bg-white py-12">
+      <section className="border-y border-border bg-card py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
             {stats.map((stat) => (
@@ -340,7 +339,7 @@ export default function LandingPage() {
                   className={`mt-8 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
                     plan.popular
                       ? "bg-primary text-white hover:bg-primary-dark"
-                      : "border border-border bg-white text-foreground hover:bg-surface"
+                      : "border border-border bg-card text-foreground hover:bg-surface"
                   }`}
                 >
                   {plan.cta}
@@ -364,7 +363,7 @@ export default function LandingPage() {
             </p>
             <Link
               href="/analyze"
-              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-primary transition-colors hover:bg-blue-50"
+              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-blue-700 transition-colors hover:bg-blue-50"
             >
               Начать бесплатно
               <ArrowRight className="h-4 w-4" />

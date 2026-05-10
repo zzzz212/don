@@ -28,7 +28,7 @@ export default function TemplateFillPageWrapper() {
       fallback={
         <div className="flex min-h-full flex-col">
           <Header />
-          <main className="flex flex-1 items-center justify-center">
+          <main id="main-content" className="flex flex-1 items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
           </main>
         </div>
@@ -347,13 +347,13 @@ function TemplateFillPage() {
             /* Generated document */
             <div className="animate-in fade-in duration-500">
               {/* Success header */}
-              <div className="mb-6 flex items-center gap-3 rounded-xl bg-green-50 border border-green-200 p-4">
+              <div className="mb-6 flex items-center gap-3 rounded-xl bg-success-light border border-success/30 p-4">
                 <CheckCircle className="h-5 w-5 text-success shrink-0" />
                 <div>
-                  <p className="font-semibold text-green-800">
+                  <p className="font-semibold text-success">
                     Документ успешно сгенерирован
                   </p>
-                  <p className="text-sm text-green-700">
+                  <p className="text-sm text-success">
                     Проверьте содержание и скачайте готовый документ
                   </p>
                 </div>
@@ -368,7 +368,7 @@ function TemplateFillPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
                   >
                     {copied ? (
                       <>
@@ -395,7 +395,7 @@ function TemplateFillPage() {
               {/* Document preview in A4 format */}
               <div className="flex justify-center my-6">
                 <div className="w-full max-w-2xl">
-                  <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
+                  <div className="bg-card rounded-lg shadow-2xl overflow-hidden">
                     <div className="p-8 sm:p-12">
                       <pre className="whitespace-pre-wrap font-serif text-[13px] leading-7 text-foreground break-words">
                         {generatedDoc}
@@ -409,7 +409,7 @@ function TemplateFillPage() {
               <div className="mt-6 flex justify-center gap-3">
                 <button
                   onClick={() => setGeneratedDoc(null)}
-                  className="rounded-xl border border-border bg-white px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                 >
                   Редактировать данные
                 </button>
@@ -498,13 +498,13 @@ function renderField(
           onChange={(e) => handleChange(field.id, e.target.value)}
           placeholder={field.placeholder}
           rows={3}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
         />
       ) : field.type === "select" ? (
         <select
           value={formData[field.id] || ""}
           onChange={(e) => handleChange(field.id, e.target.value)}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">Выберите...</option>
           {field.options?.map((opt) => (
@@ -525,7 +525,7 @@ function renderField(
           value={formData[field.id] || ""}
           onChange={(e) => handleChange(field.id, e.target.value)}
           placeholder={field.placeholder}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       )}
     </div>

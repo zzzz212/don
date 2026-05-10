@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -162,14 +162,14 @@ export default function DashboardPage() {
       value: avgScore,
       icon: TrendingUp,
       color: "text-warning",
-      bg: "bg-amber-50",
+      bg: "bg-warning-light",
     },
     {
       label: "С критичными рисками",
       value: String(criticalCount),
       icon: Shield,
       color: "text-danger",
-      bg: "bg-red-50",
+      bg: "bg-danger-light",
     },
   ];
 
@@ -177,7 +177,7 @@ export default function DashboardPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
@@ -190,7 +190,7 @@ export default function DashboardPage() {
             <div className="flex gap-3">
               <Link
                 href="/templates"
-                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
               >
                 <FolderOpen className="h-4 w-4" />
                 Шаблоны
@@ -302,14 +302,14 @@ export default function DashboardPage() {
                     </Link>
                     <Link
                       href="/chat"
-                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                     >
                       <MessageCircle className="h-4 w-4" />
                       Спросить AI-юриста
                     </Link>
                     <Link
                       href="/counterparty"
-                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                      className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                     >
                       <Building2 className="h-4 w-4" />
                       Проверить контрагента

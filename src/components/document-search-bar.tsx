@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -98,7 +98,7 @@ export function DocumentSearchBar() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
           ref={inputRef}
@@ -122,7 +122,7 @@ export function DocumentSearchBar() {
       </div>
 
       {open && data && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-white shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
           {/* Mode + note */}
           <div className="flex items-center justify-between border-b border-border px-4 py-2 text-xs">
             <span className="flex items-center gap-1.5 text-muted">
@@ -149,7 +149,7 @@ export function DocumentSearchBar() {
           </div>
 
           {data.note && (
-            <p className="border-b border-border bg-amber-50 px-4 py-2 text-xs text-amber-800">
+            <p className="border-b border-border bg-warning-light px-4 py-2 text-xs text-warning">
               {data.note}
             </p>
           )}

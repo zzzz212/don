@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Check, Copy, ScrollText, BookOpen } from "lucide-react";
@@ -40,7 +40,7 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
         <span className="text-xs font-semibold text-muted">
           {risk.clauseNumber}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+        <span className="inline-flex items-center gap-1 rounded-md bg-primary-light px-2 py-0.5 text-xs font-medium text-primary-dark">
           <BookOpen className="h-3 w-3" />
           {risk.legalReference}
         </span>
@@ -56,14 +56,14 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
 
       {/* Original text */}
       {risk.originalText && risk.originalText !== "—" && (
-        <div className="mb-3 rounded-lg border border-red-100 bg-red-50/50 p-3">
+        <div className="mb-3 rounded-lg border border-danger/20 bg-danger-light/50 p-3">
           <div className="mb-1 flex items-center gap-1.5">
-            <ScrollText className="h-3.5 w-3.5 text-red-600" />
-            <p className="text-xs font-semibold text-red-800">
+            <ScrollText className="h-3.5 w-3.5 text-danger" />
+            <p className="text-xs font-semibold text-danger">
               Что написано сейчас
             </p>
           </div>
-          <p className="text-sm leading-relaxed text-red-900/80 italic">
+          <p className="text-sm leading-relaxed text-danger/80 italic">
             «{risk.originalText}»
           </p>
         </div>
@@ -71,14 +71,14 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
 
       {/* Recommended replacement text */}
       {risk.recommendedText && risk.recommendedText !== "—" && (
-        <div className="mb-3 rounded-lg border border-green-100 bg-green-50/50 p-3">
+        <div className="mb-3 rounded-lg border border-success/20 bg-success-light/50 p-3">
           <div className="mb-1.5 flex items-center justify-between">
-            <p className="text-xs font-semibold text-green-800">
+            <p className="text-xs font-semibold text-success">
               Готовая формулировка для замены
             </p>
             <button
               onClick={handleCopy}
-              className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-white px-2 py-1 text-xs font-medium text-green-700 transition-colors hover:bg-green-100 print:hidden"
+              className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-card px-2 py-1 text-xs font-medium text-success transition-colors hover:bg-success-light print:hidden"
             >
               {copied ? (
                 <>
@@ -93,7 +93,7 @@ export function AnalysisCard({ risk, index }: AnalysisCardProps) {
               )}
             </button>
           </div>
-          <p className="text-sm leading-relaxed text-green-900/90">
+          <p className="text-sm leading-relaxed text-success/90">
             {risk.recommendedText}
           </p>
         </div>

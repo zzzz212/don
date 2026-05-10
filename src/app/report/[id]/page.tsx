@@ -182,7 +182,7 @@ export default function ReportPage({
     return (
       <div className="flex min-h-full flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted">Загружаем отчёт...</p>
@@ -244,7 +244,7 @@ export default function ReportPage({
               {analysis.hasOriginal && (
                 <button
                   onClick={handleDownloadOriginal}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                   title="Скачать оригинальный загруженный файл"
                 >
                   <FileImage className="h-4 w-4" />
@@ -255,7 +255,7 @@ export default function ReportPage({
                 <button
                   onClick={handleReanalyze}
                   disabled={reanalyzing}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                   title="Запустить анализ заново — например, после обновления AI-модели"
                 >
                   {reanalyzing ? (
@@ -269,7 +269,7 @@ export default function ReportPage({
               <button
                 onClick={handleExportPDF}
                 disabled={exporting === "pdf"}
-                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
               >
                 {exporting === "pdf" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -281,7 +281,7 @@ export default function ReportPage({
               <button
                 onClick={handleExportDOCX}
                 disabled={exporting === "docx"}
-                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
               >
                 {exporting === "docx" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -292,7 +292,7 @@ export default function ReportPage({
               </button>
               <Link
                 href="/analyze"
-                className="flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
               >
                 Анализировать ещё
               </Link>
@@ -301,13 +301,13 @@ export default function ReportPage({
 
           {/* Demo banner */}
           {analysis.isDemo && (
-            <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 animate-fade-in">
-              <Info className="h-5 w-5 shrink-0 text-blue-500 mt-0.5" />
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-primary/30 bg-primary-light p-4 animate-fade-in">
+              <Info className="h-5 w-5 shrink-0 text-primary mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-blue-800">
+                <p className="text-sm font-semibold text-primary-dark">
                   Демо-анализ
                 </p>
-                <p className="text-sm text-blue-700 mt-0.5">
+                <p className="text-sm text-primary-dark mt-0.5">
                   Это автоматический анализ по ключевым словам. Для полноценного
                   AI-анализа добавьте API-ключ в .env
                 </p>
@@ -395,8 +395,8 @@ export default function ReportPage({
                     <div
                       className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                         analysis.notarization.required
-                          ? "bg-amber-50 text-amber-600"
-                          : "bg-green-50 text-green-600"
+                          ? "bg-warning-light text-warning"
+                          : "bg-success-light text-success"
                       }`}
                     >
                       <Stamp className="h-5 w-5" />
@@ -422,8 +422,8 @@ export default function ReportPage({
                     <div
                       className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                         analysis.registration.required
-                          ? "bg-amber-50 text-amber-600"
-                          : "bg-green-50 text-green-600"
+                          ? "bg-warning-light text-warning"
+                          : "bg-success-light text-success"
                       }`}
                     >
                       <Building2 className="h-5 w-5" />
@@ -457,9 +457,9 @@ export default function ReportPage({
 
           {/* Missing clauses */}
           {analysis.missingClauses && analysis.missingClauses.length > 0 && (
-            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/50 p-5">
+            <div className="mt-6 rounded-xl border border-warning/30 bg-warning-light/50 p-5">
               <div className="mb-3 flex items-center gap-2">
-                <ListChecks className="h-5 w-5 text-amber-600" />
+                <ListChecks className="h-5 w-5 text-warning" />
                 <h2 className="text-lg font-bold text-foreground">
                   Что добавить в договор
                 </h2>
@@ -473,7 +473,7 @@ export default function ReportPage({
                     key={i}
                     className="flex items-start gap-2 text-sm text-foreground"
                   >
-                    <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                    <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-warning" />
                     <span>{clause}</span>
                   </li>
                 ))}
@@ -500,7 +500,7 @@ export default function ReportPage({
                       key={i}
                       className="flex items-start gap-2 text-sm text-foreground"
                     >
-                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-primary/30 bg-white text-xs font-bold text-primary">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-primary/30 bg-card text-xs font-bold text-primary">
                         {i + 1}
                       </div>
                       <span>{item}</span>

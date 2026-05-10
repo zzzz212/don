@@ -1,4 +1,4 @@
-// User lands here after the ЮKassa hosted payment page. ЮKassa appends
+﻿// User lands here after the ЮKassa hosted payment page. ЮKassa appends
 // no parameters by default, so we don't have a payment id in the URL —
 // we just show a "we're checking your payment" screen and the user can
 // continue to /billing to see the latest state. The webhook is the
@@ -11,9 +11,9 @@ import { Disclaimer } from "@/components/disclaimer";
 
 export default function BillingReturnPage() {
   return (
-    <div className="flex min-h-full flex-col bg-white">
+    <div className="flex min-h-full flex-col bg-card">
       <Header />
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
+      <main id="main-content" className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-10 shadow-sm text-center">
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
             <CheckCircle2 className="h-7 w-7" />

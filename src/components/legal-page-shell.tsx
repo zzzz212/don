@@ -1,4 +1,4 @@
-// Shared chrome for the public legal pages (/privacy, /terms, /offer).
+﻿// Shared chrome for the public legal pages (/privacy, /terms, /offer).
 // Renders header + footer (so anonymous visitors land on a familiar layout
 // even when they came from outside via a ЮKassa receipt link), a sticky
 // table of contents on desktop, and prose-styled body content.
@@ -42,7 +42,7 @@ export function LegalPageShell({
   children,
 }: Props) {
   return (
-    <div className="flex min-h-full flex-col bg-white">
+    <div className="flex min-h-full flex-col bg-card">
       <Header />
 
       <main className="flex-1">

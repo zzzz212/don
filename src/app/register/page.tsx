@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -97,9 +97,9 @@ export default function RegisterPage() {
   };
 
   const inputClass = (field: string) =>
-    `w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
+    `w-full rounded-xl border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
       touched[field] && fieldErrors[field]
-        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+        ? "border-danger/40 focus:border-danger focus:ring-danger/20"
         : "border-border focus:border-primary focus:ring-primary/20"
     }`;
 
@@ -127,7 +127,7 @@ export default function RegisterPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           {/* Error */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -139,7 +139,7 @@ export default function RegisterPage() {
               <form action={loginWithGoogle}>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-white py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -174,7 +174,7 @@ export default function RegisterPage() {
                   name="name"
                   type="text"
                   placeholder="Иван Иванов"
-                  className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function RegisterPage() {
                 />
               </div>
               {touched.email && fieldErrors.email && (
-                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                <p className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.email}
                 </p>
               )}
@@ -219,7 +219,7 @@ export default function RegisterPage() {
                 />
               </div>
               {touched.password && fieldErrors.password && (
-                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                <p className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.password}
                 </p>
               )}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -55,13 +55,13 @@ function formatDateTime(iso: string): string {
 function StatusChip({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUCCEEDED: { label: "Оплачено", cls: "bg-success/10 text-success" },
-    PENDING: { label: "Ожидает", cls: "bg-amber-100 text-amber-800" },
+    PENDING: { label: "Ожидает", cls: "bg-warning-light text-warning" },
     WAITING_FOR_CAPTURE: {
       label: "Ожидает захвата",
-      cls: "bg-amber-100 text-amber-800",
+      cls: "bg-warning-light text-warning",
     },
     CANCELED: { label: "Отменён", cls: "bg-surface text-muted" },
-    FAILED: { label: "Ошибка", cls: "bg-red-100 text-red-700" },
+    FAILED: { label: "Ошибка", cls: "bg-danger-light text-danger" },
   };
   const e = map[status] ?? { label: status, cls: "bg-surface text-muted" };
   return (
@@ -133,7 +133,7 @@ function PaymentsPageInner() {
   return (
     <div className="flex min-h-full flex-col">
       <Header />
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/admin"
@@ -158,13 +158,13 @@ function PaymentsPageInner() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Email или имя пользователя"
-                className="w-full rounded-xl border border-border bg-white py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Любой статус</option>
               <option value="SUCCEEDED">Оплачено</option>
@@ -175,7 +175,7 @@ function PaymentsPageInner() {
             <select
               value={planFilter}
               onChange={(e) => setPlanFilter(e.target.value)}
-              className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Любой тариф</option>
               <option value="PRO">Про</option>
@@ -190,7 +190,7 @@ function PaymentsPageInner() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -254,7 +254,7 @@ function PaymentsPageInner() {
                         <td className="px-4 py-3">
                           <StatusChip status={p.status} />
                           {p.failureReason && (
-                            <p className="mt-1 text-xs text-red-600">
+                            <p className="mt-1 text-xs text-danger">
                               {p.failureReason}
                             </p>
                           )}
@@ -278,7 +278,7 @@ function PaymentsPageInner() {
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={data.page <= 1}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       ← Назад
                     </button>
@@ -288,7 +288,7 @@ function PaymentsPageInner() {
                         setPage((p) => Math.min(data.pageCount, p + 1))
                       }
                       disabled={data.page >= data.pageCount}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       Вперёд →
                     </button>

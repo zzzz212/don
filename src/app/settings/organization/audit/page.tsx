@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -158,7 +158,7 @@ export default function AuditLogPage() {
   return (
     <div className="flex min-h-full flex-col">
       <Header />
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/settings/organization"
@@ -198,7 +198,7 @@ export default function AuditLogPage() {
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     active
                       ? "bg-primary text-white"
-                      : "border border-border bg-white text-foreground hover:bg-surface"
+                      : "border border-border bg-card text-foreground hover:bg-surface"
                   }`}
                 >
                   {g.label}
@@ -214,7 +214,7 @@ export default function AuditLogPage() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -319,7 +319,7 @@ export default function AuditLogPage() {
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={data.page <= 1}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       ← Назад
                     </button>
@@ -329,7 +329,7 @@ export default function AuditLogPage() {
                         setPage((p) => Math.min(data.pageCount, p + 1))
                       }
                       disabled={data.page >= data.pageCount}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       Вперёд →
                     </button>

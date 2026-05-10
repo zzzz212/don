@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -74,7 +74,7 @@ function StatCard({
       : accent === "success"
         ? "bg-success/10 text-success"
         : accent === "warning"
-          ? "bg-amber-100 text-amber-800"
+          ? "bg-warning-light text-warning"
           : "bg-surface text-muted";
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
@@ -136,7 +136,7 @@ export default function AdminOverviewPage() {
   return (
     <div className="flex min-h-full flex-col">
       <Header />
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
@@ -154,21 +154,21 @@ export default function AdminOverviewPage() {
             <nav className="flex flex-wrap gap-2">
               <Link
                 href="/admin/users"
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 <Users className="h-4 w-4" />
                 Пользователи
               </Link>
               <Link
                 href="/admin/orgs"
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 <Building2 className="h-4 w-4" />
                 Workspaces
               </Link>
               <Link
                 href="/admin/payments"
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 <CreditCard className="h-4 w-4" />
                 Платежи
@@ -183,7 +183,7 @@ export default function AdminOverviewPage() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -53,7 +53,7 @@ interface OrgDetails {
 }
 
 const ROLE_META = {
-  OWNER: { label: "Владелец", icon: Crown, color: "text-amber-600" },
+  OWNER: { label: "Владелец", icon: Crown, color: "text-warning" },
   ADMIN: { label: "Админ", icon: Shield, color: "text-primary" },
   MEMBER: { label: "Участник", icon: UserIcon, color: "text-muted" },
 };
@@ -258,7 +258,7 @@ export default function OrganizationSettingsPage() {
     return (
       <div className="flex min-h-full flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
+        <main id="main-content" className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
       </div>
@@ -416,7 +416,7 @@ export default function OrganizationSettingsPage() {
                     <button
                       onClick={() => handleCreateInvite("ADMIN")}
                       disabled={creatingInvite}
-                      className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       <Shield className="h-3.5 w-3.5" />
                       Пригласить админа
@@ -508,7 +508,7 @@ export default function OrganizationSettingsPage() {
                       <div className="flex shrink-0 items-center gap-2">
                         <button
                           onClick={() => copyToken(inv.token, inv.id)}
-                          className="flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                          className="flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                         >
                           {copied === inv.id ? (
                             <>
@@ -539,7 +539,7 @@ export default function OrganizationSettingsPage() {
 
           {/* Danger zone — owner only */}
           {isOwner && (
-            <section className="rounded-xl border border-danger/30 bg-red-50/50 p-6">
+            <section className="rounded-xl border border-danger/30 bg-danger-light/50 p-6">
               <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold text-danger">
                 <AlertTriangle className="h-5 w-5" />
                 Опасная зона
@@ -550,7 +550,7 @@ export default function OrganizationSettingsPage() {
               </p>
               <button
                 onClick={handleDeleteOrg}
-                className="flex items-center gap-2 rounded-lg border border-danger bg-white px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
+                className="flex items-center gap-2 rounded-lg border border-danger bg-card px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
               >
                 <Trash2 className="h-4 w-4" />
                 Удалить workspace

@@ -53,8 +53,8 @@ interface ComparisonData {
 function renderTokens(tokens: WordToken[], emphasisType: "removed" | "added") {
   const emphasisClass =
     emphasisType === "removed"
-      ? "bg-red-200/80 text-red-900 rounded px-0.5"
-      : "bg-green-200/80 text-green-900 rounded px-0.5";
+      ? "bg-red-200/80 text-danger dark:bg-red-500/25 dark:text-red-200 rounded px-0.5"
+      : "bg-green-200/80 text-success dark:bg-emerald-500/25 dark:text-emerald-200 rounded px-0.5";
   return tokens.map((tok, i) => {
     if (tok.type === "context") {
       return <span key={i}>{tok.text}</span>;
@@ -104,7 +104,7 @@ export default function CompareVersionsPage() {
     return (
       <div className="flex min-h-full flex-col">
         <Header />
-        <main className="flex flex-1 items-center justify-center">
+        <main id="main-content" className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
       </div>
@@ -150,8 +150,8 @@ export default function CompareVersionsPage() {
             Сравнение версий
           </h1>
 
-          <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
-            <p className="mb-3 text-sm font-semibold text-blue-900">
+          <div className="mb-6 rounded-xl border border-primary/30 bg-primary-light p-4">
+            <p className="mb-3 text-sm font-semibold text-primary-dark">
               {comparison.v1.title} → {comparison.v2.title}
             </p>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -164,17 +164,17 @@ export default function CompareVersionsPage() {
                 Удалено: {comparison.diff.removed}
               </span>
               <span className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded bg-amber-500" />
+                <span className="h-3 w-3 rounded bg-warning" />
                 Изменено: {comparison.diff.changed}
               </span>
             </div>
-            <p className="mt-2 text-xs text-blue-900/70">
+            <p className="mt-2 text-xs text-primary-dark/70">
               Подсветка показывает изменения на уровне отдельных слов:
               удалённые — красным, добавленные — зелёным.
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border bg-white">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="max-h-[70vh] overflow-y-auto">
               {comparison.diff.hunks.map((hunk, idx) => {
                 if (hunk.type === "context") {
@@ -199,12 +199,12 @@ export default function CompareVersionsPage() {
                   return (
                     <div
                       key={idx}
-                      className="flex border-b border-border bg-green-50 font-mono text-xs"
+                      className="flex border-b border-border bg-success-light font-mono text-xs"
                     >
                       <div className="w-14 select-none border-r border-border bg-surface px-3 py-1 text-right text-muted tabular-nums">
                         {hunk.newLineNumber}
                       </div>
-                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-green-700">
+                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-success">
                         +
                       </div>
                       <div className="flex-1 whitespace-pre-wrap break-words px-3 py-1 text-foreground">
@@ -217,12 +217,12 @@ export default function CompareVersionsPage() {
                   return (
                     <div
                       key={idx}
-                      className="flex border-b border-border bg-red-50 font-mono text-xs"
+                      className="flex border-b border-border bg-danger-light font-mono text-xs"
                     >
                       <div className="w-14 select-none border-r border-border bg-surface px-3 py-1 text-right text-muted tabular-nums">
                         {hunk.oldLineNumber}
                       </div>
-                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-red-700">
+                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-danger">
                         −
                       </div>
                       <div className="flex-1 whitespace-pre-wrap break-words px-3 py-1 text-foreground">
@@ -234,22 +234,22 @@ export default function CompareVersionsPage() {
                 // modified — render two stacked rows with word-level diff
                 return (
                   <div key={idx}>
-                    <div className="flex border-b border-border bg-red-50 font-mono text-xs">
+                    <div className="flex border-b border-border bg-danger-light font-mono text-xs">
                       <div className="w-14 select-none border-r border-border bg-surface px-3 py-1 text-right text-muted tabular-nums">
                         {hunk.oldLineNumber}
                       </div>
-                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-red-700">
+                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-danger">
                         −
                       </div>
                       <div className="flex-1 whitespace-pre-wrap break-words px-3 py-1 text-foreground">
                         {renderTokens(hunk.oldTokens, "removed")}
                       </div>
                     </div>
-                    <div className="flex border-b border-border bg-green-50 font-mono text-xs">
+                    <div className="flex border-b border-border bg-success-light font-mono text-xs">
                       <div className="w-14 select-none border-r border-border bg-surface px-3 py-1 text-right text-muted tabular-nums">
                         {hunk.newLineNumber}
                       </div>
-                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-green-700">
+                      <div className="w-8 select-none border-r border-border px-2 py-1 text-center font-bold text-success">
                         +
                       </div>
                       <div className="flex-1 whitespace-pre-wrap break-words px-3 py-1 text-foreground">
@@ -265,7 +265,7 @@ export default function CompareVersionsPage() {
           <div className="mt-6 flex justify-center">
             <Link
               href={`/generated/${docId}/versions`}
-              className="rounded-lg border border-border bg-white px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+              className="rounded-lg border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
             >
               Вернуться к версиям
             </Link>

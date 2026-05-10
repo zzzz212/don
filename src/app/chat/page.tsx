@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/header";
@@ -447,7 +447,7 @@ export default function ChatPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex flex-1 flex-col bg-surface/30">
+      <main id="main-content" className="flex flex-1 flex-col bg-surface/30">
         {isEmpty ? (
           /* Empty state — welcome + suggested questions */
           <div className="flex flex-1 flex-col">
@@ -488,7 +488,7 @@ export default function ChatPage() {
                           <button
                             key={q}
                             onClick={() => handleQuestionClick(q)}
-                            className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm text-foreground transition-all hover:border-primary/30 hover:bg-primary-light/30 hover:shadow-sm"
+                            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-all hover:border-primary/30 hover:bg-primary-light/30 hover:shadow-sm"
                           >
                             {q}
                           </button>
@@ -501,7 +501,7 @@ export default function ChatPage() {
             </div>
 
             {/* Input bar (empty state) */}
-            <div className="border-t border-border bg-white p-4">
+            <div className="border-t border-border bg-card p-4">
               <div className="mx-auto max-w-3xl">
                 <div className="flex items-end gap-3 rounded-2xl border border-border bg-surface/50 p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
                   <textarea
@@ -646,7 +646,7 @@ export default function ChatPage() {
             </div>
 
             {/* Input bar (chat state) */}
-            <div className="border-t border-border bg-white p-4">
+            <div className="border-t border-border bg-card p-4">
               <div className="mx-auto max-w-3xl">
                 <div className="flex items-end gap-3 rounded-2xl border border-border bg-surface/50 p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
                   <textarea

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // "Доработать AI" panel for /generated/[id]. Two execution modes:
 //
@@ -210,7 +210,7 @@ export function RefinePanel({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 py-6 sm:items-center">
-      <div className="flex w-full max-w-3xl flex-col rounded-2xl border border-border bg-white shadow-2xl">
+      <div className="flex w-full max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export function RefinePanel({
                   rows={4}
                   maxLength={2000}
                   placeholder="Например: «Сделай срок 6 месяцев с автопродлением, добавь штраф 0,1% в день за просрочку оплаты и пункт о коммерческой тайне.»"
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <p className="mt-1 text-right text-xs text-muted">
                   {instruction.length} / 2000
@@ -266,7 +266,7 @@ export function RefinePanel({
                       key={s}
                       type="button"
                       onClick={() => setInstruction(s)}
-                      className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-muted transition-colors hover:bg-white hover:text-foreground"
+                      className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-muted transition-colors hover:bg-card hover:text-foreground"
                     >
                       {s}
                     </button>
@@ -277,7 +277,7 @@ export function RefinePanel({
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-light px-3 py-2 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span className="flex-1">{error}</span>
             </div>
@@ -305,7 +305,7 @@ export function RefinePanel({
           {phase === "regen-streaming" && (
             <>
               {fallbackReason && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-light px-3 py-2 text-xs text-warning">
                   <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>{fallbackReason}</span>
                 </div>
@@ -334,7 +334,7 @@ export function RefinePanel({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-success">Готово!</p>
-                <p className="mt-0.5 text-xs text-emerald-900">
+                <p className="mt-0.5 text-xs text-success">
                   Сохраняем версию и обновляем страницу…
                 </p>
               </div>
@@ -348,7 +348,7 @@ export function RefinePanel({
             <button
               type="button"
               onClick={handleStop}
-              className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
             >
               Остановить
             </button>
@@ -359,7 +359,7 @@ export function RefinePanel({
               <button
                 type="button"
                 onClick={close}
-                className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 Закрыть
               </button>

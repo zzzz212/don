@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -126,7 +126,7 @@ export default function AnalyzePage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
           {!isAnalyzing ? (
             <div className="animate-fade-in">
@@ -148,10 +148,10 @@ export default function AnalyzePage() {
 
               {/* Error message */}
               {error && (
-                <div className="mt-4 animate-fade-in space-y-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                <div className="mt-4 animate-fade-in space-y-3 rounded-xl border border-danger/30 bg-danger-light p-4">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
-                    <p className="text-sm text-red-700">{error.message}</p>
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-danger mt-0.5" />
+                    <p className="text-sm text-danger">{error.message}</p>
                   </div>
 
                   {error.upgradeNeeded && (
@@ -179,7 +179,7 @@ export default function AnalyzePage() {
                       href="https://www.ilovepdf.com/compress_pdf"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-8 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+                      className="ml-8 inline-flex items-center gap-2 rounded-lg border border-danger/40 bg-card px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger-light"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Сжать PDF на ilovepdf.com
@@ -244,7 +244,7 @@ export default function AnalyzePage() {
                       key={i}
                       className={`flex items-center gap-3 rounded-lg px-4 py-2.5 transition-all ${
                         i < currentStage
-                          ? "bg-green-50 text-green-700"
+                          ? "bg-success-light text-success"
                           : i === currentStage
                             ? "bg-primary-light text-primary-dark"
                             : "text-muted/50"

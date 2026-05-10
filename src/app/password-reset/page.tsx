@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -24,7 +24,7 @@ function PasswordResetForm() {
   if (!token) {
     return (
       <div className="rounded-2xl border border-border bg-card p-8 shadow-sm text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-light text-danger">
           <AlertCircle className="h-6 w-6" />
         </div>
         <h2 className="text-lg font-semibold text-foreground">
@@ -91,7 +91,7 @@ function PasswordResetForm() {
   return (
     <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
       {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
+        <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -111,7 +111,7 @@ function PasswordResetForm() {
               minLength={6}
               autoFocus
               placeholder="Минимум 6 символов"
-              className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>
@@ -128,7 +128,7 @@ function PasswordResetForm() {
               required
               minLength={6}
               placeholder="Введите пароль ещё раз"
-              className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>

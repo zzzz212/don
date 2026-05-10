@@ -52,14 +52,17 @@ const iconMap: Record<string, typeof Shield> = {
   warehouse: Warehouse,
 };
 
+// Category palette uses semantic tokens (theme-aware) where possible and
+// raw Tailwind hues with explicit dark variants where the design needs
+// distinct accents that don't map onto success/warning/primary.
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
-  "Конфиденциальность": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
-  "Недвижимость": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  "Торговля": { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-  "Финансы": { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
-  "Услуги": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
-  "Кадры": { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
-  "Документооборот": { bg: "bg-slate-50", text: "text-slate-700", border: "border-slate-200" },
+  "Конфиденциальность": { bg: "bg-purple-50 dark:bg-purple-500/15", text: "text-purple-700 dark:text-purple-300", border: "border-purple-200 dark:border-purple-500/30" },
+  "Недвижимость": { bg: "bg-primary-light", text: "text-primary-dark", border: "border-primary/30" },
+  "Торговля": { bg: "bg-success-light", text: "text-success", border: "border-success/30" },
+  "Финансы": { bg: "bg-indigo-50 dark:bg-indigo-500/15", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-500/30" },
+  "Услуги": { bg: "bg-warning-light", text: "text-warning", border: "border-warning/30" },
+  "Кадры": { bg: "bg-rose-50 dark:bg-rose-500/15", text: "text-rose-700 dark:text-rose-300", border: "border-rose-200 dark:border-rose-500/30" },
+  "Документооборот": { bg: "bg-surface", text: "text-foreground", border: "border-border" },
 };
 
 export default function TemplatesPage() {
@@ -67,7 +70,7 @@ export default function TemplatesPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-10 text-center">

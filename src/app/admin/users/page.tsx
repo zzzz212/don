@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -49,7 +49,7 @@ const PLAN_CHIP: Record<string, { label: string; cls: string; icon: typeof Zap }
   },
   BUSINESS: {
     label: "Бизнес",
-    cls: "bg-amber-100 text-amber-800",
+    cls: "bg-warning-light text-warning",
     icon: Crown,
   },
 };
@@ -136,7 +136,7 @@ function UsersPageInner() {
   return (
     <div className="flex min-h-full flex-col">
       <Header />
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/admin"
@@ -160,20 +160,20 @@ function UsersPageInner() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Email или имя"
-                className="w-full rounded-xl border border-border bg-white py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
               value={planFilter}
               onChange={(e) => setPlanFilter(e.target.value)}
-              className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Все тарифы</option>
               <option value="FREE">Старт</option>
               <option value="PRO">Про</option>
               <option value="BUSINESS">Бизнес</option>
             </select>
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={trialOnly}
@@ -191,7 +191,7 @@ function UsersPageInner() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -250,7 +250,7 @@ function UsersPageInner() {
                                 {planChip.label}
                               </span>
                               {pw?.onActiveTrial && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-warning-light px-2 py-0.5 text-xs font-semibold text-warning">
                                   <Sparkles className="h-3 w-3" />
                                   Триал
                                 </span>
@@ -290,7 +290,7 @@ function UsersPageInner() {
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={data.page <= 1}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       ← Назад
                     </button>
@@ -300,7 +300,7 @@ function UsersPageInner() {
                         setPage((p) => Math.min(data.pageCount, p + 1))
                       }
                       disabled={data.page >= data.pageCount}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       Вперёд →
                     </button>

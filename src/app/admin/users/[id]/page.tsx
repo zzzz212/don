@@ -98,10 +98,10 @@ function formatDate(iso: string): string {
 function PaymentStatus({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUCCEEDED: { label: "Оплачено", cls: "bg-success/10 text-success" },
-    PENDING: { label: "Ожидает", cls: "bg-amber-100 text-amber-800" },
-    WAITING_FOR_CAPTURE: { label: "Ожидает захвата", cls: "bg-amber-100 text-amber-800" },
+    PENDING: { label: "Ожидает", cls: "bg-warning-light text-warning" },
+    WAITING_FOR_CAPTURE: { label: "Ожидает захвата", cls: "bg-warning-light text-warning" },
     CANCELED: { label: "Отменён", cls: "bg-surface text-muted" },
-    FAILED: { label: "Ошибка", cls: "bg-red-100 text-red-700" },
+    FAILED: { label: "Ошибка", cls: "bg-danger-light text-danger" },
   };
   const e = map[status] ?? { label: status, cls: "bg-surface text-muted" };
   return (
@@ -204,7 +204,7 @@ export default function AdminUserDetailPage() {
   return (
     <div className="flex min-h-full flex-col">
       <Header />
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/admin/users"
@@ -220,7 +220,7 @@ export default function AdminUserDetailPage() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -362,7 +362,7 @@ export default function AdminUserDetailPage() {
                           <td className="py-2 pr-3">
                             <PaymentStatus status={p.status} />
                             {p.failureReason && (
-                              <p className="mt-1 text-xs text-red-600">
+                              <p className="mt-1 text-xs text-danger">
                                 {p.failureReason}
                               </p>
                             )}
@@ -409,7 +409,7 @@ function WorkspaceCard({
   onChangePlan,
 }: WorkspaceCardProps) {
   const { org, role } = membership;
-  const planChip = org.plan === "PRO" ? "bg-primary-light text-primary-dark" : org.plan === "BUSINESS" ? "bg-amber-100 text-amber-800" : "bg-surface text-muted";
+  const planChip = org.plan === "PRO" ? "bg-primary-light text-primary-dark" : org.plan === "BUSINESS" ? "bg-warning-light text-warning" : "bg-surface text-muted";
   const PlanIcon =
     org.plan === "FREE" ? Zap : Crown;
   const trialActive =
@@ -431,7 +431,7 @@ function WorkspaceCard({
               {role}
             </span>
             {trialActive && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              <span className="inline-flex items-center gap-1 rounded-md bg-warning-light px-2 py-0.5 text-xs font-semibold text-warning">
                 <Sparkles className="h-3 w-3" />
                 Триал до {formatDate(org.trialEndsAt!)}
               </span>
@@ -455,7 +455,7 @@ function WorkspaceCard({
               type="button"
               onClick={() => onExtendTrial(7)}
               disabled={acting === `trial-${org.id}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning-light px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-warning-light disabled:opacity-50"
             >
               <Calendar className="h-3.5 w-3.5" />+7 дней триала
             </button>
@@ -466,7 +466,7 @@ function WorkspaceCard({
                 if (v !== org.plan) onChangePlan(v);
               }}
               disabled={acting === `plan-${org.id}`}
-              className="rounded-lg border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
+              className="rounded-lg border border-border bg-card px-2 py-1.5 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
               title="Сменить тариф вручную (без оплаты)"
             >
               <option value="FREE">→ Старт</option>

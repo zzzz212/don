@@ -1,20 +1,62 @@
 @import "tailwindcss";
 
+/* Class-based dark mode. Tailwind 4 default is prefers-color-scheme;
+   we want the user's explicit choice (with prefers-color-scheme as the
+   initial value) to take precedence — that requires a class-based
+   variant matching either the .dark element itself or any descendant. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
   --primary-light: #dbeafe;
+  --primary-fg: #ffffff;
   --accent: #0ea5e9;
   --success: #10b981;
+  --success-light: #d1fae5;
   --warning: #f59e0b;
+  --warning-light: #fef3c7;
   --danger: #ef4444;
+  --danger-light: #fee2e2;
   --muted: #64748b;
   --border: #e2e8f0;
   --card: #ffffff;
   --card-hover: #f8fafc;
   --surface: #f1f5f9;
+  --ring: #3b82f6;
+  /* Hero / landing decorative gradients — overridden in dark */
+  --hero-grad-from: #f8fafc;
+  --hero-grad-via: #eff6ff;
+  --hero-grad-to: #ffffff;
+  --hero-radial: rgba(37, 99, 235, 0.05);
+}
+
+.dark {
+  --background: #0a0f1c;
+  --foreground: #e2e8f0;
+  --primary: #3b82f6;
+  --primary-dark: #60a5fa;
+  --primary-light: rgba(59, 130, 246, 0.18);
+  --primary-fg: #f8fafc;
+  --accent: #38bdf8;
+  --success: #34d399;
+  --success-light: rgba(52, 211, 153, 0.16);
+  --warning: #fbbf24;
+  --warning-light: rgba(251, 191, 36, 0.16);
+  --danger: #f87171;
+  --danger-light: rgba(248, 113, 113, 0.16);
+  --muted: #94a3b8;
+  --border: #1f2937;
+  --card: #131a2a;
+  --card-hover: #1a2236;
+  --surface: #0f1424;
+  --ring: #60a5fa;
+  --hero-grad-from: #0a0f1c;
+  --hero-grad-via: #0f1828;
+  --hero-grad-to: #0a0f1c;
+  --hero-radial: rgba(59, 130, 246, 0.10);
 }
 
 @theme inline {
@@ -23,15 +65,20 @@
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
   --color-primary-light: var(--primary-light);
+  --color-primary-fg: var(--primary-fg);
   --color-accent: var(--accent);
   --color-success: var(--success);
+  --color-success-light: var(--success-light);
   --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
   --color-danger: var(--danger);
+  --color-danger-light: var(--danger-light);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-card: var(--card);
   --color-card-hover: var(--card-hover);
   --color-surface: var(--surface);
+  --color-ring: var(--ring);
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "SF Mono", "Fira Code", monospace;
 }
@@ -40,6 +87,31 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Decorative hero gradient — wired to theme variables so it adapts in dark mode. */
+.bg-hero-gradient {
+  background:
+    radial-gradient(circle at 30% 20%, var(--hero-radial), transparent 50%),
+    linear-gradient(to bottom right, var(--hero-grad-from), var(--hero-grad-via), var(--hero-grad-to));
+}
+
+/* Honour user OS preference for reduced motion — skip decorative animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Always-visible focus rings for keyboard navigation. Mouse users keep
+   no-ring (focus-visible polyfill) — :focus-visible is now well-supported. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
 }
 
 @keyframes fade-in {
@@ -84,6 +156,40 @@ body {
 .stagger-3 { animation-delay: 0.3s; opacity: 0; }
 .stagger-4 { animation-delay: 0.4s; opacity: 0; }
 .stagger-5 { animation-delay: 0.5s; opacity: 0; }
+
+/* Skip-to-content link for keyboard / screen-reader users — invisible
+   until focused, then anchored top-left for clear keyboard discovery. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transform: translateY(-200%);
+  transition: transform 0.15s ease-out;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Visually-hidden — content stays in DOM for screen readers but is
+   removed from the visual flow. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Legal page typography (Privacy / Terms / Offer).
    Tailored to long Russian legal text: comfortable line height, restrained
@@ -178,10 +284,12 @@ body {
 }
 
 /* Generated-document preview chrome — Times-style serif so legal copy
-   feels familiar to lawyers reviewing it. */
+   feels familiar to lawyers reviewing it. White paper background even
+   in dark mode (printable surface). */
 .document-preview {
   font-family: "Times New Roman", "Liberation Serif", Georgia, serif;
-  color: var(--foreground);
+  color: #0f172a;
+  background: #ffffff;
 }
 .document-preview p {
   text-indent: 1.25em;
@@ -199,6 +307,7 @@ body {
 
   body {
     background: white !important;
+    color: #0f172a !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

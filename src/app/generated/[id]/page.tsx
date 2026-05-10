@@ -188,7 +188,7 @@ export default function ViewGeneratedPage() {
     return (
       <div className="flex min-h-full flex-col">
         <Header />
-        <main className="flex flex-1 items-center justify-center">
+        <main id="main-content" className="flex flex-1 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
       </div>
@@ -232,11 +232,11 @@ export default function ViewGeneratedPage() {
           </Link>
 
           {/* Document info */}
-          <div className="mb-6 flex items-center gap-3 rounded-xl bg-blue-50 border border-blue-200 p-4">
-            <CheckCircle className="h-5 w-5 text-blue-600 shrink-0" />
+          <div className="mb-6 flex items-center gap-3 rounded-xl bg-primary-light border border-primary/30 p-4">
+            <CheckCircle className="h-5 w-5 text-primary shrink-0" />
             <div>
-              <p className="font-semibold text-blue-800">Документ загружен</p>
-              <p className="text-sm text-blue-700">
+              <p className="font-semibold text-primary-dark">Документ загружен</p>
+              <p className="text-sm text-primary-dark">
                 Дата создания:{" "}
                 {new Date(doc.createdAt).toLocaleDateString("ru-RU", {
                   year: "numeric",
@@ -265,7 +265,7 @@ export default function ViewGeneratedPage() {
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 {copied ? (
                   <>
@@ -288,7 +288,7 @@ export default function ViewGeneratedPage() {
               </button>
               <Link
                 href={`/generated/${doc.id}/versions`}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 <GitBranch className="h-4 w-4" />
                 Версии
@@ -300,7 +300,7 @@ export default function ViewGeneratedPage() {
               </Link>
               <Link
                 href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 <Pencil className="h-4 w-4" />
                 Изменить
@@ -318,7 +318,7 @@ export default function ViewGeneratedPage() {
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-red-50 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-light disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
                 Удалить
@@ -328,7 +328,7 @@ export default function ViewGeneratedPage() {
 
           {/* Document preview — A4 page chrome with proper typography. */}
           <div className="my-6 flex justify-center">
-            <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
+            <div className="w-full max-w-2xl rounded-lg bg-card shadow-2xl">
               <div className="document-preview p-10 sm:p-12 lg:p-14">
                 {renderDocumentParagraphs(doc.content)}
               </div>
@@ -339,7 +339,7 @@ export default function ViewGeneratedPage() {
           <div className="mt-6 flex justify-center gap-3">
             <Link
               href="/templates"
-              className="rounded-xl border border-border bg-white px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+              className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
             >
               Создать новый
             </Link>

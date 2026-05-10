@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -108,13 +108,13 @@ function formatDateTime(iso: string | null): string {
 function PaymentStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUCCEEDED: { label: "Оплачено", cls: "bg-success/10 text-success" },
-    PENDING: { label: "Ожидает оплаты", cls: "bg-amber-100 text-amber-800" },
+    PENDING: { label: "Ожидает оплаты", cls: "bg-warning-light text-warning" },
     WAITING_FOR_CAPTURE: {
       label: "Ожидает подтверждения",
-      cls: "bg-amber-100 text-amber-800",
+      cls: "bg-warning-light text-warning",
     },
     CANCELED: { label: "Отменён", cls: "bg-surface text-muted" },
-    FAILED: { label: "Ошибка", cls: "bg-red-100 text-red-700" },
+    FAILED: { label: "Ошибка", cls: "bg-danger-light text-danger" },
   };
   const e = map[status] ?? { label: status, cls: "bg-surface text-muted" };
   return (
@@ -214,9 +214,9 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col bg-white">
+    <div className="flex min-h-full flex-col bg-card">
       <Header />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
@@ -238,7 +238,7 @@ export default function BillingPage() {
           )}
 
           {!loading && error && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -268,7 +268,7 @@ export default function BillingPage() {
                         {PLAN_LABEL[data.effectivePlan] ?? data.effectivePlan}
                       </span>
                       {data.isTrial && data.trialDaysLeft !== null && (
-                        <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-700">
+                        <span className="rounded-lg bg-warning-light px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-warning">
                           Триал · {data.trialDaysLeft}{" "}
                           {data.trialDaysLeft === 1
                             ? "день"
@@ -292,7 +292,7 @@ export default function BillingPage() {
                 </div>
 
                 {data.isTrial && (
-                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <div className="mt-5 rounded-xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
                     Пробный период тарифа «Про» закончится{" "}
                     <strong>{formatDate(data.trialEndsAt)}</strong>. Оформите
                     подписку до этой даты, чтобы избежать перехода на ограниченный
@@ -326,7 +326,7 @@ export default function BillingPage() {
                           аккаунта.
                         </p>
                         {trialError && (
-                          <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700">
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-danger">
                             <AlertCircle className="h-4 w-4 shrink-0" />
                             {trialError}
                           </p>
@@ -357,7 +357,7 @@ export default function BillingPage() {
 
               {/* Plans grid */}
               {checkoutError && (
-                <div className="mb-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="mb-6 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {checkoutError}
                 </div>
@@ -415,7 +415,7 @@ export default function BillingPage() {
                         disabled={
                           checkoutLoading !== null || isCurrent
                         }
-                        className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${popular ? "bg-primary text-white hover:bg-primary-dark" : "border border-border bg-white text-foreground hover:bg-surface"}`}
+                        className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${popular ? "bg-primary text-white hover:bg-primary-dark" : "border border-border bg-card text-foreground hover:bg-surface"}`}
                       >
                         {checkoutLoading === plan ? (
                           <>
@@ -475,7 +475,7 @@ export default function BillingPage() {
                             <td className="py-3 pr-4">
                               <PaymentStatusBadge status={p.status} />
                               {p.failureReason && (
-                                <p className="mt-1 text-xs text-red-600">
+                                <p className="mt-1 text-xs text-danger">
                                   {p.failureReason}
                                 </p>
                               )}
