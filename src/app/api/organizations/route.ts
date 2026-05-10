@@ -70,11 +70,14 @@ const MAX_OWNED_WORKSPACES = 10;
 //   workspace does NOT become active automatically — that's a separate
 //   /switch call so the UI can confirm with the user first.
 //
-// Anti-abuse: a user can OWN at most one effective-FREE workspace.
-// Without this guard, a free-tier user can spawn N workspaces and
-// effectively multiply their monthly quota by N (since AiUsage is
-// scoped per-org). Once they're on a paid plan, additional workspaces
-// are allowed up to MAX_OWNED_WORKSPACES.
+// Anti-abuse: a user can OWN at most one workspace whose stored plan
+// is FREE — including workspaces currently on a trial. Without this
+// guard, a free-tier user can spawn N workspaces and effectively
+// multiply their monthly quota by N (since AiUsage is scoped per-org).
+// Trial-time workspaces deliberately count: a user "trialing PRO" hasn't
+// paid yet, and would otherwise be able to create a second non-trialing
+// FREE workspace and farm extra quota that way. Only a workspace whose
+// stored plan is actually paid (PRO/BUSINESS) unlocks creating more.
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -120,21 +123,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingFree = ownedMemberships.find((m) => {
-      const eff = getEffectivePlan({
-        plan: m.organization.plan,
-        trialEndsAt: m.organization.trialEndsAt,
-      });
-      return eff.plan === "FREE";
-    });
+    // Use the *stored* plan (not effective). A trial-active workspace
+    // has effective plan === "PRO" but stored plan === "FREE", and we
+    // want to count it toward the cap so the user can't farm a second
+    // FREE workspace alongside a trial.
+    const existingNonPaid = ownedMemberships.find(
+      (m) => m.organization.plan === "FREE"
+    );
 
-    if (existingFree) {
+    if (existingNonPaid) {
+      // Tailor the message: trial-active vs plain free, since the user
+      // experience and recovery action differ ("оплатите подписку" vs
+      // "оплатите подписку, не дожидаясь конца триала").
+      const eff = getEffectivePlan({
+        plan: existingNonPaid.organization.plan,
+        trialEndsAt: existingNonPaid.organization.trialEndsAt,
+      });
+      const errorMessage = eff.isTrial
+        ? `Создавать дополнительные workspace можно только на платном тарифе. Сейчас «${existingNonPaid.organization.name}» использует пробный период «Про» — оформите подписку, чтобы расширить аккаунт.`
+        : `На бесплатном тарифе можно иметь только один workspace. Чтобы создать ещё один — оплатите тариф для существующего workspace «${existingNonPaid.organization.name}».`;
+
       return NextResponse.json(
         {
-          error: `На бесплатном тарифе можно иметь только один workspace. Чтобы создать ещё один — оплатите тариф для существующего workspace «${existingFree.organization.name}».`,
+          error: errorMessage,
           code: "FREE_WORKSPACE_LIMIT",
-          existingWorkspaceId: existingFree.organization.id,
-          existingWorkspaceName: existingFree.organization.name,
+          existingWorkspaceId: existingNonPaid.organization.id,
+          existingWorkspaceName: existingNonPaid.organization.name,
         },
         { status: 403 }
       );

@@ -179,6 +179,13 @@ export function UsageWidget() {
         {(["analyze", "generate", "ocr"] as const).map((key) => {
           const usage = data.features[key];
           if (!usage) return null;
+          // OCR is gated to PRO/BUSINESS — on FREE plans the limit is 0
+          // and showing it as a usage row just confuses users ("why is
+          // there a 0/0 here?"). Suppress; the upgrade banner below
+          // still mentions OCR as a perk of upgrading.
+          if (key === "ocr" && !usage.unlimited && usage.limit === 0) {
+            return null;
+          }
           const meta = FEATURE_META[key];
           const Icon = meta.icon;
 
@@ -193,10 +200,6 @@ export function UsageWidget() {
                   <span className="text-xs font-semibold text-success">
                     Безлимит
                   </span>
-                ) : usage.limit === 0 ? (
-                  <span className="text-xs font-semibold text-muted">
-                    Недоступно на {planMeta.label}
-                  </span>
                 ) : (
                   <span className="text-xs font-semibold text-foreground">
                     {usage.used} / {usage.limit}
@@ -206,11 +209,6 @@ export function UsageWidget() {
               {!usage.unlimited && usage.limit !== null && usage.limit > 0 && (
                 <ProgressBar used={usage.used} limit={usage.limit} />
               )}
-              {!usage.unlimited && usage.limit === 0 && (
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
-                  <div className="h-full w-0" />
-                </div>
-              )}
             </div>
           );
         })}
@@ -218,7 +216,7 @@ export function UsageWidget() {
 
       {isTrial && typeof daysLeft === "number" ? (
         <Link
-          href="/#pricing"
+          href="/billing"
           className="mt-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100"
         >
           <span>
@@ -228,10 +226,10 @@ export function UsageWidget() {
         </Link>
       ) : isFree ? (
         <Link
-          href="/#pricing"
+          href="/billing"
           className="mt-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary-light/30 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-light/50"
         >
-          <span>Перейти на «Про» — безлимитный анализ + OCR</span>
+          <span>Перейти на «Про» — безлимитный анализ + распознавание сканов</span>
           <ArrowRight className="h-4 w-4" />
         </Link>
       ) : null}
