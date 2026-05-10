@@ -133,21 +133,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const doc = await prisma.generatedDocument.create({
-      data: {
-        userId,
-        orgId,
-        templateId,
-        name: name ?? template.name,
-        content,
-        formData,
-      },
-      select: {
-        id: true,
-        templateId: true,
-        name: true,
-        createdAt: true,
-      },
+    // Create document + initial v1 in a single transaction. Without v1
+    // existing on day-zero, the version history UI would show "Нет
+    // версий" forever and there'd be no baseline to diff against when
+    // the user later edits.
+    const doc = await prisma.$transaction(async (tx) => {
+      const created = await tx.generatedDocument.create({
+        data: {
+          userId,
+          orgId,
+          templateId,
+          name: name ?? template.name,
+          content,
+          formData,
+        },
+        select: {
+          id: true,
+          templateId: true,
+          name: true,
+          createdAt: true,
+        },
+      });
+
+      await tx.documentVersion.create({
+        data: {
+          generatedDocId: created.id,
+          versionNumber: 1,
+          title: name ?? template.name,
+          content,
+          formData,
+          changesSummary: "Первоначальная версия",
+          createdBy: userId,
+        },
+      });
+
+      return created;
     });
 
     // Record usage so the FREE quota counter actually counts. Provider /

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
@@ -17,16 +17,48 @@ import {
   Download,
   Copy,
   FileText,
+  GitBranch,
 } from "lucide-react";
 
-export default function TemplateFillPage() {
+export default function TemplateFillPageWrapper() {
+  // useSearchParams requires Suspense in Next.js 16. Wrap so the page
+  // can statically prerender the loading state without bailing.
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-full flex-col">
+          <Header />
+          <main className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted" />
+          </main>
+        </div>
+      }
+    >
+      <TemplateFillPage />
+    </Suspense>
+  );
+}
+
+function TemplateFillPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const template = getTemplate(params.id as string);
   const templateId = params.id as string;
 
+  // Edit mode: when ?editDoc={id} is in the URL, we're editing an
+  // existing GeneratedDocument. The form gets prefilled from the
+  // server's stored formData (NOT from localStorage — the cached
+  // draft might be stale or belong to a different document) and the
+  // submit path goes to /api/generated/{id}/create-version instead
+  // of POST /api/generated, so we accumulate versions on the same
+  // document instead of forking a parallel copy.
+  const editDocId = searchParams.get("editDoc");
+  const [editDocLoaded, setEditDocLoaded] = useState(!editDocId);
+
   const [formData, setFormData] = useState<Record<string, string>>(() => {
+    if (editDocId) return {}; // Will be filled from API after load.
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`template_${templateId}`);
       return saved ? JSON.parse(saved) : {};
@@ -38,11 +70,60 @@ export default function TemplateFillPage() {
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Edit-mode bootstrap: fetch the existing document and use its
+  // formData as the initial form values.
   useEffect(() => {
+    if (!editDocId) return;
+    let cancelled = false;
+    fetch(`/api/generated/${editDocId}`)
+      .then(async (r) => {
+        if (cancelled) return;
+        if (r.status === 401) {
+          router.push("/login");
+          return;
+        }
+        if (!r.ok) {
+          toast.error("Не удалось загрузить документ для редактирования.");
+          router.push("/dashboard");
+          return;
+        }
+        const doc = await r.json();
+        if (cancelled) return;
+        if (
+          doc.formData &&
+          typeof doc.formData === "object" &&
+          !Array.isArray(doc.formData)
+        ) {
+          // Coerce numbers/booleans back to strings for the form.
+          const ff: Record<string, string> = {};
+          for (const [k, v] of Object.entries(doc.formData)) {
+            if (typeof v === "string") ff[k] = v;
+            else if (v != null) ff[k] = String(v);
+          }
+          setFormData(ff);
+        }
+        setEditDocLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast.error("Не удалось загрузить документ для редактирования.");
+          setEditDocLoaded(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editDocId, router, toast]);
+
+  // Don't autosave to localStorage when editing an existing doc — the
+  // draft would clobber the cached "fresh template" draft for new
+  // documents made from the same templateId.
+  useEffect(() => {
+    if (editDocId) return;
     if (typeof window !== "undefined" && Object.keys(formData).length > 0) {
       localStorage.setItem(`template_${templateId}`, JSON.stringify(formData));
     }
-  }, [formData, templateId]);
+  }, [formData, templateId, editDocId]);
 
   if (!template) {
     return (
@@ -77,28 +158,30 @@ export default function TemplateFillPage() {
     if (!template) return;
     setIsGenerating(true);
 
-    // 1. Render the document deterministically — pure string interpolation,
-    //    no AI tokens.
+    // Render the document deterministically — pure string interpolation,
+    // no AI tokens.
     const content = generateContract(template.id, formData);
 
-    // 2. Persist to DB so the dashboard's "Созданные документы" tab and
-    //    the versioning UI both work. The endpoint applies the FREE
-    //    quota even for template-path generations.
+    // Two paths: editing an existing doc (create-version) vs creating a
+    // new one (POST /api/generated). Same payload shape both ways.
+    const url = editDocId
+      ? `/api/generated/${editDocId}/create-version`
+      : "/api/generated";
+    const payload = editDocId
+      ? { content, formData, title: template.name }
+      : { templateId: template.id, name: template.name, content, formData };
+
     try {
-      const response = await fetch("/api/generated", {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateId: template.id,
-          name: template.name,
-          content,
-          formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.status === 401) {
-        // Anonymous user — show the document but warn that it isn't
-        // saved. They can sign in to keep it.
+        // Anonymous user — only possible when creating a new doc; edit
+        // mode requires login at the entry point. Show the document
+        // but warn that it isn't saved.
         setGeneratedDoc(content);
         setIsGenerating(false);
         toast.info(
@@ -127,13 +210,18 @@ export default function TemplateFillPage() {
         return;
       }
 
-      // 3. Success — navigate to the persisted document so the user
-      //    sees the version history button, can edit, etc. Clear the
-      //    draft from local storage now that it's safely in DB.
-      if (typeof window !== "undefined") {
+      // Success path — navigate to the (possibly newly created)
+      // document. For edit mode, the doc id is stable; for new docs
+      // we read it out of the response. Clear the localStorage draft
+      // for new-doc mode only.
+      const targetId: string = editDocId ?? json.id;
+      if (!editDocId && typeof window !== "undefined") {
         localStorage.removeItem(`template_${templateId}`);
       }
-      router.push(`/generated/${json.id}`);
+      if (editDocId) {
+        toast.success("Создана новая версия документа.");
+      }
+      router.push(`/generated/${targetId}`);
     } catch (e) {
       console.error("[generate] save failed:", e);
       setGeneratedDoc(content);
@@ -197,7 +285,14 @@ export default function TemplateFillPage() {
             Все шаблоны
           </Link>
 
-          {!generatedDoc ? (
+          {!editDocLoaded ? (
+            <div className="animate-fade-in flex flex-col items-center justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin text-muted" />
+              <p className="mt-3 text-sm text-muted">
+                Загружаем документ для редактирования...
+              </p>
+            </div>
+          ) : !generatedDoc ? (
             <div className="animate-in fade-in duration-300">
               {/* Template header */}
               <div className="mb-8">
@@ -206,6 +301,16 @@ export default function TemplateFillPage() {
                 </h1>
                 <p className="mt-2 text-muted">{template.description}</p>
               </div>
+
+              {editDocId && (
+                <div className="mb-6 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary-light/30 px-4 py-3 text-sm text-primary-dark">
+                  <GitBranch className="h-4 w-4 shrink-0" />
+                  <span>
+                    Редактирование документа. После сохранения создастся
+                    новая версия — старая останется в истории.
+                  </span>
+                </div>
+              )}
 
               {/* Form */}
               <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
@@ -220,12 +325,18 @@ export default function TemplateFillPage() {
                     {isGenerating ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Формируем документ...
+                        {editDocId ? "Сохраняем версию..." : "Формируем документ..."}
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4" />
-                        Сгенерировать документ
+                        {editDocId ? (
+                          <GitBranch className="h-4 w-4" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                        {editDocId
+                          ? "Сохранить как новую версию"
+                          : "Сгенерировать документ"}
                       </>
                     )}
                   </button>

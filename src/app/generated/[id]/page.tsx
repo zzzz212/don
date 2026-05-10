@@ -16,6 +16,7 @@ import {
   Trash2,
   CheckCircle,
   GitBranch,
+  Pencil,
 } from "lucide-react";
 
 interface GeneratedDocument {
@@ -90,6 +91,7 @@ export default function ViewGeneratedPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [versionCount, setVersionCount] = useState<number | null>(null);
 
   const docId = params.id as string;
   const template = doc ? getTemplate(doc.templateId) : null;
@@ -97,12 +99,19 @@ export default function ViewGeneratedPage() {
   useEffect(() => {
     async function loadDocument() {
       try {
-        const response = await fetch(`/api/generated/${docId}`);
-        if (response.ok) {
-          const data = await response.json();
+        const [docResp, versionsResp] = await Promise.all([
+          fetch(`/api/generated/${docId}`),
+          fetch(`/api/generated/${docId}/versions`),
+        ]);
+        if (docResp.ok) {
+          const data = await docResp.json();
           setDoc(data);
-        } else if (response.status === 401) {
+        } else if (docResp.status === 401) {
           router.push("/login");
+        }
+        if (versionsResp.ok) {
+          const v = await versionsResp.json();
+          setVersionCount(Array.isArray(v.versions) ? v.versions.length : 0);
         }
       } catch (error) {
         console.error("Error loading document:", error);
@@ -241,10 +250,17 @@ export default function ViewGeneratedPage() {
 
           {/* Header with actions */}
           <div className="mb-4 flex items-center justify-between">
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-              <FileText className="h-6 w-6 text-primary" />
-              {doc.name}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+                <FileText className="h-6 w-6 text-primary" />
+                {doc.name}
+              </h1>
+              {versionCount !== null && versionCount > 0 && (
+                <span className="rounded-md bg-primary-light px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary-dark">
+                  {`Версия ${versionCount}`}
+                </span>
+              )}
+            </div>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handleCopy}
@@ -275,19 +291,19 @@ export default function ViewGeneratedPage() {
               >
                 <GitBranch className="h-4 w-4" />
                 Версии
+                {versionCount !== null && versionCount > 0 && (
+                  <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-muted">
+                    {versionCount}
+                  </span>
+                )}
               </Link>
-              <button
-                onClick={() => {
-                  localStorage.setItem(
-                    `template_${doc.templateId}`,
-                    JSON.stringify(doc.formData)
-                  );
-                  router.push(`/templates/${doc.templateId}`);
-                }}
+              <Link
+                href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
                 className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
-                ✏️ Редактировать поля
-              </button>
+                <Pencil className="h-4 w-4" />
+                Изменить
+              </Link>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
