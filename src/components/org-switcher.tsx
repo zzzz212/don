@@ -11,6 +11,7 @@ import {
   Users,
   Loader2,
   CreditCard,
+  ShieldCheck,
 } from "lucide-react";
 
 interface Organization {
@@ -63,7 +64,23 @@ export function OrgSwitcher() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Admin status — fired in parallel with the orgs fetch. Failure is
+  // silent: not-admin is the safe default.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.isAdmin) setIsAdmin(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Close on outside click.
   useEffect(() => {
@@ -302,6 +319,16 @@ export function OrgSwitcher() {
               <Users className="h-4 w-4 text-muted" />
               Пригласить участника
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+              >
+                <ShieldCheck className="h-4 w-4 text-amber-600" />
+                Админ-панель
+              </Link>
+            )}
             <button
               onClick={handleCreate}
               disabled={creating}
