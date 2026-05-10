@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   Check,
   ChevronsUpDown,
@@ -28,6 +29,10 @@ const PLAN_LABEL: Record<string, string> = {
 };
 
 export function OrgSwitcher() {
+  // useSession.update() is the only way to force NextAuth to re-run the
+  // JWT callback with trigger === "update" — without it the JWT cookie
+  // keeps the previous activeOrgId across window.location.reload().
+  const { update } = useSession();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<{
     activeOrgId: string;
@@ -110,6 +115,22 @@ export function OrgSwitcher() {
       alert(err.error ?? "Не удалось переключить workspace");
       setSwitching(null);
       return;
+    }
+
+    // The /switch endpoint already wrote the new activeOrgId to the DB,
+    // but the browser's JWT cookie still encodes the OLD value. A bare
+    // window.location.reload() would re-send that old cookie and the
+    // server would happily continue serving the previous workspace.
+    // useSession.update() forces NextAuth to re-run its jwt callback with
+    // trigger === "update", which re-reads activeOrgId from the DB and
+    // re-signs the cookie. THEN the reload picks up the new context.
+    try {
+      await update();
+    } catch (e) {
+      // Non-fatal — the reload below will still re-fetch the JWT on the
+      // next request. Worst case, the user sees the old workspace for one
+      // page load and we recover on the next nav.
+      console.warn("[org-switcher] session update failed:", e);
     }
 
     // Spinner deliberately stays on until the page reloads — clearing it
