@@ -10,6 +10,7 @@ import {
   Settings,
   Users,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 
 interface Organization {
@@ -265,6 +266,19 @@ export function OrgSwitcher() {
             >
               <Settings className="h-4 w-4 text-muted" />
               Настройки workspace
+            </Link>
+            <Link
+              href="/billing"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+            >
+              <CreditCard className="h-4 w-4 text-muted" />
+              Тариф и биллинг
+              {active.isTrial && typeof active.trialDaysLeft === "number" && (
+                <span className="ml-auto rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  Триал {active.trialDaysLeft}д
+                </span>
+              )}
             </Link>
             <Link
               href="/settings/organization#members"

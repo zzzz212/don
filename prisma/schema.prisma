@@ -41,6 +41,7 @@ model User {
   aiUsage            AiUsage[]
   memberships        Membership[]
   passwordResetTokens PasswordResetToken[]
+  payments           Payment[]
 }
 
 // Single-use, time-limited password-reset token. Only the SHA-256 hash is
@@ -86,6 +87,88 @@ model Organization {
   chats              Chat[]
   counterpartyChecks CounterpartyCheck[]
   aiUsage            AiUsage[]
+  subscription       Subscription?
+  payments           Payment[]
+}
+
+// One row per Organization that has ever paid. Updated in place on every
+// renewal — keeps things simple. Historical record of what was bought
+// when lives in Payment[].
+model Subscription {
+  id                 String   @id @default(cuid())
+  orgId              String   @unique
+  // The plan the customer is paying for. Distinct from Organization.plan
+  // (which is the *currently effective* tier) so a future "scheduled
+  // downgrade at period end" can be expressed without lying about the
+  // current state.
+  plan               String
+  // "ACTIVE" | "CANCELED" | "PAST_DUE"
+  status             String   @default("ACTIVE")
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
+  canceledAt         DateTime?
+
+  provider           String   @default("yookassa")
+  // ЮKassa "saved payment method" id. Required for server-initiated auto
+  // renewals — populated from the first interactive payment if the user
+  // opted into auto-renew.
+  providerPaymentMethodId String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+// One row per attempted purchase. Idempotent on `idempotenceKey` — both
+// the create-payment call and the webhook handler use upsert against this
+// key so retries don't double-charge or double-credit.
+model Payment {
+  id                 String   @id @default(cuid())
+  orgId              String
+  subscriptionId     String?
+  // The user who initiated the checkout — used for receipt routing.
+  userId             String
+
+  provider           String   @default("yookassa")
+  // ЮKassa-side payment id. Populated after the create-payment call
+  // returns. Unique so the webhook can upsert by it.
+  providerPaymentId  String?  @unique
+
+  // Stored as integer kopecks to avoid float drift.
+  amountKopecks      Int
+  currency           String   @default("RUB")
+
+  plan               String
+  periodMonths       Int      @default(1)
+
+  // "PENDING" | "WAITING_FOR_CAPTURE" | "SUCCEEDED" | "CANCELED" | "FAILED"
+  status             String   @default("PENDING")
+  failureReason      String?
+
+  // Idempotence key sent with the create-payment call. Stored so we can
+  // diagnose retries and never repeat a charge for the same intent.
+  idempotenceKey     String   @unique
+
+  // Snapshot of the customer's email at purchase time — used for the
+  // 54-ФЗ receipt and to address the "thank you for paying" email.
+  customerEmail      String
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  succeededAt        DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, status])
+  @@index([userId, createdAt])
 }
 
 // User <-> Organization join with role. A user can belong to many orgs;

@@ -64,6 +64,18 @@ export const PRICING_RUB = {
   BUSINESS: 14990,
 } as const;
 
+/** Pricing in kopecks (integer) — used for billing math to dodge float drift. */
+export const PRICING_KOPECKS = {
+  PRO: PRICING_RUB.PRO * 100,
+  BUSINESS: PRICING_RUB.BUSINESS * 100,
+} as const;
+
+export type PaidPlan = "PRO" | "BUSINESS";
+
+export function isPaidPlan(plan: string): plan is PaidPlan {
+  return plan === "PRO" || plan === "BUSINESS";
+}
+
 /** Trial period for new workspaces, in days. */
 export const TRIAL_DAYS = 14;
 
