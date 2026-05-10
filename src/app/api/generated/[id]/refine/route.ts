@@ -6,7 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
 import { checkQuotaSafe } from "@/lib/quota";
 import { logUsage } from "@/lib/ai/usage";
-import { generate, streamChat, getActiveProvider } from "@/lib/ai/client";
+import { generateText, streamChat, getActiveProvider } from "@/lib/ai/client";
 import {
   REFINE_DOCUMENT_SYSTEM,
   REFINE_PATCH_SYSTEM,
@@ -22,6 +22,16 @@ import {
   applyRefinePatch,
   type RefineOperation,
 } from "@/lib/contracts/patch";
+
+// Strip markdown / prose around a JSON object so we can z.parse it. AI
+// providers vary on JSON-mode strictness — some return ```json ...```
+// blocks, some prepend "Конечно, вот JSON:". Find the outermost { ... }.
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  return text.slice(start, end + 1);
+}
 
 // POST /api/generated/[id]/refine  { instruction: string, mode?: "auto" | "regen" }
 //
@@ -159,10 +169,20 @@ export async function POST(
       if (requestedMode === "auto") {
         yield { kind: "mode", mode: "patch" };
 
+        // Use generateText (not generate(zod)) to avoid two costly bits
+        // that show up on Groq specifically:
+        //   • generate(zod) auto-appends a ~700-1000 token JSON-Schema
+        //     dump to the system prompt — we already inlined the JSON
+        //     shape in REFINE_PATCH_SYSTEM, so the dump is dead weight.
+        //   • generate() does an automatic 2nd full call with retry
+        //     instructions on JSON parse failure — that doubles input
+        //     tokens. We'd rather fall through to regen on first
+        //     failure, which is cheaper than a retry that often fails
+        //     anyway on Llama 70B.
         let patch: RefinePatch | null = null;
+        let parseFailReason: string | null = null;
         try {
-          const result = await generate({
-            schema: RefinePatchSchema,
+          const result = await generateText({
             system: REFINE_PATCH_SYSTEM,
             prompt: userPrompt,
             model: "fast",
@@ -170,23 +190,43 @@ export async function POST(
             maxTokens: 2048,
           });
           void logUsage(userId, orgId, result.usage, "generate");
-          patch = result.data;
+
+          const raw = extractJsonObject(result.data);
+          if (!raw) {
+            parseFailReason = "AI не вернул JSON-объект";
+          } else {
+            try {
+              const parsedJson = JSON.parse(raw);
+              const parsed = RefinePatchSchema.safeParse(parsedJson);
+              if (parsed.success) {
+                patch = parsed.data;
+              } else {
+                parseFailReason = `JSON не соответствует схеме: ${parsed.error.issues
+                  .slice(0, 2)
+                  .map((i) => i.message)
+                  .join("; ")}`;
+              }
+            } catch (jsonErr) {
+              parseFailReason = `Невалидный JSON: ${(jsonErr as Error).message}`;
+            }
+          }
         } catch (e) {
-          // Schema parse failure or provider error — fall through to
-          // the regen path with the AI error as the reason. We don't
-          // double-charge: the failed structured attempt's tokens are
-          // already accounted for via logUsage in the success path
-          // (here we never reached it, so nothing to log).
           await reportError(e, {
             op: "generated.refine.patch",
             userId,
             tags: { docId: id },
           });
+          parseFailReason =
+            (e as Error).message ?? "AI запрос для точечной правки упал";
+        }
+
+        if (patch === null) {
           yield {
             kind: "mode",
             mode: "regen",
             reason:
-              "AI вернул структурно неверный ответ — переключаемся на полную перегенерацию.",
+              parseFailReason ??
+              "Не удалось получить точечный патч — переключаемся на полную перегенерацию.",
           };
           yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
           return;
