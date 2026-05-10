@@ -5,11 +5,16 @@ import { ImageResponse } from "next/og";
 // preview people see on Telegram / Twitter / Slack stays in sync with
 // the brand without a designer touching Figma.
 //
-// Inlined fonts would bloat the route — we lean on Geist via the
-// system font stack (next/og uses Inter as default which is close
-// enough for OG previews; the canonical look is on the actual page).
+// We deliberately do NOT export `runtime = "edge"`. In Next 16,
+// ImageResponse works fine in the default Node.js runtime, and
+// declaring edge-runtime on a page disables static generation for it
+// (the build emits a warning). The Node path also lets us reuse any
+// future env-bound dependencies (Sentry, etc.) without per-route
+// edge polyfills.
+//
+// Inlined fonts would bloat the route — we lean on Inter via system
+// fallbacks (next/og's default).
 
-export const runtime = "edge";
 export const alt = "ЮрИИст — AI-юрист для бизнеса";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
