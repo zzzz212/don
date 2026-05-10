@@ -48,6 +48,20 @@ if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
 
 // ── Public API ──────────────────────────────────────────────────────
 
+// Helper: collect per-provider failure reasons into one consolidated
+// error message so the eventual thrown AIError lists every step of the
+// fallback chain, not just the last one. Big win for debugging — a
+// single line in the route's saveError / Sentry payload tells you
+// "anthropic 401, gemini missing key, groq 413" instead of just the
+// final 413.
+function summariseFailures(
+  failures: Array<{ provider: string; message: string }>
+): string {
+  return failures
+    .map((f) => `${f.provider}: ${f.message.slice(0, 200)}`)
+    .join(" | ");
+}
+
 export async function generate<T extends z.ZodTypeAny>(
   opts: GenerateOptions<T> & { schema: T }
 ): Promise<GenerateResult<T>> {
@@ -56,18 +70,21 @@ export async function generate<T extends z.ZodTypeAny>(
     throw new AIError("No AI provider configured", "demo");
   }
 
+  const failures: Array<{ provider: string; message: string }> = [];
   let lastError: unknown;
   for (const p of providers) {
     try {
       return await PROVIDERS[p].generate(opts);
     } catch (e) {
       lastError = e;
-      console.error(`[ai] Provider ${p} failed, trying next:`, (e as Error).message);
+      const message = (e as Error).message ?? "unknown";
+      failures.push({ provider: p, message });
+      console.error(`[ai] Provider ${p} failed, trying next:`, message);
     }
   }
 
   throw new AIError(
-    `All providers failed. Last: ${(lastError as Error)?.message}`,
+    `All providers failed: ${summariseFailures(failures)}`,
     providers[providers.length - 1],
     lastError
   );
@@ -81,18 +98,21 @@ export async function generateText(
     throw new AIError("No AI provider configured", "demo");
   }
 
+  const failures: Array<{ provider: string; message: string }> = [];
   let lastError: unknown;
   for (const p of providers) {
     try {
       return await PROVIDERS[p].generateText(opts);
     } catch (e) {
       lastError = e;
-      console.error(`[ai] Provider ${p} failed, trying next:`, (e as Error).message);
+      const message = (e as Error).message ?? "unknown";
+      failures.push({ provider: p, message });
+      console.error(`[ai] Provider ${p} failed, trying next:`, message);
     }
   }
 
   throw new AIError(
-    `All providers failed. Last: ${(lastError as Error)?.message}`,
+    `All providers failed: ${summariseFailures(failures)}`,
     providers[providers.length - 1],
     lastError
   );
@@ -104,18 +124,21 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
     throw new AIError("No AI provider configured", "demo");
   }
 
+  const failures: Array<{ provider: string; message: string }> = [];
   let lastError: unknown;
   for (const p of providers) {
     try {
       return await PROVIDERS[p].chat(opts);
     } catch (e) {
       lastError = e;
-      console.error(`[ai] Provider ${p} failed, trying next:`, (e as Error).message);
+      const message = (e as Error).message ?? "unknown";
+      failures.push({ provider: p, message });
+      console.error(`[ai] Provider ${p} failed, trying next:`, message);
     }
   }
 
   throw new AIError(
-    `All providers failed. Last: ${(lastError as Error)?.message}`,
+    `All providers failed: ${summariseFailures(failures)}`,
     providers[providers.length - 1],
     lastError
   );
