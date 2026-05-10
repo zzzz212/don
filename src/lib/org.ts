@@ -9,6 +9,7 @@
 // into it inside one transaction. No batch migration job needed.
 
 import { prisma } from "@/lib/db";
+import { TRIAL_DAYS } from "@/lib/legal-info";
 
 export type Role = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -155,12 +156,21 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
       : `Workspace ${local}`;
   const slug = await reserveSlug(candidateName);
 
+  // Grant the trial only on the user's *first* org. Subsequent orgs they
+  // explicitly create later must not re-extend the trial — that's the
+  // anti-abuse guard. We're inside the bootstrap branch (no other
+  // memberships) so this is the first-org case by construction.
+  const trialEndsAt = new Date(
+    Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000
+  );
+
   const orgId = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
       data: {
         name: candidateName,
         slug,
         plan: user.plan ?? "FREE",
+        trialEndsAt,
       },
       select: { id: true },
     });
@@ -213,6 +223,7 @@ export interface MembershipInfo {
     name: string;
     slug: string;
     plan: string;
+    trialEndsAt: Date | null;
   };
 }
 
@@ -228,7 +239,15 @@ export async function getMembership(
   const m = await prisma.membership.findUnique({
     where: { userId_orgId: { userId, orgId } },
     include: {
-      organization: { select: { id: true, name: true, slug: true, plan: true } },
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          plan: true,
+          trialEndsAt: true,
+        },
+      },
     },
   });
   if (!m) return null;
@@ -278,7 +297,14 @@ export async function listMyOrganizations(userId: string) {
     where: { userId },
     include: {
       organization: {
-        select: { id: true, name: true, slug: true, plan: true, createdAt: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          plan: true,
+          trialEndsAt: true,
+          createdAt: true,
+        },
       },
     },
     orderBy: { organization: { createdAt: "asc" } },

@@ -21,6 +21,8 @@ interface FeatureUsage {
 
 interface UsageData {
   plan: "FREE" | "PRO" | "BUSINESS";
+  isTrial?: boolean;
+  trialDaysLeft?: number | null;
   resetsAt: string;
   features: {
     analyze?: FeatureUsage;
@@ -28,6 +30,12 @@ interface UsageData {
     ocr?: FeatureUsage;
     chat?: FeatureUsage;
   };
+}
+
+function pluralizeDays(n: number): string {
+  if (n === 1) return "день";
+  if (n >= 2 && n <= 4) return "дня";
+  return "дней";
 }
 
 const FEATURE_META: Record<
@@ -136,6 +144,8 @@ export function UsageWidget() {
   const planMeta = PLAN_META[data.plan];
   const PlanIcon = planMeta.icon;
   const isFree = data.plan === "FREE";
+  const isTrial = !!data.isTrial;
+  const daysLeft = data.trialDaysLeft ?? null;
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
@@ -148,9 +158,16 @@ export function UsageWidget() {
           </div>
           <div>
             <p className="text-xs text-muted">Тариф</p>
-            <p className={`font-semibold ${planMeta.chipText}`}>
-              {planMeta.label}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className={`font-semibold ${planMeta.chipText}`}>
+                {planMeta.label}
+              </p>
+              {isTrial && typeof daysLeft === "number" && (
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                  Триал · {daysLeft} {pluralizeDays(daysLeft)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <p className="text-xs text-muted">
@@ -199,7 +216,17 @@ export function UsageWidget() {
         })}
       </div>
 
-      {isFree && (
+      {isTrial && typeof daysLeft === "number" ? (
+        <Link
+          href="/#pricing"
+          className="mt-4 flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-100"
+        >
+          <span>
+            Пробный «Про» — осталось {daysLeft} {pluralizeDays(daysLeft)}. Оформите подписку, чтобы не потерять доступ.
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0" />
+        </Link>
+      ) : isFree ? (
         <Link
           href="/#pricing"
           className="mt-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary-light/30 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary-light/50"
@@ -207,7 +234,7 @@ export function UsageWidget() {
           <span>Перейти на «Про» — безлимитный анализ + OCR</span>
           <ArrowRight className="h-4 w-4" />
         </Link>
-      )}
+      ) : null}
     </div>
   );
 }

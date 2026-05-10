@@ -26,10 +26,13 @@ export async function GET() {
       FEATURES.map((f) => checkQuota(orgId, f))
     );
 
+    const head = statuses[0];
     return NextResponse.json({
-      plan: statuses[0]?.plan ?? "FREE",
+      plan: head?.plan ?? "FREE",
+      isTrial: head?.isTrial ?? false,
+      trialDaysLeft: head?.trialDaysLeft ?? null,
       orgId,
-      resetsAt: statuses[0]?.resetsAt.toISOString(),
+      resetsAt: head?.resetsAt.toISOString(),
       features: statuses.reduce<Record<string, unknown>>((acc, s) => {
         acc[s.feature] = {
           used: s.used,

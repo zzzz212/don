@@ -6,6 +6,7 @@ import {
   listMyOrganizations,
   reserveSlug,
 } from "@/lib/org";
+import { getEffectivePlan } from "@/lib/plans";
 import { reportError } from "@/lib/telemetry";
 
 // GET /api/organizations
@@ -27,15 +28,27 @@ export async function GET() {
 
     return NextResponse.json({
       activeOrgId,
-      organizations: memberships.map((m) => ({
-        id: m.organization.id,
-        name: m.organization.name,
-        slug: m.organization.slug,
-        plan: m.organization.plan,
-        role: m.role,
-        isActive: m.organization.id === activeOrgId,
-        createdAt: m.organization.createdAt,
-      })),
+      organizations: memberships.map((m) => {
+        const effective = getEffectivePlan({
+          plan: m.organization.plan,
+          trialEndsAt: m.organization.trialEndsAt,
+        });
+        return {
+          id: m.organization.id,
+          name: m.organization.name,
+          slug: m.organization.slug,
+          plan: effective.plan,
+          baselinePlan: effective.baselinePlan,
+          isTrial: effective.isTrial,
+          trialEndsAt: effective.trialEndsAt
+            ? effective.trialEndsAt.toISOString()
+            : null,
+          trialDaysLeft: effective.trialDaysLeft,
+          role: m.role,
+          isActive: m.organization.id === activeOrgId,
+          createdAt: m.organization.createdAt,
+        };
+      }),
     });
   } catch (error) {
     await reportError(error, { op: "organizations.list" });
@@ -81,11 +94,18 @@ export async function POST(request: Request) {
       return created;
     });
 
+    // No trial for additional orgs — the trial is granted exactly once,
+    // at the user's first auto-bootstrapped personal workspace, in
+    // ensureActiveOrg().
     return NextResponse.json({
       id: org.id,
       name: org.name,
       slug: org.slug,
       plan: org.plan,
+      baselinePlan: org.plan,
+      isTrial: false,
+      trialEndsAt: null,
+      trialDaysLeft: null,
       role: "OWNER" as const,
       createdAt: org.createdAt,
     });

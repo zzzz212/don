@@ -70,6 +70,12 @@ model Organization {
   slug        String   @unique
   plan        String   @default("FREE")
 
+  // While this is in the future, the workspace gets PRO-tier features
+  // even if `plan == "FREE"`. Set on first-time bootstrap of a user's
+  // personal workspace (one trial per user) and never extended for
+  // additional workspaces created by the same user. Null = no trial.
+  trialEndsAt DateTime?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

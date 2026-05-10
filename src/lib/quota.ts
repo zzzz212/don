@@ -7,9 +7,9 @@
 
 import { prisma } from "@/lib/db";
 import {
+  getEffectivePlan,
   getPlanLimits,
   isUnlimited,
-  normalizePlan,
   type QuotaFeature,
 } from "@/lib/plans";
 
@@ -20,7 +20,12 @@ export interface QuotaStatus {
   unlimited: boolean;
   allowed: boolean;
   resetsAt: Date;
+  /** Effective plan applied for the limit (PRO during an active trial). */
   plan: string;
+  /** True when the limit comes from a trial — surface this in upgrade UX. */
+  isTrial: boolean;
+  /** Days remaining in the trial; null when not on trial. */
+  trialDaysLeft: number | null;
   orgId: string;
 }
 
@@ -51,37 +56,44 @@ export async function checkQuota(
 ): Promise<QuotaStatus> {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    select: { plan: true },
+    select: { plan: true, trialEndsAt: true },
   });
 
-  const plan = normalizePlan(org?.plan);
-  const limit = getPlanLimits(plan)[feature];
+  const effective = getEffectivePlan({
+    plan: org?.plan,
+    trialEndsAt: org?.trialEndsAt ?? null,
+  });
+  const limit = getPlanLimits(effective.plan)[feature];
   const resetsAt = startOfNextMonthUtc();
+
+  const base = {
+    feature,
+    plan: effective.plan,
+    isTrial: effective.isTrial,
+    trialDaysLeft: effective.trialDaysLeft,
+    orgId,
+  } as const;
 
   if (isUnlimited(limit)) {
     return {
-      feature,
+      ...base,
       used: 0,
       limit,
       unlimited: true,
       allowed: true,
       resetsAt,
-      plan,
-      orgId,
     };
   }
 
   const used = await getOrgUsageThisMonth(orgId, feature);
 
   return {
-    feature,
+    ...base,
     used,
     limit,
     unlimited: false,
     allowed: used < limit,
     resetsAt,
-    plan,
-    orgId,
   };
 }
 

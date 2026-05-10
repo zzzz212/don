@@ -7,6 +7,7 @@ import {
   normalizePlan,
   getPlanLimits,
   isUnlimited,
+  getEffectivePlan,
 } from "../plans";
 
 describe("PLANS / DEFAULT_PLAN", () => {
@@ -89,5 +90,55 @@ describe("isUnlimited / UNLIMITED", () => {
     expect(isUnlimited(0)).toBe(false);
     expect(isUnlimited(3)).toBe(false);
     expect(isUnlimited(Number.MAX_SAFE_INTEGER)).toBe(false);
+  });
+});
+
+describe("getEffectivePlan", () => {
+  const NOW = new Date("2026-05-10T12:00:00Z");
+  const FUTURE = new Date("2026-05-20T12:00:00Z"); // 10 days ahead
+  const PAST = new Date("2026-05-01T12:00:00Z"); // 9 days behind
+
+  it("returns the stored plan when no trial is set", () => {
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt: null }, NOW);
+    expect(e.plan).toBe("FREE");
+    expect(e.baselinePlan).toBe("FREE");
+    expect(e.isTrial).toBe(false);
+    expect(e.trialDaysLeft).toBeNull();
+  });
+
+  it("upgrades FREE to PRO during an active trial", () => {
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt: FUTURE }, NOW);
+    expect(e.plan).toBe("PRO");
+    expect(e.baselinePlan).toBe("FREE");
+    expect(e.isTrial).toBe(true);
+    expect(e.trialDaysLeft).toBe(10);
+  });
+
+  it("falls back to FREE when the trial has expired", () => {
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt: PAST }, NOW);
+    expect(e.plan).toBe("FREE");
+    expect(e.isTrial).toBe(false);
+    expect(e.trialDaysLeft).toBeNull();
+  });
+
+  it("does NOT downgrade an already-paid plan during a stale trial flag", () => {
+    // Defensive: if a paid customer somehow has a trialEndsAt set, the
+    // paid plan still wins.
+    const e = getEffectivePlan({ plan: "PRO", trialEndsAt: FUTURE }, NOW);
+    expect(e.plan).toBe("PRO");
+    expect(e.baselinePlan).toBe("PRO");
+    expect(e.isTrial).toBe(false);
+  });
+
+  it("rounds up the days-left counter (so 'less than a day' shows as 1)", () => {
+    const trialEndsAt = new Date(NOW.getTime() + 1000); // 1 second left
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt }, NOW);
+    expect(e.trialDaysLeft).toBe(1);
+  });
+
+  it("trial of exactly 14 days at start shows 14", () => {
+    const trialEndsAt = new Date(NOW.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const e = getEffectivePlan({ plan: "FREE", trialEndsAt }, NOW);
+    expect(e.trialDaysLeft).toBe(14);
   });
 });

@@ -16,7 +16,13 @@ interface Organization {
   id: string;
   name: string;
   slug: string;
+  /** Effective plan — already PRO if a trial is active. */
   plan: string;
+  /** Plan that will apply once any active trial expires. */
+  baselinePlan?: string;
+  isTrial?: boolean;
+  trialDaysLeft?: number | null;
+  trialEndsAt?: string | null;
   role: "OWNER" | "ADMIN" | "MEMBER";
   isActive: boolean;
   createdAt: string;
@@ -27,6 +33,21 @@ const PLAN_LABEL: Record<string, string> = {
   PRO: "Про",
   BUSINESS: "Бизнес",
 };
+
+function planSubtitle(org: Organization): string {
+  const planLabel = PLAN_LABEL[org.plan] ?? org.plan;
+  if (org.isTrial && typeof org.trialDaysLeft === "number") {
+    const days = org.trialDaysLeft;
+    const word =
+      days === 1
+        ? "день"
+        : days >= 2 && days <= 4
+          ? "дня"
+          : "дней";
+    return `Триал · ${days} ${word} · ${org.role}`;
+  }
+  return `${planLabel} · ${org.role}`;
+}
 
 export function OrgSwitcher() {
   // useSession.update() is the only way to force NextAuth to re-run the
@@ -187,12 +208,17 @@ export function OrgSwitcher() {
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex max-w-[220px] items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
+        className="flex max-w-[260px] items-center gap-2 rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface"
       >
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-light text-xs font-bold text-primary-dark">
           {active.name.slice(0, 1).toUpperCase()}
         </div>
         <span className="truncate text-foreground">{active.name}</span>
+        {active.isTrial && typeof active.trialDaysLeft === "number" && (
+          <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+            Триал {active.trialDaysLeft}д
+          </span>
+        )}
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
 
@@ -218,7 +244,7 @@ export function OrgSwitcher() {
                       {org.name}
                     </span>
                     <span className="text-[10px] uppercase tracking-wide text-muted">
-                      {PLAN_LABEL[org.plan] ?? org.plan} · {org.role}
+                      {planSubtitle(org)}
                     </span>
                   </div>
                   {switching === org.id ? (
