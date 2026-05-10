@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Scale, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
+import { Scale, Mail, Lock, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { loginUser, loginWithGoogle, isGoogleAuthEnabled } from "@/lib/auth-actions";
 
 export default function LoginPage() {
@@ -15,6 +15,11 @@ export default function LoginPage() {
   }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  // Two-step state: when /api/auth/check-2fa says requires2FA=true, we
+  // show the TOTP input and submit again with all three fields.
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const totpInputRef = useRef<HTMLInputElement>(null);
 
   const validateField = (name: string, value: string) => {
     const errors: Record<string, string> = { ...fieldErrors };
@@ -70,19 +75,60 @@ export default function LoginPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       errors.email = "Некорректный формат email";
     if (!password) errors.password = "Введите пароль";
+    if (requires2FA && totpCode.replace(/\s/g, "").length !== 6) {
+      errors.totpCode = "Введите 6-значный код";
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setTouched({ email: true, password: true });
+      setTouched({ email: true, password: true, totpCode: true });
       return;
     }
 
     setIsLoading(true);
 
+    // Step 1 (only on first submit): preflight check whether 2FA is
+    // required for this account. We do this BEFORE signIn so we can
+    // distinguish "wrong creds" from "creds OK but TOTP needed" — the
+    // signIn call alone collapses both into a single "no" response.
+    if (!requires2FA) {
+      try {
+        const r = await fetch("/api/auth/check-2fa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const json = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setError(json.error ?? "Ошибка входа");
+          setIsLoading(false);
+          return;
+        }
+        if (json.requires2FA) {
+          setRequires2FA(true);
+          setIsLoading(false);
+          // Auto-focus the TOTP input so the user can type immediately.
+          setTimeout(() => totpInputRef.current?.focus(), 50);
+          return;
+        }
+      } catch {
+        setError("Сеть недоступна");
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Step 2 (when requires2FA already true) or first-and-only step
+    // (when 2FA isn't enabled): actual signIn with all available
+    // fields. The credentials provider re-verifies email + password +
+    // TOTP server-side; we don't trust the preflight alone.
+    formData.set("totpCode", totpCode.replace(/\s/g, ""));
     const result = await loginUser(formData);
 
     if (result?.error) {
-      setError(result.error);
+      setError(
+        requires2FA ? "Неверный код 2FA. Попробуйте ещё раз." : result.error
+      );
       setIsLoading(false);
     }
   };
@@ -215,6 +261,43 @@ export default function LoginPage() {
               )}
             </div>
 
+            {requires2FA && (
+              <div className="animate-fade-in">
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Код из приложения 2FA
+                </label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <input
+                    ref={totpInputRef}
+                    name="totpCode"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="123 456"
+                    value={totpCode}
+                    onChange={(e) =>
+                      setTotpCode(
+                        e.target.value.replace(/\D/g, "").slice(0, 6)
+                      )
+                    }
+                    className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    maxLength={6}
+                    required
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-muted">
+                  Откройте Google Authenticator / Authy / 1Password и
+                  введите 6-значный код для ЮрИИст.
+                </p>
+                {touched.totpCode && fieldErrors.totpCode && (
+                  <p className="mt-1.5 text-xs text-red-500">
+                    {fieldErrors.totpCode}
+                  </p>
+                )}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -225,6 +308,8 @@ export default function LoginPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Входим...
                 </>
+              ) : requires2FA ? (
+                "Подтвердить код 2FA"
               ) : (
                 "Войти"
               )}

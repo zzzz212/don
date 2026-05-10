@@ -74,6 +74,7 @@ export async function registerUser(formData: FormData) {
 export async function loginUser(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const totpCode = (formData.get("totpCode") as string | null) ?? "";
 
   if (!email || !password) {
     return { error: "Email и пароль обязательны" };
@@ -83,6 +84,7 @@ export async function loginUser(formData: FormData) {
     await signIn("credentials", {
       email,
       password,
+      totpCode,
       redirectTo: "/dashboard",
     });
   } catch (error) {

@@ -12,6 +12,7 @@ import {
   Loader2,
   CreditCard,
   ShieldCheck,
+  Lock,
 } from "lucide-react";
 
 interface Organization {
@@ -318,6 +319,14 @@ export function OrgSwitcher() {
             >
               <Users className="h-4 w-4 text-muted" />
               Пригласить участника
+            </Link>
+            <Link
+              href="/account/security"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+            >
+              <Lock className="h-4 w-4 text-muted" />
+              Безопасность аккаунта
             </Link>
             {isAdmin && (
               <Link
