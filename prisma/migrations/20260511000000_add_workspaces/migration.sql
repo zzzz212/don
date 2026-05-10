@@ -90,12 +90,11 @@ CREATE INDEX "AiUsage_orgId_createdAt_idx" ON "AiUsage"("orgId", "createdAt");
 CREATE INDEX "AiUsage_orgId_feature_idx"   ON "AiUsage"("orgId", "feature");
 CREATE INDEX "CounterpartyCheck_orgId_idx" ON "CounterpartyCheck"("orgId");
 
--- 6. CounterpartyCheck dedup moves from (userId, inn) → (orgId, inn) so the
--- same INN re-checked by another team member doesn't violate uniqueness.
--- Drop the old index first; the new one is created up where orgId was added.
-ALTER TABLE "CounterpartyCheck" DROP CONSTRAINT IF EXISTS "CounterpartyCheck_userId_inn_key";
-DROP INDEX IF EXISTS "CounterpartyCheck_userId_inn_key";
--- The new (orgId, inn) unique constraint will be created later when every
--- existing CounterpartyCheck row has an orgId. Until then, having no unique
--- constraint is acceptable: anonymous / pre-migration rows just can't dedup.
--- The application code uses upsert-by-(orgId, inn) once orgId is set.
+-- CounterpartyCheck dedup stays at (userId, inn). We considered moving to
+-- (orgId, inn) so a re-check by another team member would update the
+-- existing row, but `prisma db push` flags adding the new constraint as a
+-- "potential data loss" event (false positive — orgId is nullable and
+-- NULL≠NULL in Postgres) and refuses without --accept-data-loss. Per-user
+-- history is also reasonable for audit ("Иванов проверил INN X, Петров его
+-- же позже"). The orgId column is still added above for future per-org
+-- aggregations; only the upsert key stays per-user.

@@ -39,12 +39,12 @@ export async function POST(
       );
     }
 
-    // Notes are workspace-shared: any team member sees and updates the same
-    // notes for an INN the org has previously checked. (orgId, inn) is the
-    // unique key.
+    // Notes are per-user (see CounterpartyCheck.@@unique in schema for why
+    // we kept the per-user key). orgId is still tracked so future per-org
+    // aggregations work; the upsert is keyed by (userId, inn).
     const check = await prisma.counterpartyCheck.upsert({
       where: {
-        orgId_inn: { orgId, inn },
+        userId_inn: { userId: session.user.id, inn },
       },
       create: {
         userId: session.user.id,
@@ -53,9 +53,8 @@ export async function POST(
         notes: note,
       },
       update: {
+        orgId,
         notes: note,
-        // Track who most recently edited the note.
-        userId: session.user.id,
       },
     });
 

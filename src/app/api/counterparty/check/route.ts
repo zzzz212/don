@@ -162,17 +162,18 @@ export async function POST(request: Request) {
       });
     }
 
-    // Save check history (only if authenticated). Dedup is per-workspace
-    // so the same INN re-checked by different team members shows up once
-    // in the org's history (with the most recent createdAt).
+    // Save check history (only if authenticated). Dedup stays per-user
+    // (see CounterpartyCheck.@@unique in schema for why). orgId is still
+    // recorded so future per-workspace aggregations work; only the
+    // upsert key is per-user.
     if (session?.user?.id) {
       const orgId =
         session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
 
       await prisma.counterpartyCheck.upsert({
         where: {
-          orgId_inn: {
-            orgId,
+          userId_inn: {
+            userId: session.user.id,
             inn,
           },
         },
@@ -182,10 +183,8 @@ export async function POST(request: Request) {
           inn,
         },
         update: {
+          orgId,
           createdAt: new Date(),
-          // Capture who refreshed this most recently — useful in the future
-          // for "last checked by X" UI.
-          userId: session.user.id,
         },
       });
     }

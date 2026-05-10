@@ -400,11 +400,15 @@ model CounterpartyCheck {
   organization Organization?       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   profile      CounterpartyProfile @relation(fields: [inn], references: [inn], onDelete: Cascade)
 
-  // Was: @@unique([userId, inn]). With workspaces, dedup is per-org so the
-  // same INN checked in two different orgs (or by two members of one org)
-  // doesn't violate uniqueness oddly. Personal-org users get the same
-  // dedup behaviour because their personal org has exactly themselves.
-  @@unique([orgId, inn])
+  // Dedup stays per-user. We considered moving to (orgId, inn) so a re-check
+  // by another team member would update the existing row, but `prisma db
+  // push` flags adding the new constraint as a "potential data loss" event
+  // (false positive — orgId is nullable and NULL≠NULL in Postgres) and
+  // refuses without --accept-data-loss. We don't want that flag in the
+  // Vercel build script — it would mask real data-loss changes in future
+  // migrations. Per-user history is also arguably better for audit
+  // ("Иванов проверил INN X, Петров проверил его же позже").
+  @@unique([userId, inn])
   @@index([userId])
   @@index([orgId])
   @@index([inn])
