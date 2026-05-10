@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { CounterpartyFieldInput } from "@/components/counterparty-field-input";
+import { useToast } from "@/components/toast";
 import { getTemplate, type TemplateField } from "@/lib/templates";
 import { generateContract } from "@/lib/contracts/templates";
 import {
@@ -20,6 +21,8 @@ import {
 
 export default function TemplateFillPage() {
   const params = useParams();
+  const router = useRouter();
+  const toast = useToast();
   const template = getTemplate(params.id as string);
   const templateId = params.id as string;
 
@@ -71,14 +74,73 @@ export default function TemplateFillPage() {
     .every((f) => formData[f.id]?.trim());
 
   const handleGenerate = async () => {
+    if (!template) return;
     setIsGenerating(true);
-    // Small artificial delay for smooth UX (transition feels more "real")
-    await new Promise((r) => setTimeout(r, 600));
-    const doc = generateContract(template.id, formData);
-    setGeneratedDoc(doc);
-    setIsGenerating(false);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // 1. Render the document deterministically — pure string interpolation,
+    //    no AI tokens.
+    const content = generateContract(template.id, formData);
+
+    // 2. Persist to DB so the dashboard's "Созданные документы" tab and
+    //    the versioning UI both work. The endpoint applies the FREE
+    //    quota even for template-path generations.
+    try {
+      const response = await fetch("/api/generated", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: template.id,
+          name: template.name,
+          content,
+          formData,
+        }),
+      });
+
+      if (response.status === 401) {
+        // Anonymous user — show the document but warn that it isn't
+        // saved. They can sign in to keep it.
+        setGeneratedDoc(content);
+        setIsGenerating(false);
+        toast.info(
+          "Документ готов. Чтобы сохранить и редактировать его дальше — войдите в аккаунт."
+        );
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        return;
+      }
+
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (json.code === "QUOTA_EXCEEDED") {
+          setIsGenerating(false);
+          toast.error(json.error ?? "Лимит генераций исчерпан.");
+          return;
+        }
+        // Save failed for some other reason — still show the
+        // generated text so the user can copy / download it manually.
+        setGeneratedDoc(content);
+        setIsGenerating(false);
+        toast.error(
+          json.error ?? "Документ создан, но не сохранён. Попробуйте ещё раз."
+        );
+        return;
+      }
+
+      // 3. Success — navigate to the persisted document so the user
+      //    sees the version history button, can edit, etc. Clear the
+      //    draft from local storage now that it's safely in DB.
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(`template_${templateId}`);
+      }
+      router.push(`/generated/${json.id}`);
+    } catch (e) {
+      console.error("[generate] save failed:", e);
+      setGeneratedDoc(content);
+      setIsGenerating(false);
+      toast.error(
+        "Документ создан, но не сохранён — проверьте соединение."
+      );
     }
   };
 
