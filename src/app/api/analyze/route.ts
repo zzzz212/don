@@ -266,6 +266,7 @@ export async function POST(request: NextRequest) {
 
     // Save to DB if user is authenticated
     let documentId: string | null = null;
+    let saveError: string | null = null;
     if (userId) {
       try {
         // Verify user exists in DB (JWT may reference a deleted user)
@@ -274,7 +275,9 @@ export async function POST(request: NextRequest) {
           select: { id: true },
         });
 
-        if (userExists) {
+        if (!userExists) {
+          saveError = `User ${userId} from JWT not found in DB`;
+        } else {
           const metadata = JSON.stringify({
             contractType: analysis.contractType,
             parties: analysis.parties,
@@ -325,8 +328,16 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (dbError) {
-        // DB save failed — still return the analysis result
-        console.error("Failed to save document:", dbError);
+        // DB save failed. Surface the actual error to the response so it
+        // shows up in the user's network tab without needing Vercel logs
+        // access — the analysis is still returned, but the saveError field
+        // makes the failure visible. Also push to Sentry for aggregation.
+        saveError = (dbError as Error).message;
+        await reportError(dbError, {
+          op: "analyze.save-document",
+          userId,
+          extra: { orgId, hasOcr: usedOcr },
+        });
       }
     }
 
@@ -337,6 +348,9 @@ export async function POST(request: NextRequest) {
       textLength: contractText.length,
       hasOriginal: documentId !== null && blobInfo !== null,
       usedOcr,
+      // Diagnostic field — null when save succeeded or user wasn't logged
+      // in. Non-null with an error string when DB persistence failed.
+      saveError,
     });
   } catch (error) {
     await reportError(error, { op: "analyze" });
