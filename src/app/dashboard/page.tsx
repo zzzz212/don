@@ -7,6 +7,8 @@ import { Disclaimer } from "@/components/disclaimer";
 import { RiskBadge, type RiskLevel } from "@/components/risk-badge";
 import { UsageWidget } from "@/components/usage-widget";
 import { DocumentSearchBar } from "@/components/document-search-bar";
+import { DocumentRowSkeleton } from "@/components/skeleton";
+import { useToast } from "@/components/toast";
 import {
   FileText,
   Plus,
@@ -16,7 +18,6 @@ import {
   FileSearch,
   TrendingUp,
   Shield,
-  Loader2,
   Trash2,
   Download,
   MessageCircle,
@@ -53,6 +54,7 @@ function timeAgo(date: string): string {
 }
 
 export default function DashboardPage() {
+  const toast = useToast();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function DashboardPage() {
         }
       }
     } catch {
-      alert("Ошибка при удалении документа");
+      toast.error("Не удалось удалить документ");
     } finally {
       setDeleting(null);
     }
@@ -136,7 +138,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error downloading document:", error);
-      alert("Ошибка при скачивании документа");
+      toast.error("Не удалось скачать DOCX. Попробуйте ещё раз.");
     }
   }
 
@@ -272,8 +274,10 @@ export default function DashboardPage() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <div className="divide-y divide-border">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <DocumentRowSkeleton key={i} />
+                ))}
               </div>
             ) : tab === "analyses" ? (
               documents.length === 0 ? (

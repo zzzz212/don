@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { useToast } from "@/components/toast";
 import { getTemplate } from "@/lib/templates";
 import {
   ArrowLeft,
@@ -84,6 +85,7 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
 export default function ViewGeneratedPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const [doc, setDoc] = useState<GeneratedDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -145,7 +147,7 @@ export default function ViewGeneratedPage() {
       }
     } catch (error) {
       console.error("Error downloading document:", error);
-      alert("Ошибка при скачивании документа");
+      toast.error("Не удалось скачать DOCX. Попробуйте ещё раз.");
     }
   };
 
@@ -159,11 +161,14 @@ export default function ViewGeneratedPage() {
       });
 
       if (response.ok) {
+        toast.success("Документ удалён");
         router.push("/dashboard");
+      } else {
+        toast.error("Не удалось удалить документ");
       }
     } catch (error) {
       console.error("Error deleting document:", error);
-      alert("Ошибка при удалении документа");
+      toast.error("Не удалось удалить документ. Проверьте соединение.");
     } finally {
       setDeleting(false);
     }

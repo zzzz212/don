@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { BillingCardSkeleton } from "@/components/skeleton";
 
 interface SubscriptionInfo {
   plan: string;
@@ -227,8 +228,12 @@ export default function BillingPage() {
           </div>
 
           {loading && (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-muted" />
+            <div className="space-y-6">
+              <BillingCardSkeleton />
+              <div className="grid gap-6 md:grid-cols-2">
+                <BillingCardSkeleton />
+                <BillingCardSkeleton />
+              </div>
             </div>
           )}
 
