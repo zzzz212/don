@@ -51,6 +51,34 @@ model User {
   passwordResetTokens PasswordResetToken[]
   payments           Payment[]
   auditEvents        AuditEvent[]
+  totp               TotpCredential?
+}
+
+// Time-based One-Time Password (TOTP) credential for 2FA. One row per
+// user. enabledAt distinguishes "setup started but not confirmed" from
+// "fully enabled" — until enabledAt is non-null, the login flow does
+// NOT require a TOTP code (so a half-finished setup can't lock the
+// user out).
+//
+// Recovery codes: SHA-256 hashes of 10 single-use random codes shown
+// to the user once at setup. On consume the matched hash is removed.
+// When recoveryCodes empties while TOTP is still enabled, the UI
+// nudges the user to regenerate.
+//
+// Secret storage: base32-encoded TOTP secret stored as plaintext. The
+// security model assumes DB encryption-at-rest (Neon's default) — same
+// posture as Google Authenticator's reference implementation. A future
+// hardening pass can wrap this with an env-key AEAD.
+model TotpCredential {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  secret        String
+  enabledAt     DateTime?
+  recoveryCodes String[]  @default([])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // Single-use, time-limited password-reset token. Only the SHA-256 hash is
