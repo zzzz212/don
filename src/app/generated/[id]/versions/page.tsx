@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
-  ArrowLeft,
   Loader2,
   GitBranch,
   Clock,
@@ -132,18 +131,18 @@ export default function DocumentVersionsPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30 pb-24">
+      <main id="main-content" className="flex-1 bg-surface/30 pb-24">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href={`/generated/${docId}`}
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Вернуться к документу
-          </Link>
+          <Breadcrumbs
+            items={[
+              { label: "Созданные документы", href: "/dashboard" },
+              { label: "Документ", href: `/generated/${docId}` },
+              { label: "История версий" },
+            ]}
+          />
 
-          <h1 className="mb-2 flex items-center gap-3 text-3xl font-bold text-foreground">
-            <GitBranch className="h-8 w-8" />
+          <h1 className="mb-2 flex items-center gap-3 text-2xl font-bold text-foreground sm:text-3xl">
+            <GitBranch className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
             История версий
           </h1>
           <p className="mb-8 text-muted">

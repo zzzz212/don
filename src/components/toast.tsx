@@ -1,13 +1,18 @@
 "use client";
 
 // Tiny in-app toast system. Replaces window.alert() for non-blocking
-// error / success feedback. Keep it minimal — single global provider,
-// stack at top-right, auto-dismiss after 5s.
+// error / success feedback. Single global provider, stack at top-right,
+// auto-dismiss after 5s.
+//
+// Each toast may carry an inline action ({label, onClick}) — handy for
+// destructive ops where we offer Undo, or for "Открыть документ" right
+// after a generation finishes.
 //
 // Usage:
 //   const toast = useToast();
 //   toast.error("Не удалось сохранить");
 //   toast.success("Сохранено");
+//   toast.success("Документ удалён", { action: { label: "Отменить", onClick: undo } });
 
 import {
   createContext,
@@ -23,17 +28,31 @@ import { cn } from "@/lib/utils";
 
 type ToastVariant = "success" | "error" | "info";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export interface ToastOptions {
+  /** Override the default 5s auto-dismiss window. 0 = never dismiss. */
+  durationMs?: number;
+  /** Inline action button rendered next to the close button. */
+  action?: ToastAction;
+}
+
 interface Toast {
   id: number;
   variant: ToastVariant;
   message: string;
+  action?: ToastAction;
+  durationMs: number;
 }
 
 interface ToastContextValue {
-  show: (message: string, variant?: ToastVariant) => void;
-  success: (message: string) => void;
-  error: (message: string) => void;
-  info: (message: string) => void;
+  show: (message: string, variant?: ToastVariant, options?: ToastOptions) => void;
+  success: (message: string, options?: ToastOptions) => void;
+  error: (message: string, options?: ToastOptions) => void;
+  info: (message: string, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -49,21 +68,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const show = useCallback(
-    (message: string, variant: ToastVariant = "info") => {
+    (
+      message: string,
+      variant: ToastVariant = "info",
+      options: ToastOptions = {}
+    ) => {
       counter.current += 1;
       const id = counter.current;
-      setToasts((prev) => [...prev, { id, variant, message }]);
-      // Auto-dismiss. Toast can also be closed manually via the X.
-      setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
+      const durationMs = options.durationMs ?? AUTO_DISMISS_MS;
+      setToasts((prev) => [
+        ...prev,
+        { id, variant, message, action: options.action, durationMs },
+      ]);
+      if (durationMs > 0) {
+        setTimeout(() => dismiss(id), durationMs);
+      }
     },
     [dismiss]
   );
 
   const value: ToastContextValue = {
     show,
-    success: (m) => show(m, "success"),
-    error: (m) => show(m, "error"),
-    info: (m) => show(m, "info"),
+    success: (m, o) => show(m, "success", o),
+    error: (m, o) => show(m, "error", o),
+    info: (m, o) => show(m, "info", o),
   };
 
   return (
@@ -140,6 +168,22 @@ function ToastCard({
       <p className={cn("flex-1 text-sm leading-relaxed", s.text)}>
         {toast.message}
       </p>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.action!.onClick();
+            onDismiss();
+          }}
+          className={cn(
+            "shrink-0 rounded-md border px-2 py-1 text-xs font-semibold transition-colors hover:bg-foreground/5",
+            s.border,
+            s.text
+          )}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         type="button"
         onClick={onDismiss}

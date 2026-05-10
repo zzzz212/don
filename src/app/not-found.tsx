@@ -1,23 +1,78 @@
 import Link from "next/link";
-import { FileQuestion } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
+
+// Custom 404 — branded chrome with an inline SVG that picks up the
+// theme palette via currentColor + fill-card. We don't render Header /
+// Disclaimer here because not-found can be triggered for routes that
+// would have wrapped them itself; keeping the page chrome-free avoids
+// a duplicated header on those edges.
 
 export default function NotFoundPage() {
   return (
-    <div className="flex min-h-full items-center justify-center px-4 py-20">
-      <div className="text-center max-w-md">
-        <FileQuestion className="h-12 w-12 text-muted mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-foreground mb-2">
-          Страница не найдена
-        </h2>
-        <p className="text-sm text-muted mb-6">
-          Такой страницы не существует или она была перемещена.
-        </p>
-        <Link
-          href="/"
-          className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+    <div className="flex min-h-full flex-col items-center justify-center bg-surface/30 px-4 py-20">
+      <div className="mx-auto flex max-w-xl flex-col items-center text-center">
+        <svg
+          viewBox="0 0 200 120"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Страница не найдена"
+          className="h-32 w-auto text-primary"
         >
-          На главную
-        </Link>
+          <text
+            x="50%"
+            y="58%"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontFamily="Inter, system-ui, sans-serif"
+            fontWeight="800"
+            fontSize="68"
+            letterSpacing="-2"
+            className="fill-current"
+          >
+            404
+          </text>
+          <circle
+            cx="44"
+            cy="40"
+            r="14"
+            className="fill-card stroke-current"
+            strokeWidth="2.5"
+          />
+          <line
+            x1="55"
+            y1="51"
+            x2="68"
+            y2="64"
+            className="stroke-current"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </svg>
+
+        <h1 className="mt-8 text-3xl font-extrabold tracking-tight text-foreground">
+          Страница не найдена
+        </h1>
+        <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
+          Адрес неверный или страницу удалили. Попробуйте поиск через ⌘K
+          или вернитесь к дашборду.
+        </p>
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            На главную
+          </Link>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+            Открыть дашборд
+          </Link>
+        </div>
       </div>
     </div>
   );

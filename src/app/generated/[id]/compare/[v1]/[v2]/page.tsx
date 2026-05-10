@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { Loader2 } from "lucide-react";
 
 type WordToken = {
   type: "context" | "removed" | "added";
@@ -136,17 +137,17 @@ export default function CompareVersionsPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href={`/generated/${docId}/versions`}
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Вернуться к версиям
-          </Link>
+          <Breadcrumbs
+            items={[
+              { label: "Документ", href: `/generated/${docId}` },
+              { label: "Версии", href: `/generated/${docId}/versions` },
+              { label: "Сравнение" },
+            ]}
+          />
 
-          <h1 className="mb-4 text-3xl font-bold text-foreground">
+          <h1 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">
             Сравнение версий
           </h1>
 

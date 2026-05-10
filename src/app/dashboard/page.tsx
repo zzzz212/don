@@ -64,6 +64,48 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"analyses" | "generated">("analyses");
   const [deleting, setDeleting] = useState<string | null>(null);
+  // Keyboard cursor for j/k navigation. -1 = nothing focused.
+  const [cursor, setCursor] = useState(-1);
+
+  // j / k / arrow nav across the active tab's list. Enter opens. Skipped
+  // when the user is typing in any input — same heuristic as the ⌘K
+  // palette so the two don't fight over the keystroke.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const list = tab === "analyses" ? documents : generatedDocs;
+      if (list.length === 0) return;
+
+      if (e.key === "j" || e.key === "ArrowDown") {
+        e.preventDefault();
+        setCursor((c) => Math.min(c + 1, list.length - 1));
+      } else if (e.key === "k" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setCursor((c) => Math.max(c - 1, 0));
+      } else if (e.key === "Enter" && cursor >= 0 && cursor < list.length) {
+        const item = list[cursor];
+        const href =
+          tab === "analyses"
+            ? `/report/${(item as DocumentItem).id}`
+            : `/generated/${(item as GeneratedDocItem).id}`;
+        window.location.href = href;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [tab, documents, generatedDocs, cursor]);
+
+  // Reset cursor when the user switches tabs — the indices don't carry
+  // semantic meaning across lists.
+  useEffect(() => {
+    setCursor(-1);
+  }, [tab]);
 
   useEffect(() => {
     async function loadData() {
@@ -90,27 +132,70 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
-  async function deleteDocument(id: string, type: "analysis" | "generated") {
-    if (!confirm("Вы уверены? Документ будет удален.")) return;
+  // Optimistic delete with a 5-second undo window. The row vanishes
+  // immediately; the actual DELETE call only fires once the undo toast
+  // expires. Clicking "Отменить" restores the row and the request never
+  // hits the server. Same pattern Gmail / Linear use — feels like
+  // sub-second response and protects against fat-finger deletions.
+  function deleteDocument(id: string, type: "analysis" | "generated") {
+    const endpoint =
+      type === "analysis" ? `/api/documents/${id}` : `/api/generated/${id}`;
+    const list = type === "analysis" ? documents : generatedDocs;
+    const removed = list.find((d) => d.id === id);
+    if (!removed) return;
+    const removedIndex = list.findIndex((d) => d.id === id);
 
-    setDeleting(id);
-    try {
-      const endpoint =
-        type === "analysis" ? `/api/documents/${id}` : `/api/generated/${id}`;
-      const response = await fetch(endpoint, { method: "DELETE" });
-
-      if (response.ok) {
-        if (type === "analysis") {
-          setDocuments((prev) => prev.filter((d) => d.id !== id));
-        } else {
-          setGeneratedDocs((prev) => prev.filter((d) => d.id !== id));
-        }
-      }
-    } catch {
-      toast.error("Не удалось удалить документ");
-    } finally {
-      setDeleting(null);
+    // Hide locally.
+    if (type === "analysis") {
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+    } else {
+      setGeneratedDocs((prev) => prev.filter((d) => d.id !== id));
     }
+
+    let cancelled = false;
+    const restore = () => {
+      cancelled = true;
+      if (type === "analysis") {
+        setDocuments((prev) => {
+          const next = prev.slice();
+          next.splice(
+            Math.min(removedIndex, next.length),
+            0,
+            removed as DocumentItem
+          );
+          return next;
+        });
+      } else {
+        setGeneratedDocs((prev) => {
+          const next = prev.slice();
+          next.splice(
+            Math.min(removedIndex, next.length),
+            0,
+            removed as GeneratedDocItem
+          );
+          return next;
+        });
+      }
+    };
+
+    toast.success("Документ удалён", {
+      durationMs: 5000,
+      action: { label: "Отменить", onClick: restore },
+    });
+
+    setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        const response = await fetch(endpoint, { method: "DELETE" });
+        if (!response.ok) {
+          toast.error("Не удалось удалить — восстановили в списке");
+          restore();
+        }
+      } catch {
+        toast.error("Сеть недоступна — документ восстановлен");
+        restore();
+      }
+    }, 5100);
   }
 
   async function downloadDocument(id: string, name: string) {
@@ -317,10 +402,11 @@ export default function DashboardPage() {
                 />
               ) : (
                 <div className="divide-y divide-border">
-                  {documents.map((doc) => (
+                  {documents.map((doc, idx) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover sm:gap-4 sm:px-6"
+                      data-active={cursor === idx}
+                      className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-primary/20 sm:gap-4 sm:px-6"
                     >
                       <Link
                         href={`/report/${doc.id}`}
@@ -391,10 +477,11 @@ export default function DashboardPage() {
               />
             ) : (
               <div className="divide-y divide-border">
-                {generatedDocs.map((doc) => (
+                {generatedDocs.map((doc, idx) => (
                   <div
                     key={doc.id}
-                    className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover sm:gap-4 sm:px-6 group"
+                    data-active={cursor === idx}
+                    className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-primary/20 sm:gap-4 sm:px-6 group"
                   >
                     <Link
                       href={`/generated/${doc.id}`}

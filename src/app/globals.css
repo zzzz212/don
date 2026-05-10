@@ -219,6 +219,28 @@ select:focus-visible {
 .stagger-4 { animation-delay: 0.4s; opacity: 0; }
 .stagger-5 { animation-delay: 0.5s; opacity: 0; }
 
+/* Skeleton "shimmer" — richer signal than a flat pulse. A linear
+   gradient sweeps left-to-right across the placeholder block, with the
+   midpoint slightly brighter than the surface base. Falls back cleanly
+   under prefers-reduced-motion (animation is disabled, the static base
+   colour stays). */
+@keyframes skeleton-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-shimmer {
+  background-color: var(--surface);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--foreground) 6%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
 /* Skip-to-content link for keyboard / screen-reader users — invisible
    until focused, then anchored top-left for clear keyboard discovery. */
 .skip-link {
