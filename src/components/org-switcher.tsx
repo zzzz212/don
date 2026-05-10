@@ -256,11 +256,6 @@ export function OrgSwitcher() {
         <span className="hidden truncate text-foreground sm:inline">
           {active.name}
         </span>
-        {active.isTrial && typeof active.trialDaysLeft === "number" && (
-          <span className="hidden shrink-0 rounded-md bg-warning-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warning sm:inline">
-            Триал {active.trialDaysLeft}д
-          </span>
-        )}
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
       </button>
 

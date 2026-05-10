@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
+import { AccountMenu } from "@/components/account-menu";
 import { useT } from "@/components/i18n-provider";
 import {
   Scale,
@@ -129,25 +130,9 @@ export function Header() {
               </div>
             ) : (
               <>
-                <span className="hidden lg:inline text-sm text-muted truncate max-w-[14rem]">
-                  {user?.name || user?.email || t("plan.free")}
-                </span>
-                <div
-                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-fg"
-                  aria-hidden="true"
-                >
-                  {initials}
-                </div>
                 <CommandPalette />
                 <ThemeToggle />
-                <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  aria-label={t("auth.logout")}
-                  title={t("auth.logout")}
-                  className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
-                >
-                  <LogOut className="h-4 w-4" aria-hidden="true" />
-                </button>
+                <AccountMenu />
                 {/* Mobile hamburger */}
                 <button
                   onClick={() => setMobileOpen(!mobileOpen)}

@@ -392,12 +392,14 @@ function TemplateFillPage() {
                 </div>
               </div>
 
-              {/* Document preview in A4 format */}
+              {/* Document preview in A4 format. .document-page keeps the
+                  paper literal-white in both themes with a soft theme-
+                  aware shadow (no muddy halo on dark canvas). */}
               <div className="flex justify-center my-6">
                 <div className="w-full max-w-2xl">
-                  <div className="bg-card rounded-lg shadow-2xl overflow-hidden">
-                    <div className="p-8 sm:p-12">
-                      <pre className="whitespace-pre-wrap font-serif text-[13px] leading-7 text-foreground break-words">
+                  <div className="document-page rounded-lg overflow-hidden">
+                    <div className="document-preview p-6 sm:p-10 lg:p-12">
+                      <pre className="whitespace-pre-wrap font-serif text-[13px] leading-7 break-words">
                         {generatedDoc}
                       </pre>
                     </div>

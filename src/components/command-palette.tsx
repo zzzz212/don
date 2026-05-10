@@ -239,14 +239,12 @@ export function CommandPalette() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Открыть командную палитру (⌘K)"
+        aria-label={`Открыть командную палитру (${mac ? "⌘K" : "Ctrl+K"})`}
+        title={mac ? "⌘K" : "Ctrl+K"}
         className="hidden lg:flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-xs text-muted transition-colors hover:bg-card-hover hover:text-foreground"
       >
         <Search className="h-3.5 w-3.5" aria-hidden="true" />
         <span>Поиск</span>
-        <kbd className="rounded border border-border bg-card px-1 py-px font-mono text-[10px] font-semibold tabular-nums text-muted">
-          {mac ? "⌘K" : "Ctrl K"}
-        </kbd>
       </button>
 
       <AnimatePresence>
