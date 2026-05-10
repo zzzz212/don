@@ -238,7 +238,7 @@ export default function BillingPage() {
           )}
 
           {!loading && error && (
-            <div className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
+            <div role="alert" className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -357,7 +357,7 @@ export default function BillingPage() {
 
               {/* Plans grid */}
               {checkoutError && (
-                <div className="mb-6 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
+                <div role="alert" className="mb-6 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {checkoutError}
                 </div>

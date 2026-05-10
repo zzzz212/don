@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useId, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -16,6 +16,9 @@ function PasswordResetForm() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params.get("token") ?? "";
+  const formId = useId();
+  const passId = `${formId}-pass`;
+  const confirmId = `${formId}-confirm`;
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,22 +94,33 @@ function PasswordResetForm() {
   return (
     <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
       {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div
+          role="alert"
+          className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">
+          <label
+            htmlFor={passId}
+            className="mb-1.5 block text-sm font-medium text-foreground"
+          >
             Новый пароль
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <Lock
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              aria-hidden="true"
+            />
             <input
+              id={passId}
               name="password"
               type="password"
+              autoComplete="new-password"
               required
               minLength={6}
               autoFocus
@@ -117,14 +131,22 @@ function PasswordResetForm() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">
+          <label
+            htmlFor={confirmId}
+            className="mb-1.5 block text-sm font-medium text-foreground"
+          >
             Повторите пароль
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <Lock
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              aria-hidden="true"
+            />
             <input
+              id={confirmId}
               name="confirm"
               type="password"
+              autoComplete="new-password"
               required
               minLength={6}
               placeholder="Введите пароль ещё раз"
@@ -136,11 +158,12 @@ function PasswordResetForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+          aria-busy={isLoading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
         >
           {isLoading ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Сохраняем...
             </>
           ) : (

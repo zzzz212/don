@@ -1,11 +1,20 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import Link from "next/link";
 import { Scale, Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { registerUser, loginWithGoogle, isGoogleAuthEnabled } from "@/lib/auth-actions";
 
 export default function RegisterPage() {
+  const formId = useId();
+  const nameId = `${formId}-name`;
+  const emailId = `${formId}-email`;
+  const emailErrId = `${formId}-email-err`;
+  const passwordId = `${formId}-password`;
+  const passwordErrId = `${formId}-password-err`;
+  const termsId = `${formId}-terms`;
+  const formErrId = `${formId}-form-err`;
+
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -127,8 +136,12 @@ export default function RegisterPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           {/* Error */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div
+              id={formErrId}
+              role="alert"
+              className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               {error}
             </div>
           )}
@@ -165,14 +178,22 @@ export default function RegisterPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
+              <label
+                htmlFor={nameId}
+                className="mb-1.5 block text-sm font-medium text-foreground"
+              >
                 Имя
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <User
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={nameId}
                   name="name"
                   type="text"
+                  autoComplete="name"
                   placeholder="Иван Иванов"
                   className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
@@ -180,53 +201,79 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Email <span className="text-danger">*</span>
+              <label
+                htmlFor={emailId}
+                className="mb-1.5 block text-sm font-medium text-foreground"
+              >
+                Email <span className="text-danger" aria-hidden="true">*</span>
+                <span className="sr-only"> (обязательно)</span>
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Mail
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={emailId}
                   name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   placeholder="you@company.ru"
+                  aria-invalid={Boolean(touched.email && fieldErrors.email) || undefined}
+                  aria-describedby={touched.email && fieldErrors.email ? emailErrId : undefined}
                   onBlur={handleBlur}
                   onChange={handleChange}
                   className={inputClass("email")}
                 />
               </div>
               {touched.email && fieldErrors.email && (
-                <p className="mt-1.5 text-xs text-danger animate-fade-in">
+                <p id={emailErrId} className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.email}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Пароль <span className="text-danger">*</span>
+              <label
+                htmlFor={passwordId}
+                className="mb-1.5 block text-sm font-medium text-foreground"
+              >
+                Пароль <span className="text-danger" aria-hidden="true">*</span>
+                <span className="sr-only"> (обязательно)</span>
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Lock
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={passwordId}
                   name="password"
                   type="password"
+                  autoComplete="new-password"
                   required
                   placeholder="Минимум 6 символов"
+                  aria-invalid={Boolean(touched.password && fieldErrors.password) || undefined}
+                  aria-describedby={touched.password && fieldErrors.password ? passwordErrId : undefined}
                   onBlur={handleBlur}
                   onChange={handleChange}
                   className={inputClass("password")}
                 />
               </div>
               {touched.password && fieldErrors.password && (
-                <p className="mt-1.5 text-xs text-danger animate-fade-in">
+                <p id={passwordErrId} className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.password}
                 </p>
               )}
             </div>
 
-            <label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted">
+            <label
+              htmlFor={termsId}
+              className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted"
+            >
               <input
+                id={termsId}
                 type="checkbox"
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
@@ -264,11 +311,12 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading || !acceptedTerms}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+              aria-busy={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Регистрация...
                 </>
               ) : (

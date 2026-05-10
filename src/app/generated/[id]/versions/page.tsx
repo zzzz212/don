@@ -152,7 +152,7 @@ export default function DocumentVersionsPage() {
           </p>
 
           {error && (
-            <div className="mb-6 rounded-lg border border-danger/30 bg-danger-light p-4 text-danger">
+            <div role="alert" className="mb-6 rounded-lg border border-danger/30 bg-danger-light p-4 text-danger">
               <p className="text-sm font-medium">{error}</p>
             </div>
           )}
