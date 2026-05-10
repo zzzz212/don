@@ -39,6 +39,16 @@
   --hero-grad-via: oklch(0.97 0.025 270);
   --hero-grad-to: oklch(1 0 0);
   --hero-radial: oklch(0.55 0.205 270 / 6%);
+  /* Shadow values defined as plain vars so they cascade with theme —
+     Tailwind 4's @theme inline references them by var() and the .dark
+     override re-binds them at runtime. */
+  --shadow-2xs-value: 0 1px 1px oklch(0.21 0.04 264 / 4%);
+  --shadow-xs-value: 0 1px 2px oklch(0.21 0.04 264 / 5%);
+  --shadow-sm-value: 0 1px 2px oklch(0.21 0.04 264 / 5%), 0 1px 3px oklch(0.21 0.04 264 / 4%);
+  --shadow-md-value: 0 2px 4px oklch(0.21 0.04 264 / 6%), 0 4px 12px oklch(0.21 0.04 264 / 6%);
+  --shadow-lg-value: 0 4px 8px oklch(0.21 0.04 264 / 6%), 0 12px 24px oklch(0.21 0.04 264 / 8%);
+  --shadow-xl-value: 0 8px 16px oklch(0.21 0.04 264 / 8%), 0 24px 48px oklch(0.21 0.04 264 / 10%);
+  --shadow-2xl-value: 0 16px 32px oklch(0.21 0.04 264 / 10%), 0 32px 64px oklch(0.21 0.04 264 / 14%);
 }
 
 .dark {
@@ -69,6 +79,15 @@
   --hero-grad-via: oklch(0.21 0.03 270);
   --hero-grad-to: oklch(0.18 0.02 264);
   --hero-radial: oklch(0.68 0.19 270 / 12%);
+  /* Dark-mode shadows are deeper black-tinted + a 1px inset white hint
+     so cards "lift" off the ink canvas without reading as muddy. */
+  --shadow-2xs-value: 0 1px 1px oklch(0 0 0 / 30%);
+  --shadow-xs-value: 0 1px 2px oklch(0 0 0 / 35%);
+  --shadow-sm-value: 0 1px 2px oklch(0 0 0 / 40%), inset 0 0 0 1px oklch(1 0 0 / 4%);
+  --shadow-md-value: 0 2px 6px oklch(0 0 0 / 45%), inset 0 0 0 1px oklch(1 0 0 / 5%);
+  --shadow-lg-value: 0 8px 24px oklch(0 0 0 / 50%), inset 0 0 0 1px oklch(1 0 0 / 6%);
+  --shadow-xl-value: 0 16px 40px oklch(0 0 0 / 55%), inset 0 0 0 1px oklch(1 0 0 / 6%);
+  --shadow-2xl-value: 0 24px 64px oklch(0 0 0 / 60%), inset 0 0 0 1px oklch(1 0 0 / 7%);
 }
 
 @theme inline {
@@ -93,8 +112,28 @@
   --color-ring: var(--ring);
   --color-border-soft: var(--border-soft);
   --color-border-strong: var(--border-strong);
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "SF Mono", "Fira Code", monospace;
+  /* Geist via next/font (--font-geist-sans / --font-geist-mono) — falls
+     back to Inter if next/font hasn't loaded yet (early SSR paint) and
+     then to system-ui. */
+  --font-sans: var(--font-geist-sans), "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "SF Mono", "Fira Code", monospace;
+  /* Tighter heading tracking — Tailwind defaults are tuned for body
+     copy; bumped headings need a hair of negative letter-spacing to
+     read as deliberate display type. */
+  --tracking-tight: -0.02em;
+  --tracking-tighter: -0.03em;
+  /* Softer, more premium shadows. Tailwind 4 defaults are too high-
+     contrast — they read as "Material" rather than "fine document".
+     Light: a barely-there 1px hairline + a soft diffuse drop. Dark:
+     ditto, plus a 1px white inner border so cards feel "lifted off"
+     the dark canvas instead of "stamped into" it. */
+  --shadow-2xs: var(--shadow-2xs-value);
+  --shadow-xs: var(--shadow-xs-value);
+  --shadow-sm: var(--shadow-sm-value);
+  --shadow-md: var(--shadow-md-value);
+  --shadow-lg: var(--shadow-lg-value);
+  --shadow-xl: var(--shadow-xl-value);
+  --shadow-2xl: var(--shadow-2xl-value);
 }
 
 body {
