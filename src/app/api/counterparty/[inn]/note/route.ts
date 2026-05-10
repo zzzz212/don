@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureActiveOrg } from "@/lib/org";
 import { NextResponse } from "next/server";
 
 export async function POST(
@@ -8,10 +9,12 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const params = await props.params;
     const { inn } = params;
     const body = await request.json();
@@ -25,7 +28,6 @@ export async function POST(
       return NextResponse.json({ error: "Invalid note" }, { status: 400 });
     }
 
-    // Check if profile exists
     const profile = await prisma.counterpartyProfile.findUnique({
       where: { inn },
     });
@@ -37,38 +39,24 @@ export async function POST(
       );
     }
 
-    // Get or create check, then update with note
-    const userId = session.user.id || "";
-    let check = await prisma.counterpartyCheck.findUnique({
+    // Notes are per-user (see CounterpartyCheck.@@unique in schema for why
+    // we kept the per-user key). orgId is still tracked so future per-org
+    // aggregations work; the upsert is keyed by (userId, inn).
+    const check = await prisma.counterpartyCheck.upsert({
       where: {
-        userId_inn: {
-          userId,
-          inn,
-        },
+        userId_inn: { userId: session.user.id, inn },
+      },
+      create: {
+        userId: session.user.id,
+        orgId,
+        inn,
+        notes: note,
+      },
+      update: {
+        orgId,
+        notes: note,
       },
     });
-
-    if (!check) {
-      check = await prisma.counterpartyCheck.create({
-        data: {
-          userId,
-          inn,
-          notes: note,
-        },
-      });
-    } else {
-      check = await prisma.counterpartyCheck.update({
-        where: {
-          userId_inn: {
-            userId,
-            inn,
-          },
-        },
-        data: {
-          notes: note,
-        },
-      });
-    }
 
     return NextResponse.json({ check });
   } catch (error) {

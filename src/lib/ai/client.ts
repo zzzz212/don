@@ -1,38 +1,157 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { z } from "zod";
+import {
+  AIError,
+  type AIProvider,
+  type ChatOptions,
+  type ChatResult,
+  type GenerateOptions,
+  type GenerateResult,
+  type StreamEvent,
+} from "./types";
+import * as anthropic from "./providers/anthropic";
+import * as gemini from "./providers/gemini";
+import * as groq from "./providers/groq";
 
-function getGeminiKey(): string | null {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || key === "your-gemini-api-key-here") return null;
-  return key;
-}
+// ── Provider selection ──────────────────────────────────────────────
 
-function getGroqKey(): string | null {
-  const key = process.env.GROQ_API_KEY;
-  if (!key || key === "your-groq-api-key-here") return null;
-  return key;
-}
+const PROVIDER_PRIORITY: Exclude<AIProvider, "demo">[] = [
+  "anthropic",
+  "gemini",
+  "groq",
+];
 
-function getAnthropicKey(): string | null {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || key === "your-api-key-here") return null;
-  return key;
-}
-
-export type AIProvider = "gemini" | "groq" | "anthropic" | "demo";
+const PROVIDERS = {
+  anthropic,
+  gemini,
+  groq,
+};
 
 export function getActiveProvider(): AIProvider {
-  if (getGeminiKey()) return "gemini";
-  if (getGroqKey()) return "groq";
-  if (getAnthropicKey()) return "anthropic";
+  for (const p of PROVIDER_PRIORITY) {
+    if (PROVIDERS[p].isAvailable()) return p;
+  }
   return "demo";
 }
 
-export interface AIMessage {
-  role: "user" | "assistant" | "model";
+function getAvailableProviders(): Exclude<AIProvider, "demo">[] {
+  return PROVIDER_PRIORITY.filter((p) => PROVIDERS[p].isAvailable());
+}
+
+// ── Public API ──────────────────────────────────────────────────────
+
+export async function generate<T extends z.ZodTypeAny>(
+  opts: GenerateOptions<T> & { schema: T }
+): Promise<GenerateResult<T>> {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new AIError("No AI provider configured", "demo");
+  }
+
+  let lastError: unknown;
+  for (const p of providers) {
+    try {
+      return await PROVIDERS[p].generate(opts);
+    } catch (e) {
+      lastError = e;
+      console.error(`[ai] Provider ${p} failed, trying next:`, (e as Error).message);
+    }
+  }
+
+  throw new AIError(
+    `All providers failed. Last: ${(lastError as Error)?.message}`,
+    providers[providers.length - 1],
+    lastError
+  );
+}
+
+export async function generateText(
+  opts: GenerateOptions
+): Promise<GenerateResult<undefined>> {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new AIError("No AI provider configured", "demo");
+  }
+
+  let lastError: unknown;
+  for (const p of providers) {
+    try {
+      return await PROVIDERS[p].generateText(opts);
+    } catch (e) {
+      lastError = e;
+      console.error(`[ai] Provider ${p} failed, trying next:`, (e as Error).message);
+    }
+  }
+
+  throw new AIError(
+    `All providers failed. Last: ${(lastError as Error)?.message}`,
+    providers[providers.length - 1],
+    lastError
+  );
+}
+
+export async function chat(opts: ChatOptions): Promise<ChatResult> {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    throw new AIError("No AI provider configured", "demo");
+  }
+
+  let lastError: unknown;
+  for (const p of providers) {
+    try {
+      return await PROVIDERS[p].chat(opts);
+    } catch (e) {
+      lastError = e;
+      console.error(`[ai] Provider ${p} failed, trying next:`, (e as Error).message);
+    }
+  }
+
+  throw new AIError(
+    `All providers failed. Last: ${(lastError as Error)?.message}`,
+    providers[providers.length - 1],
+    lastError
+  );
+}
+
+/**
+ * Streaming chat — yields delta / usage / done / error events from the
+ * highest-priority available provider. There is no mid-stream fallback:
+ * once any delta has been emitted we are committed to that provider.
+ * Falling back would require restarting the message on the consumer side,
+ * which is worse UX than failing fast.
+ */
+export async function* streamChat(
+  opts: ChatOptions
+): AsyncGenerator<StreamEvent> {
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    yield { kind: "error", message: "No AI provider configured" };
+    return;
+  }
+  yield* PROVIDERS[providers[0]].streamChat(opts);
+}
+
+// ── Re-exports ──────────────────────────────────────────────────────
+
+export type {
+  AIProvider,
+  ChatOptions,
+  GenerateOptions,
+  GenerateResult,
+  StreamEvent,
+  Usage,
+} from "./types";
+export { AIError } from "./types";
+
+// ── Backward-compatibility shims ────────────────────────────────────
+// Old code calls generateAI / chatAI with positional args. Keep both working
+// until consumers are migrated; they simply delegate to the new API.
+
+export interface LegacyAIMessage {
+  role: "user" | "assistant" | "model" | "system";
   content: string;
 }
 
-export interface AIResponse {
+export interface LegacyAIResponse {
   text: string;
   provider: AIProvider;
 }
@@ -42,184 +161,32 @@ export async function generateAI(
   userMessage: string,
   maxTokens = 4096,
   temperature = 0.1
-): Promise<AIResponse> {
-  const provider = getActiveProvider();
-
-  if (provider === "gemini") {
-    return generateGemini(systemPrompt, userMessage, maxTokens, temperature);
-  }
-
-  if (provider === "groq") {
-    return generateGroq(systemPrompt, userMessage, maxTokens, temperature);
-  }
-
-  if (provider === "anthropic") {
-    return generateAnthropic(systemPrompt, userMessage, maxTokens, temperature);
-  }
-
-  throw new Error("No AI provider configured");
+): Promise<LegacyAIResponse> {
+  const result = await generateText({
+    system: systemPrompt,
+    prompt: userMessage,
+    maxTokens,
+    temperature,
+  });
+  return { text: result.data, provider: result.usage.provider };
 }
 
 export async function chatAI(
   systemPrompt: string,
-  messages: AIMessage[],
+  messages: LegacyAIMessage[],
   maxTokens = 2048
-): Promise<AIResponse> {
-  const provider = getActiveProvider();
-
-  if (provider === "gemini") {
-    return chatGemini(systemPrompt, messages, maxTokens);
-  }
-
-  if (provider === "groq") {
-    return chatGroq(systemPrompt, messages, maxTokens);
-  }
-
-  if (provider === "anthropic") {
-    return chatAnthropic(systemPrompt, messages, maxTokens);
-  }
-
-  throw new Error("No AI provider configured");
-}
-
-// ── Gemini ──────────────────────────────────────────────
-
-async function generateGemini(
-  systemPrompt: string,
-  userMessage: string,
-  maxTokens: number,
-  temperature: number
-): Promise<AIResponse> {
-  const genAI = new GoogleGenerativeAI(getGeminiKey()!);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: systemPrompt,
-    generationConfig: { maxOutputTokens: maxTokens, temperature },
-  });
-
-  const result = await model.generateContent(userMessage);
-  const text = result.response.text();
-
-  return { text, provider: "gemini" };
-}
-
-async function chatGemini(
-  systemPrompt: string,
-  messages: AIMessage[],
-  maxTokens: number
-): Promise<AIResponse> {
-  const genAI = new GoogleGenerativeAI(getGeminiKey()!);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: systemPrompt,
-    generationConfig: { maxOutputTokens: maxTokens },
-  });
-
-  const history = messages.slice(0, -1).map((m) => ({
-    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-    parts: [{ text: m.content }],
-  }));
-
-  const chat = model.startChat({ history });
-  const lastMessage = messages[messages.length - 1];
-  const result = await chat.sendMessage(lastMessage.content);
-  const text = result.response.text();
-
-  return { text, provider: "gemini" };
-}
-
-// ── Groq ───────────────────────────────────────────────
-
-async function generateGroq(
-  systemPrompt: string,
-  userMessage: string,
-  maxTokens: number,
-  temperature: number
-): Promise<AIResponse> {
-  const Groq = (await import("groq-sdk")).default;
-  const client = new Groq({ apiKey: getGroqKey()! });
-
-  const response = await client.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    max_tokens: maxTokens,
-    temperature,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
-    ],
-  });
-
-  const text = response.choices[0]?.message?.content || "";
-  return { text, provider: "groq" };
-}
-
-async function chatGroq(
-  systemPrompt: string,
-  messages: AIMessage[],
-  maxTokens: number
-): Promise<AIResponse> {
-  const Groq = (await import("groq-sdk")).default;
-  const client = new Groq({ apiKey: getGroqKey()! });
-
-  const response = await client.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    max_tokens: maxTokens,
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages.map((m) => ({
-        role: (m.role === "model" ? "assistant" : m.role) as "user" | "assistant",
-        content: m.content,
-      })),
-    ],
-  });
-
-  const text = response.choices[0]?.message?.content || "";
-  return { text, provider: "groq" };
-}
-
-// ── Anthropic ───────────────────────────────────────────
-
-async function generateAnthropic(
-  systemPrompt: string,
-  userMessage: string,
-  maxTokens: number,
-  temperature: number
-): Promise<AIResponse> {
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const client = new Anthropic();
-
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: maxTokens,
-    temperature,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
-  });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
-
-  return { text, provider: "anthropic" };
-}
-
-async function chatAnthropic(
-  systemPrompt: string,
-  messages: AIMessage[],
-  maxTokens: number
-): Promise<AIResponse> {
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const client = new Anthropic();
-
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages: messages.map((m) => ({
+): Promise<LegacyAIResponse> {
+  const normalized = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
       role: m.role === "model" ? ("assistant" as const) : (m.role as "user" | "assistant"),
       content: m.content,
-    })),
+    }));
+
+  const result = await chat({
+    system: systemPrompt,
+    messages: normalized,
+    maxTokens,
   });
-
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
-
-  return { text, provider: "anthropic" };
+  return { text: result.text, provider: result.usage.provider };
 }

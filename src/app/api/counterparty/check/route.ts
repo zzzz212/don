@@ -7,6 +7,7 @@ import {
   calculateRiskScore,
 } from "@/lib/counterparty";
 import { fetchFromDaData, fetchDaDataFinance } from "@/lib/dadata";
+import { ensureActiveOrg } from "@/lib/org";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -161,8 +162,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // Save check history (only if authenticated)
+    // Save check history (only if authenticated). Dedup stays per-user
+    // (see CounterpartyCheck.@@unique in schema for why). orgId is still
+    // recorded so future per-workspace aggregations work; only the
+    // upsert key is per-user.
     if (session?.user?.id) {
+      const orgId =
+        session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
+
       await prisma.counterpartyCheck.upsert({
         where: {
           userId_inn: {
@@ -172,9 +179,11 @@ export async function POST(request: Request) {
         },
         create: {
           userId: session.user.id,
+          orgId,
           inn,
         },
         update: {
+          orgId,
           createdAt: new Date(),
         },
       });

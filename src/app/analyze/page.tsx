@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
@@ -11,7 +12,21 @@ import {
   CheckCircle,
   Scale,
   AlertTriangle,
+  Crown,
+  ExternalLink,
+  LogIn,
 } from "lucide-react";
+
+interface AnalyzeError {
+  message: string;
+  code?: string;
+  /** When code is QUOTA_EXCEEDED or OCR_NOT_AVAILABLE_ON_FREE */
+  upgradeNeeded?: boolean;
+  /** When code is OCR_REQUIRES_AUTH */
+  authNeeded?: boolean;
+  /** When code is DOCUMENT_TOO_LARGE_FOR_OCR — give compress link */
+  compressHint?: boolean;
+}
 
 const stages = [
   "Извлекаем текст из документа...",
@@ -27,7 +42,7 @@ export default function AnalyzePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AnalyzeError | null>(null);
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -63,7 +78,21 @@ export default function AnalyzePage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Ошибка при анализе");
+        const code: string | undefined = data.code;
+        const message: string =
+          data.error || `Ошибка при анализе (HTTP ${response.status})`;
+
+        setError({
+          message,
+          code,
+          upgradeNeeded:
+            code === "QUOTA_EXCEEDED" ||
+            code === "OCR_NOT_AVAILABLE_ON_FREE",
+          authNeeded: code === "OCR_REQUIRES_AUTH",
+          compressHint: code === "DOCUMENT_TOO_LARGE_FOR_OCR",
+        });
+        setIsAnalyzing(false);
+        return;
       }
 
       const result = await response.json();
@@ -84,9 +113,12 @@ export default function AnalyzePage() {
     } catch (err) {
       clearInterval(stageInterval);
       setIsAnalyzing(false);
-      setError(
-        err instanceof Error ? err.message : "Ошибка при анализе документа"
-      );
+      setError({
+        message:
+          err instanceof Error
+            ? err.message
+            : "Ошибка при анализе документа",
+      });
     }
   };
 
@@ -116,9 +148,43 @@ export default function AnalyzePage() {
 
               {/* Error message */}
               {error && (
-                <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 animate-fade-in">
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
-                  <p className="text-sm text-red-700">{error}</p>
+                <div className="mt-4 animate-fade-in space-y-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
+                    <p className="text-sm text-red-700">{error.message}</p>
+                  </div>
+
+                  {error.upgradeNeeded && (
+                    <Link
+                      href="/#pricing"
+                      className="ml-8 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                    >
+                      <Crown className="h-4 w-4" />
+                      Перейти на «Про» — безлимит
+                    </Link>
+                  )}
+
+                  {error.authNeeded && (
+                    <Link
+                      href="/login"
+                      className="ml-8 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      Войти в аккаунт
+                    </Link>
+                  )}
+
+                  {error.compressHint && (
+                    <a
+                      href="https://www.ilovepdf.com/compress_pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-8 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Сжать PDF на ilovepdf.com
+                    </a>
+                  )}
                 </div>
               )}
 

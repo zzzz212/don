@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateAI, getActiveProvider } from "@/lib/ai/client";
-import { GENERATE_DOCUMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { generateText, getActiveProvider } from "@/lib/ai/client";
+import { GENERATE_DOCUMENT_SYSTEM } from "@/lib/ai/prompts";
+import { logUsage } from "@/lib/ai/usage";
 import { getTemplate } from "@/lib/templates";
 import { rateLimit } from "@/lib/rate-limit";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { checkQuotaSafe } from "@/lib/quota";
+import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-    const rl = rateLimit(ip, "generate");
+    const rl = await rateLimit(ip, "generate");
     if (!rl.ok) {
       return NextResponse.json(
-        { error: "Слишком много запросов. Подождите немного." },
-        { status: 429 }
+        {
+          error: "Слишком много запросов. Подождите немного.",
+          code: "RATE_LIMITED",
+          resetAt: rl.resetAt,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(rl.limit),
+            "X-RateLimit-Remaining": String(rl.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+          },
+        }
       );
     }
 
@@ -28,45 +43,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If no AI provider — tell frontend to use local generation
     if (getActiveProvider() === "demo") {
       return NextResponse.json({ demo: true });
     }
 
-    // Build a description of what to generate
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+    const orgId = userId
+      ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
+      : null;
+
+    if (orgId) {
+      const quota = await checkQuotaSafe(orgId, "generate");
+      if (quota && !quota.allowed) {
+        return NextResponse.json(
+          {
+            error: `Лимит тарифа ${quota.plan} исчерпан: ${quota.used} из ${quota.limit} генераций в этом месяце. Перейдите на тариф «Про» для безлимита.`,
+            code: "QUOTA_EXCEEDED",
+            quota: {
+              feature: quota.feature,
+              used: quota.used,
+              limit: quota.limit,
+              plan: quota.plan,
+              resetsAt: quota.resetsAt.toISOString(),
+            },
+          },
+          { status: 402 }
+        );
+      }
+    }
+
     const fieldDescriptions = template.fields
       .map((f) => `${f.label}: ${data[f.id] || "не указано"}`)
       .join("\n");
 
-    const response = await generateAI(
-      GENERATE_DOCUMENT_SYSTEM_PROMPT,
-      `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
-      4096
-    );
+    const result = await generateText({
+      system: GENERATE_DOCUMENT_SYSTEM,
+      prompt: `Сгенерируй документ: "${template.name}"\n\nДанные:\n${fieldDescriptions}\n\nСоздай полный, юридически грамотный документ, готовый к подписанию.`,
+      model: "fast",
+      maxTokens: 4096,
+    });
 
-    // Save to DB if user is authenticated
-    const session = await auth();
+    await logUsage(userId, orgId, result.usage, "generate");
+
     let savedDoc = null;
-
-    if (session?.user?.id) {
+    if (userId) {
       savedDoc = await prisma.generatedDocument.create({
         data: {
-          userId: session.user.id,
+          userId,
+          orgId,
           templateId,
           name: documentName || template.name,
-          content: response.text,
+          content: result.data,
           formData: data,
         },
       });
     }
 
     return NextResponse.json({
-      document: response.text,
+      document: result.data,
       saved: !!savedDoc,
       id: savedDoc?.id,
     });
   } catch (error) {
-    console.error("Generation error:", error);
+    await reportError(error, { op: "generate" });
     return NextResponse.json(
       { error: "Ошибка при генерации документа. Попробуйте позже." },
       { status: 500 }

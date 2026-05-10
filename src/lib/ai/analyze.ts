@@ -1,222 +1,248 @@
-import { generateAI, getActiveProvider } from "./client";
-import { ANALYZE_CONTRACT_SYSTEM_PROMPT } from "./prompts";
+import { generate, getActiveProvider } from "./client";
+import { ANALYZE_CONTRACT_SYSTEM } from "./prompts";
+import { EXTRACT_CHUNK_SYSTEM, SYNTHESIZE_SYSTEM } from "./synthesis-prompts";
+import {
+  AnalysisResultSchema,
+  type AnalysisResult,
+  type AnalysisRisk,
+} from "./schemas/analyze";
+import { ChunkRisksSchema, SynthesisSchema } from "./schemas/chunk";
+import {
+  chunkContract,
+  isShortDocument,
+  type Chunk,
+} from "./chunking";
+import { generateDemoAnalysis } from "./providers/demo";
+import { logUsage } from "./usage";
+import type { Usage } from "./types";
+import { dedupRisks, byRiskSeverity } from "./dedup";
 
-export interface AnalysisRisk {
-  clauseNumber: string;
-  clauseTitle: string;
-  level: "critical" | "medium" | "low";
-  description: string;
-  legalReference: string;
-  originalText: string;
-  recommendedText: string;
-  recommendation: string;
-}
+export type {
+  AnalysisRisk,
+  AnalysisResult,
+  NotarizationInfo,
+  RegistrationInfo,
+} from "./schemas/analyze";
 
-export interface NotarizationInfo {
-  required: boolean;
-  reason: string;
-}
-
-export interface RegistrationInfo {
-  required: boolean;
-  reason: string;
-}
-
-export interface AnalysisResult {
-  score: number;
-  summary: string;
-  contractType: string;
-  parties: string;
-  risks: AnalysisRisk[];
-  notarization: NotarizationInfo;
-  registration: RegistrationInfo;
-  missingClauses: string[];
-  preSigningChecklist: string[];
-  isDemo?: boolean;
-}
+const MAP_CONCURRENCY = 4;
+const MAX_RISKS_RETURNED = 8;
+const MAX_RISKS_TO_SYNTHESIS = 15;
+const PREAMBLE_CHARS = 8_000;
 
 export async function analyzeContract(
-  contractText: string
+  contractText: string,
+  userId: string | null = null,
+  orgId: string | null = null
 ): Promise<AnalysisResult> {
   if (getActiveProvider() === "demo") {
     return generateDemoAnalysis(contractText);
   }
 
-  const response = await generateAI(
-    ANALYZE_CONTRACT_SYSTEM_PROMPT,
-    `Проанализируй следующий договор и найди все юридические риски:\n\n${contractText}`,
-    4096
-  );
-
-  let jsonText = response.text.trim();
-  const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    jsonText = fenceMatch[1].trim();
+  if (isShortDocument(contractText)) {
+    return analyzeSinglePass(contractText, userId, orgId);
   }
 
-  const result: AnalysisResult = JSON.parse(jsonText);
-  return result;
+  return analyzeMultiPass(contractText, userId, orgId);
 }
 
-function generateDemoAnalysis(contractText: string): AnalysisResult {
-  const textLength = contractText.length;
+// ── Short doc: single pass against the full ANALYZE prompt ──────────
 
-  const isLease = /аренд|арендатор|арендодатель|помещени/i.test(contractText);
-  const isSale = /купл|продаж|покупатель|продавец|товар/i.test(contractText);
-  const isEmployment = /трудов|работник|работодатель|зарплат/i.test(contractText);
-  const isService = /услуг|исполнитель|заказчик/i.test(contractText);
-  const isNda = /конфиденциальн|разглашен|секрет|nda/i.test(contractText);
+async function analyzeSinglePass(
+  text: string,
+  userId: string | null,
+  orgId: string | null
+): Promise<AnalysisResult> {
+  const result = await generate({
+    schema: AnalysisResultSchema,
+    system: ANALYZE_CONTRACT_SYSTEM,
+    prompt: `Проанализируй следующий договор и найди все юридические риски:\n\n${text}`,
+    model: "smart",
+    maxTokens: 4096,
+    temperature: 0.1,
+  });
 
-  const risks: AnalysisRisk[] = [];
+  await logUsage(userId, orgId, result.usage, "analyze");
+  return result.data;
+}
 
-  if (/одностороnn|в одностороннем порядке/i.test(contractText)) {
-    risks.push({
-      clauseNumber: "Условие об одностороннем расторжении",
-      clauseTitle: "Односторонний отказ",
-      level: "critical",
-      description:
-        "Условие об одностороннем отказе от договора без симметричного права у второй стороны создаёт дисбаланс.",
-      legalReference: "ст. 450.1 ГК РФ",
-      originalText: "В тексте договора найдено упоминание одностороннего отказа",
-      recommendedText:
-        "Каждая Сторона вправе в одностороннем внесудебном порядке отказаться от исполнения настоящего Договора, направив другой Стороне письменное уведомление не менее чем за 30 (тридцать) календарных дней до предполагаемой даты расторжения.",
-      recommendation:
-        "Сделать право на расторжение симметричным с уведомлением за 30 дней.",
-    });
+// ── Long doc: map (chunks → risks) + reduce (preamble + risks → frame) ──
+
+async function analyzeMultiPass(
+  text: string,
+  userId: string | null,
+  orgId: string | null
+): Promise<AnalysisResult> {
+  const chunks = chunkContract(text);
+
+  // Map phase: extract risks per chunk in parallel, capped concurrency.
+  const chunkRisks = await mapChunks(chunks, userId, orgId);
+
+  // Flatten + dedup; sort by severity.
+  const allRisks = dedupRisks(chunkRisks).sort(byRiskSeverity);
+
+  // Reduce phase: ask AI to fill structural fields based on preamble + risks.
+  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId);
+
+  return {
+    ...synthesis,
+    risks: allRisks.slice(0, MAX_RISKS_RETURNED),
+  };
+}
+
+async function mapChunks(
+  chunks: Chunk[],
+  userId: string | null,
+  orgId: string | null
+): Promise<AnalysisRisk[]> {
+  const out: AnalysisRisk[] = [];
+
+  for (let i = 0; i < chunks.length; i += MAP_CONCURRENCY) {
+    const batch = chunks.slice(i, i + MAP_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map((c) => extractRisksForChunk(c, userId, orgId))
+    );
+
+    for (const r of settled) {
+      if (r.status === "fulfilled") {
+        out.push(...r.value);
+      } else {
+        console.error("[analyze] chunk failed:", r.reason);
+      }
+    }
   }
 
-  if (/штраф|неустойк|пен[яи]/i.test(contractText)) {
-    risks.push({
-      clauseNumber: "Раздел об ответственности",
-      clauseTitle: "Размер неустойки",
-      level: "medium",
-      description:
-        "Договор содержит условия о штрафных санкциях. Размер неустойки может быть признан несоразмерным.",
-      legalReference: "ст. 333 ГК РФ",
-      originalText: "В договоре указан размер неустойки",
-      recommendedText:
-        "За нарушение сроков исполнения обязательств виновная Сторона уплачивает другой Стороне неустойку в размере 0,1% (одной десятой процента) от суммы неисполненного обязательства за каждый день просрочки, но не более 10% от суммы договора.",
-      recommendation:
-        "Установить неустойку 0,1% в день с потолком 10% от суммы договора.",
-    });
-  }
+  return out;
+}
 
-  if (isLease && risks.length < 4) {
-    risks.push({
-      clauseNumber: "Раздел об арендной плате",
-      clauseTitle: "Индексация арендной платы",
-      level: "medium",
-      description:
-        "Не определён предельный размер индексации, что позволяет арендодателю произвольно повышать плату.",
-      legalReference: "ст. 614 ГК РФ",
-      originalText: "Условие об индексации в договоре",
-      recommendedText:
-        "Размер арендной платы может быть изменён Арендодателем не чаще одного раза в год путём индексации на размер официального ИПЦ Росстата за предыдущий календарный год, но не более чем на 7% (семь процентов).",
-      recommendation: "Зафиксировать максимум индексации — ИПЦ или 7% в год.",
-    });
-  }
+async function extractRisksForChunk(
+  chunk: Chunk,
+  userId: string | null,
+  orgId: string | null
+): Promise<AnalysisRisk[]> {
+  const result = await generate({
+    schema: ChunkRisksSchema,
+    system: EXTRACT_CHUNK_SYSTEM,
+    prompt: `Фрагмент договора (фрагмент ${chunk.index + 1}, символы ${chunk.startChar}-${chunk.endChar}):\n\n${chunk.text}`,
+    model: "smart",
+    maxTokens: 2048,
+    temperature: 0.1,
+  });
 
-  if (isSale && risks.length < 4) {
-    risks.push({
-      clauseNumber: "Раздел о гарантии",
-      clauseTitle: "Гарантийный срок",
-      level: "medium",
-      description:
-        "Не установлен или не чётко определён гарантийный срок на товар.",
-      legalReference: "ст. 470-477 ГК РФ",
-      originalText: "Условия гарантии в договоре",
-      recommendedText:
-        "Продавец гарантирует качество Товара в течение 12 (двенадцати) месяцев со дня передачи Покупателю. В течение гарантийного срока Продавец обязан безвозмездно устранить недостатки или заменить Товар в течение 14 (четырнадцати) рабочих дней с момента получения письменной претензии.",
-      recommendation: "Установить гарантию 12 месяцев и срок реакции 14 дней.",
-    });
-  }
+  await logUsage(userId, orgId, result.usage, "analyze");
+  return result.data.risks;
+}
 
-  if (risks.length < 3) {
-    risks.push({
-      clauseNumber: "Отсутствует",
-      clauseTitle: "Порядок претензионного урегулирования",
-      level: "low",
-      description:
-        "В договоре не определён обязательный претензионный порядок, что может затянуть разрешение споров.",
-      legalReference: "ст. 4 АПК РФ",
-      originalText: "Пункт в договоре отсутствует",
-      recommendedText:
-        "До обращения в суд Стороны обязуются урегулировать возникшие разногласия путём направления письменной претензии. Срок ответа на претензию — 30 (тридцать) календарных дней с момента её получения. Претензия направляется заказным письмом с уведомлением или нарочно с отметкой о получении.",
-      recommendation:
-        "Добавить претензионный порядок со сроком ответа 30 дней.",
-    });
-  }
+async function synthesizeStructure(
+  fullText: string,
+  risks: AnalysisRisk[],
+  userId: string | null,
+  orgId: string | null
+) {
+  const preamble = fullText.slice(0, PREAMBLE_CHARS);
+  const counts = {
+    critical: risks.filter((r) => r.level === "critical").length,
+    medium: risks.filter((r) => r.level === "medium").length,
+    low: risks.filter((r) => r.level === "low").length,
+  };
 
-  if (risks.length === 0) {
-    risks.push({
-      clauseNumber: "Общая оценка",
-      clauseTitle: "Демо-режим",
-      level: "low",
-      description:
-        "Автоматический анализ не обнаружил явных рисков. Для полноценного анализа подключите AI-модель.",
-      legalReference: "—",
-      originalText: "—",
-      recommendedText: "—",
-      recommendation: "Добавьте GROQ_API_KEY или GEMINI_API_KEY в .env.",
-    });
-  }
+  const riskList = risks
+    .slice(0, MAX_RISKS_TO_SYNTHESIS)
+    .map(
+      (r, i) =>
+        `${i + 1}. [${r.level.toUpperCase()}] ${r.clauseTitle} (${r.clauseNumber}) — ${r.legalReference}`
+    )
+    .join("\n");
 
-  const criticalCount = risks.filter((r) => r.level === "critical").length;
-  const mediumCount = risks.filter((r) => r.level === "medium").length;
-  const lowCount = risks.filter((r) => r.level === "low").length;
+  const prompt = `═══ ПРЕАМБУЛА ДОГОВОРА (первые ${PREAMBLE_CHARS} символов) ═══
+
+${preamble}
+
+═══ СЧЁТЧИКИ РИСКОВ (для расчёта score) ═══
+
+critical: ${counts.critical}
+medium:   ${counts.medium}
+low:      ${counts.low}
+ВСЕГО:    ${risks.length}
+
+═══ КРАТКИЙ СПИСОК НАЙДЕННЫХ РИСКОВ ═══
+
+${riskList || "(рисков не найдено)"}
+
+═══ ЗАДАЧА ═══
+
+Собери целостное заключение по этому договору. Заполни все поля схемы.`;
+
+  try {
+    const result = await generate({
+      schema: SynthesisSchema,
+      system: SYNTHESIZE_SYSTEM,
+      prompt,
+      model: "smart",
+      maxTokens: 2048,
+      temperature: 0.1,
+    });
+
+    await logUsage(userId, orgId, result.usage, "analyze");
+    return result.data;
+  } catch (e) {
+    console.error("[analyze] synthesis failed, using fallback:", e);
+    return fallbackSynthesis(preamble, counts, risks.length);
+  }
+}
+
+function fallbackSynthesis(
+  preamble: string,
+  counts: { critical: number; medium: number; low: number },
+  total: number
+) {
   const score = Math.max(
     1,
-    Math.min(10, Math.round(10 - criticalCount * 2 - mediumCount * 1 - lowCount * 0.5))
+    Math.min(
+      10,
+      Math.round(10 - counts.critical * 2 - counts.medium - counts.low * 0.5)
+    )
   );
 
-  const contractType = isLease
-    ? "Договор аренды"
-    : isSale
-      ? "Договор купли-продажи"
-      : isEmployment
-        ? "Трудовой договор"
-        : isService
-          ? "Договор оказания услуг"
-          : isNda
-            ? "Соглашение о конфиденциальности (NDA)"
-            : "Договор";
-
-  const summary =
-    criticalCount > 0
-      ? `${contractType} содержит ${criticalCount} критичных и ${mediumCount} средних рисков. Подписывать в текущей редакции не рекомендуется.`
-      : mediumCount > 0
-        ? `${contractType} в целом приемлем, но содержит ${mediumCount} замечаний, которые рекомендуется устранить.`
-        : `${contractType} не содержит явных рисков по автоматической проверке.`;
+  const verdict =
+    counts.critical > 0
+      ? `Договор содержит ${counts.critical} критичных и ${counts.medium} средних рисков. Подписывать в текущей редакции не рекомендуется.`
+      : counts.medium > 0
+        ? `Договор содержит ${counts.medium} замечаний средней значимости, рекомендуется устранить до подписания.`
+        : `Явных рисков по автоматической проверке не обнаружено (${total} замечаний).`;
 
   return {
     score,
-    summary,
-    contractType,
-    parties: "Стороны не определены автоматически (демо-режим)",
-    risks,
+    summary: verdict,
+    contractType: "Не определён автоматически",
+    parties:
+      preamble.match(/именуем\w+\s+в\s+дальнейшем\s+«[^»]+»/g)?.join(", ") ??
+      "Стороны не определены автоматически",
     notarization: {
-      required: isLease || isEmployment ? false : false,
+      required: false,
       reason:
-        "Не требуется по ст. 161 ГК РФ — простой письменной формы достаточно. Нотариальное заверение по желанию Сторон может усилить доказательственную силу.",
+        "Автоматическая проверка не выявила обязательных оснований для нотариального удостоверения. Проверьте по виду сделки (доли в ООО, рента, ипотека требуют нотариуса).",
     },
     registration: {
-      required: isLease,
-      reason: isLease
-        ? "Если срок аренды недвижимости 1 год и более — обязательна государственная регистрация в Росреестре по ст. 651 ГК РФ."
-        : "Не требуется для данного типа договора.",
+      required: false,
+      reason:
+        "Автоматическая проверка не выявила оснований для государственной регистрации. Проверьте отдельно — аренда недвижимости от 1 года и сделки с недвижимостью требуют регистрации в Росреестре.",
     },
     missingClauses: [
-      "Чёткое определение порядка досрочного расторжения",
+      "Чёткий порядок досрочного расторжения",
       "Конкретные сроки исполнения обязательств",
       "Порядок претензионного урегулирования споров",
     ],
     preSigningChecklist: [
       "Запросить выписку из ЕГРЮЛ/ЕГРИП контрагента не старше 30 дней",
-      "Проверить полномочия подписанта (доверенность, устав, приказ о назначении)",
-      "Уточнить актуальность банковских реквизитов в банке",
-      "Сверить ИНН/ОГРН на сайте ФНС (egrul.nalog.ru)",
-      `Документ объёмом ${textLength} символов — внимательно перечитать перед подписанием`,
+      "Проверить полномочия подписанта (доверенность, устав, приказ)",
+      "Сверить актуальность банковских реквизитов",
+      "Проверить статус контрагента на kad.arbitr.ru и ЕФРСБ",
     ],
-    isDemo: true,
   };
 }
+
+// Re-export for tests / callers that want to inspect chunks separately.
+export { chunkContract } from "./chunking";
+
+// Internal usage type re-export to keep symbol surface stable.
+export type { Usage };

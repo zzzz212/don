@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model User {
@@ -14,7 +16,16 @@ model User {
   emailVerified      DateTime?
   image              String?
   password           String?
+  // Deprecated — kept for backward compatibility during the rollout.
+  // The source of truth for plan is now Organization.plan; this field
+  // becomes the seed for the user's auto-created personal workspace.
   plan               String                @default("FREE")
+
+  // Currently active workspace. Set lazily on first authenticated request
+  // (see ensureActiveOrg in src/lib/org.ts) so existing users transparently
+  // get a "Personal workspace" with all their existing data attached.
+  activeOrgId        String?
+
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
@@ -27,6 +38,70 @@ model User {
   documentVersions   DocumentVersion[]
   versionComparisons VersionComparison[]
   legalReferences    LegalReference[]
+  aiUsage            AiUsage[]
+  memberships        Membership[]
+}
+
+// A workspace shared by 1..N users. Plans, quotas, and document visibility
+// are scoped here. Every user always has at least one Organization (their
+// personal workspace, auto-created on first login).
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  plan        String   @default("FREE")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships        Membership[]
+  invites            Invite[]
+  documents          Document[]
+  generatedDocuments GeneratedDocument[]
+  chats              Chat[]
+  counterpartyChecks CounterpartyCheck[]
+  aiUsage            AiUsage[]
+}
+
+// User <-> Organization join with role. A user can belong to many orgs;
+// an org has many members. The (userId, orgId) pair is unique — a user
+// has exactly one role per org.
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  orgId     String
+  // "OWNER" | "ADMIN" | "MEMBER". OWNER may delete the org and transfer
+  // ownership; ADMIN may invite/remove members; MEMBER may only use it.
+  role      String   @default("MEMBER")
+  createdAt DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+  @@index([userId])
+}
+
+// Shareable invitation link. token is high-entropy random; recipient pastes
+// the resulting URL or clicks it. expiresAt caps the validity window.
+// acceptedAt becomes non-null on acceptance and the invite is then a no-op.
+// Email is optional in this MVP — invites work as a plain shareable link.
+model Invite {
+  id         String   @id @default(cuid())
+  orgId      String
+  email      String?
+  role       String   @default("MEMBER")
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  acceptedAt DateTime?
+  createdBy  String?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([token])
 }
 
 model Account {
@@ -68,15 +143,44 @@ model VerificationToken {
 model Document {
   id        String    @id @default(cuid())
   userId    String
+  // Workspace that owns this document. Nullable during the rollout — the
+  // first time an existing user signs in, ensureActiveOrg() back-fills this
+  // for all of their docs in one transaction. New uploads always set it.
+  orgId     String?
   fileName  String
   fileSize  Int
   rawText   String
+  mimeType  String?
+  blobUrl   String?
+  blobKey   String?
   analysis  Analysis?
+  chunks    DocumentChunk[]
   createdAt DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([orgId])
+}
+
+model DocumentChunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  chunkIndex  Int
+  text        String
+
+  // pgvector embedding for semantic search across the user's own contracts.
+  // 1024-dim matches Voyage voyage-3-large (same model as LegalKnowledge).
+  // Nullable so a Document can exist before its chunks are embedded.
+  embedding   Unsupported("vector(1024)")?
+
+  createdAt   DateTime @default(now())
+
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
 }
 
 model Analysis {
@@ -94,16 +198,19 @@ model Analysis {
 model GeneratedDocument {
   id         String   @id @default(cuid())
   userId     String
+  orgId      String?
   templateId String
   name       String
   content    String
   formData   Json
   createdAt  DateTime @default(now())
 
-  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  versions DocumentVersion[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  versions     DocumentVersion[]
 
   @@index([userId])
+  @@index([orgId])
   @@index([templateId])
 }
 
@@ -149,14 +256,17 @@ model VersionComparison {
 model Chat {
   id        String        @id @default(cuid())
   userId    String
+  orgId     String?
   title     String
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   messages  ChatMessage[]
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([orgId])
 }
 
 model ChatMessage {
@@ -184,6 +294,12 @@ model LegalKnowledge {
 
   tags          String   @default("[]") // JSON array as string
   searchVector  String
+
+  // pgvector embedding (1024-dim, voyage-3-large). Nullable so rows can
+  // exist before being indexed. Filled by /api/admin/embed-legal.
+  // Prisma can't represent vector types natively yet, so we use Unsupported
+  // and query through raw SQL in src/lib/legal-search.ts.
+  embedding     Unsupported("vector(1024)")?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -247,19 +363,53 @@ model CounterpartyProfile {
   @@index([inn])
 }
 
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String
+  orgId        String?
+  feature      String
+  provider     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  cachedTokens Int      @default(0)
+  latencyMs    Int
+
+  createdAt    DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, feature])
+  @@index([orgId, createdAt])
+  @@index([orgId, feature])
+}
+
 model CounterpartyCheck {
   id           String   @id @default(cuid())
   userId       String
+  orgId        String?
   inn          String
 
   notes        String?
 
   createdAt    DateTime @default(now())
 
-  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   profile      CounterpartyProfile @relation(fields: [inn], references: [inn], onDelete: Cascade)
 
+  // Dedup stays per-user. We considered moving to (orgId, inn) so a re-check
+  // by another team member would update the existing row, but `prisma db
+  // push` flags adding the new constraint as a "potential data loss" event
+  // (false positive — orgId is nullable and NULL≠NULL in Postgres) and
+  // refuses without --accept-data-loss. We don't want that flag in the
+  // Vercel build script — it would mask real data-loss changes in future
+  // migrations. Per-user history is also arguably better for audit
+  // ("Иванов проверил INN X, Петров проверил его же позже").
   @@unique([userId, inn])
   @@index([userId])
+  @@index([orgId])
   @@index([inn])
 }

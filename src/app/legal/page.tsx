@@ -10,6 +10,8 @@ import {
   Bookmark,
   BookmarkCheck,
   ArrowRight,
+  Sparkles,
+  Type,
 } from "lucide-react";
 
 interface LegalArticle {
@@ -23,7 +25,11 @@ interface LegalArticle {
   practiceNotes?: string;
   relatedCodes?: string[];
   tags?: string[];
+  /** Present only on vector-search results: cosine similarity in [0, 1]. */
+  similarity?: number;
 }
+
+type SearchMode = "keyword" | "vector";
 
 export default function LegalReferencePage() {
   const [query, setQuery] = useState("");
@@ -36,6 +42,8 @@ export default function LegalReferencePage() {
   const [activeTab, setActiveTab] = useState<"search" | "bookmarks">(
     "search"
   );
+  const [searchMode, setSearchMode] = useState<SearchMode>("keyword");
+  const [searchNote, setSearchNote] = useState<string | null>(null);
 
   // Load user's bookmarks on mount
   useEffect(() => {
@@ -66,13 +74,15 @@ export default function LegalReferencePage() {
     }
 
     setLoading(true);
+    setSearchNote(null);
     try {
       const response = await fetch(
-        `/api/legal/search?q=${encodeURIComponent(query)}&limit=20`
+        `/api/legal/search?q=${encodeURIComponent(query)}&limit=20&mode=${searchMode}`
       );
       if (response.ok) {
         const data = await response.json();
-        setResults(data.results);
+        setResults(data.results ?? []);
+        if (data.note) setSearchNote(data.note);
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -166,13 +176,47 @@ export default function LegalReferencePage() {
             {/* Search panel */}
             <div className={`lg:col-span-${selectedArticle ? "1" : "3"}`}>
               <div className="bg-white rounded-lg border border-border p-6">
-                <form onSubmit={handleSearch} className="mb-6">
+                {/* Mode toggle: keyword vs semantic */}
+                <div className="mb-3 inline-flex rounded-lg border border-border bg-surface p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setSearchMode("keyword")}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors ${
+                      searchMode === "keyword"
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                    title="Точное совпадение по словам, кодам, заголовкам"
+                  >
+                    <Type className="h-3.5 w-3.5" />
+                    По словам
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSearchMode("vector")}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors ${
+                      searchMode === "vector"
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                    title="Семантический поиск по смыслу через embeddings"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    По смыслу
+                  </button>
+                </div>
+
+                <form onSubmit={handleSearch} className="mb-3">
                   <div className="relative">
                     <input
                       type="text"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Искать статьи, коды, ключевые слова..."
+                      placeholder={
+                        searchMode === "vector"
+                          ? "Опишите ситуацию своими словами..."
+                          : "Искать статьи, коды, ключевые слова..."
+                      }
                       className="w-full rounded-lg border border-border bg-white px-4 py-3 pr-12 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                     <button
@@ -189,9 +233,15 @@ export default function LegalReferencePage() {
                   </div>
                 </form>
 
+                {searchNote && (
+                  <p className="mb-3 text-xs text-muted bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    {searchNote}
+                  </p>
+                )}
+
                 {/* Results */}
                 <div className="space-y-2">
-                  {results.length === 0 && !loading && query && (
+                  {results.length === 0 && !loading && query && !searchNote && (
                     <p className="text-sm text-muted py-8 text-center">
                       Результатов не найдено
                     </p>
@@ -207,10 +257,20 @@ export default function LegalReferencePage() {
                           : "border-border hover:border-primary hover:bg-surface"
                       }`}
                     >
-                      <p className="font-semibold text-sm text-foreground">
-                        {article.shortTitle}
-                      </p>
-                      <p className="text-xs text-muted line-clamp-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm text-foreground flex-1">
+                          {article.shortTitle}
+                        </p>
+                        {typeof article.similarity === "number" && (
+                          <span
+                            className="shrink-0 rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700"
+                            title={`Косинусная близость: ${article.similarity.toFixed(3)}`}
+                          >
+                            {Math.round(article.similarity * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted line-clamp-2 mt-0.5">
                         {article.title}
                       </p>
                     </button>

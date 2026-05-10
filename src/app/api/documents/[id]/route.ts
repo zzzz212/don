@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getStorage, isStorageAvailable } from "@/lib/storage";
+import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function GET(
   _request: NextRequest,
@@ -12,10 +15,15 @@ export async function GET(
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const { id } = await params;
 
-    const document = await prisma.document.findUnique({
-      where: { id, userId: session.user.id },
+    // Workspace-scoped lookup. Documents from other workspaces (or no
+    // workspace at all) come back as 404 — same shape as a missing id, so
+    // the response can't be used to enumerate which doc ids exist elsewhere.
+    const document = await prisma.document.findFirst({
+      where: { id, orgId },
       include: { analysis: true },
     });
 
@@ -34,6 +42,8 @@ export async function GET(
       id: document.id,
       fileName: document.fileName,
       fileSize: document.fileSize,
+      mimeType: document.mimeType,
+      hasOriginal: !!document.blobKey,
       score: document.analysis?.score ?? 0,
       summary: document.analysis?.summary ?? "",
       risks: document.analysis ? JSON.parse(document.analysis.risks) : [],
@@ -47,7 +57,7 @@ export async function GET(
       createdAt: document.createdAt,
     });
   } catch (error) {
-    console.error("Document fetch error:", error);
+    await reportError(error, { op: "documents.get" });
     return NextResponse.json(
       { error: "Ошибка при загрузке документа" },
       { status: 500 }
@@ -65,10 +75,14 @@ export async function DELETE(
       return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const { id } = await params;
 
-    const document = await prisma.document.findUnique({
-      where: { id },
+    // Org-scoped lookup so any member of the workspace can delete a doc.
+    // Foreign-org docs return 404, not 403 — anti-enumeration.
+    const document = await prisma.document.findFirst({
+      where: { id, orgId },
     });
 
     if (!document) {
@@ -78,8 +92,13 @@ export async function DELETE(
       );
     }
 
-    if (document.userId !== session.user.id) {
-      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+    // Best-effort blob cleanup — log on failure, don't block deletion.
+    if (document.blobKey && isStorageAvailable()) {
+      try {
+        await getStorage().delete(document.blobKey);
+      } catch (e) {
+        console.error("[documents/delete] blob cleanup failed:", e);
+      }
     }
 
     await prisma.document.delete({
@@ -88,7 +107,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Document deletion error:", error);
+    await reportError(error, { op: "documents.delete" });
     return NextResponse.json(
       { error: "Ошибка при удалении документа" },
       { status: 500 }

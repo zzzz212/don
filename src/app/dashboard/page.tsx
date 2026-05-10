@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { RiskBadge, type RiskLevel } from "@/components/risk-badge";
+import { UsageWidget } from "@/components/usage-widget";
+import { DocumentSearchBar } from "@/components/document-search-bar";
 import {
   FileText,
   Plus,
@@ -197,6 +199,16 @@ export default function DashboardPage() {
                 Новый анализ
               </Link>
             </div>
+          </div>
+
+          {/* Search across user's archive */}
+          <div className="mb-6">
+            <DocumentSearchBar />
+          </div>
+
+          {/* Usage widget */}
+          <div className="mb-6">
+            <UsageWidget />
           </div>
 
           {/* Quick stats */}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { ensureActiveOrg } from "@/lib/org";
 
 export async function GET() {
   try {
@@ -9,8 +10,11 @@ export async function GET() {
       return NextResponse.json([], { status: 200 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
+
     const documents = await prisma.document.findMany({
-      where: { userId: session.user.id },
+      where: { orgId },
       include: { analysis: true },
       orderBy: { createdAt: "desc" },
       take: 20,

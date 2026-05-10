@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateDiffSummary } from "@/lib/diff";
+import { ensureActiveOrg } from "@/lib/org";
 import { NextResponse } from "next/server";
 
 export async function POST(
@@ -9,18 +10,20 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const orgId =
+      session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
     const params = await props.params;
     const { id } = params;
     const body = await request.json();
     const { title, content, formData } = body;
 
-    // Get the document
-    const doc = await prisma.generatedDocument.findUnique({
-      where: { id },
+    // Workspace-scoped: any member of the org can create a new version.
+    const doc = await prisma.generatedDocument.findFirst({
+      where: { id, orgId },
     });
 
     if (!doc) {
@@ -28,11 +31,6 @@ export async function POST(
         { error: "Document not found" },
         { status: 404 }
       );
-    }
-
-    // Check authorization
-    if (doc.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Get the next version number
