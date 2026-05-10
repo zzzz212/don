@@ -22,6 +22,12 @@ import {
   FileCheck,
   Receipt,
   Scissors,
+  Gift,
+  ArrowLeftRight,
+  FileSignature,
+  Store,
+  Package,
+  Warehouse,
 } from "lucide-react";
 
 const iconMap: Record<string, typeof Shield> = {
@@ -38,6 +44,12 @@ const iconMap: Record<string, typeof Shield> = {
   "file-check": FileCheck,
   receipt: Receipt,
   scissors: Scissors,
+  gift: Gift,
+  "arrow-left-right": ArrowLeftRight,
+  "file-signature": FileSignature,
+  store: Store,
+  package: Package,
+  warehouse: Warehouse,
 };
 
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
