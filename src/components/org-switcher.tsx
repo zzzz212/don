@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import {
   Check,
   ChevronsUpDown,
@@ -30,8 +28,6 @@ const PLAN_LABEL: Record<string, string> = {
 };
 
 export function OrgSwitcher() {
-  const { update } = useSession();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<{
     activeOrgId: string;
@@ -77,53 +73,76 @@ export function OrgSwitcher() {
     (o) => o.id === data.activeOrgId
   );
 
+  // Hard reload after switching workspace. router.refresh() + session
+  // update would re-run RSC and the JWT, but the *client* cache (this
+  // component's `data` state, the dashboard's documents list, the usage
+  // widget, etc.) would still hold the previous workspace's values until
+  // each component manually re-fetched. A full reload is what every B2B
+  // SaaS does for org switches (Slack, Linear, Notion) and gives a
+  // clean, predictable state on the new workspace.
   const handleSwitch = async (orgId: string) => {
     if (orgId === data?.activeOrgId) {
       setOpen(false);
       return;
     }
     setSwitching(orgId);
+
+    let response: Response;
     try {
-      const response = await fetch(
-        `/api/organizations/${orgId}/switch`,
-        { method: "POST" }
-      );
-      if (response.ok) {
-        // Force JWT refresh so session.user.activeOrgId reflects the change
-        // immediately on the next API call.
-        await update();
-        // Hard refresh: every page that read data scoped to the previous
-        // workspace needs to re-fetch. router.refresh() invalidates the
-        // RSC cache and re-runs server components without a full reload.
-        router.refresh();
-        setOpen(false);
-      }
-    } finally {
+      response = await fetch(`/api/organizations/${orgId}/switch`, {
+        method: "POST",
+      });
+    } catch (e) {
+      console.error("[org-switcher] switch network error:", e);
+      alert("Сеть недоступна. Попробуйте ещё раз.");
       setSwitching(null);
+      return;
     }
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      alert(err.error ?? "Не удалось переключить workspace");
+      setSwitching(null);
+      return;
+    }
+
+    // Spinner deliberately stays on until the page reloads — clearing it
+    // before the navigation kicks in causes a half-second visual flicker
+    // back to the old name.
+    window.location.reload();
   };
 
   const handleCreate = async () => {
     const name = window.prompt("Название нового workspace:");
     if (!name || name.trim().length < 2) return;
     setCreating(true);
+
+    let createdId: string | null = null;
     try {
       const response = await fetch("/api/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim() }),
       });
-      if (response.ok) {
-        const created = (await response.json()) as { id: string };
-        // Switch into the newly created workspace right away.
-        await handleSwitch(created.id);
-      } else {
+      if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         alert(data.error ?? "Не удалось создать workspace");
+        return;
       }
+      const created = (await response.json()) as { id: string };
+      createdId = created.id;
+    } catch (e) {
+      console.error("[org-switcher] create failed:", e);
+      alert("Не удалось создать workspace");
+      return;
     } finally {
-      setCreating(false);
+      // Only clear the spinner if we're not about to switch+reload —
+      // handleSwitch's reload will naturally clear all client state.
+      if (!createdId) setCreating(false);
     }
+
+    // Switch into the new workspace. handleSwitch reloads on success.
+    await handleSwitch(createdId);
   };
 
   if (loading) {

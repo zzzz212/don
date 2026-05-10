@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { Header } from "@/components/header";
 import {
   Building2,
@@ -56,8 +54,6 @@ const ROLE_META = {
 };
 
 export default function OrganizationSettingsPage() {
-  const { update } = useSession();
-  const router = useRouter();
   const [orgs, setOrgs] = useState<{
     activeOrgId: string;
     organizations: Array<{ id: string; name: string; isActive: boolean }>;
@@ -191,8 +187,10 @@ export default function OrganizationSettingsPage() {
     );
     if (res.ok) {
       if (member.isMe) {
-        await update();
-        router.push("/dashboard");
+        // Leaving the workspace flips activeOrgId on the server. A hard
+        // navigation to /dashboard ensures every component re-fetches with
+        // the new active workspace context — same pattern as OrgSwitcher.
+        window.location.href = "/dashboard";
       } else {
         setDetails({
           ...details,
@@ -215,9 +213,10 @@ export default function OrganizationSettingsPage() {
       method: "DELETE",
     });
     if (res.ok) {
-      await update();
-      router.push("/dashboard");
-      router.refresh();
+      // Hard navigate so every cached client component (OrgSwitcher,
+      // dashboard list, usage widget) re-initialises against the
+      // fallback workspace the server just switched us into.
+      window.location.href = "/dashboard";
     } else {
       const data = await res.json().catch(() => ({}));
       alert(data.error ?? "Не удалось удалить workspace");

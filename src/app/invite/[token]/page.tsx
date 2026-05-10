@@ -2,7 +2,6 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/header";
 import {
@@ -35,8 +34,7 @@ export default function InviteAcceptPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = use(params);
-  const { data: session, status, update } = useSession();
-  const router = useRouter();
+  const { data: session, status } = useSession();
 
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,19 +74,19 @@ export default function InviteAcceptPage({
       });
       const data = await res.json();
       if (res.ok) {
-        await update();
         setAccepted(true);
-        // Small delay so the success state is visible before redirect.
+        // Hard reload to /dashboard after a brief success-state pause so
+        // the JWT, OrgSwitcher state, and every workspace-scoped query
+        // re-initialise cleanly in the new workspace context.
         setTimeout(() => {
-          router.push("/dashboard");
-          router.refresh();
+          window.location.href = "/dashboard";
         }, 800);
       } else {
         setError(data.error ?? "Не удалось принять приглашение");
+        setAccepting(false);
       }
     } catch {
       setError("Сеть недоступна");
-    } finally {
       setAccepting(false);
     }
   };
