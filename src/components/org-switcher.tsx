@@ -69,9 +69,15 @@ export function OrgSwitcher() {
     };
   }, []);
 
-  const active = data?.organizations.find(
-    (o) => o.id === data.activeOrgId
-  );
+  // Find which org is active. Falls back to the first workspace in the list
+  // if the cached activeOrgId is somehow not present in `organizations` —
+  // can happen if the server-side activeOrgId got out of sync (rare, but
+  // returning null here would silently hide the whole switcher and leave
+  // the user wondering where their workspaces went).
+  const active =
+    data?.organizations.find((o) => o.id === data.activeOrgId) ??
+    data?.organizations[0] ??
+    null;
 
   // Hard reload after switching workspace. router.refresh() + session
   // update would re-run RSC and the JWT, but the *client* cache (this

@@ -57,11 +57,7 @@ export function Header() {
                 ЮрИИст
               </span>
             </Link>
-            {!isLanding && user && (
-              <div className="hidden md:block">
-                <OrgSwitcher />
-              </div>
-            )}
+            {!isLanding && user && <OrgSwitcher />}
           </div>
 
           {/* Desktop navigation */}
@@ -155,6 +151,14 @@ export function Header() {
       {mobileOpen && !isLanding && (
         <div className="md:hidden border-t border-border bg-white animate-fade-in">
           <div className="px-4 py-3 space-y-1">
+            {/* Workspace switcher in mobile menu — clicking it opens its own
+                dropdown, then the user can switch / create / open settings. */}
+            {user && (
+              <div className="pb-3 mb-2 border-b border-border">
+                <OrgSwitcher />
+              </div>
+            )}
+
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
