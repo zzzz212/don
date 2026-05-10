@@ -2,52 +2,109 @@
 
 # 🚀 ОТКРЫВАЮЩИЙ ПРОМТ ДЛЯ НОВОЙ СЕССИИ
 
-> **Скопируй это и вставь как первое сообщение Claude в новой сессии:**
+> **Скопируй блок ниже и вставь как первое сообщение Claude в новой
+> сессии. Дальнейшие нюансы — внутри CLAUDE.md.**
 
 ```
 Привет! Я работаю над ЮрИИст — Russian legal-tech SaaS на Next.js 16 +
-Prisma + Neon. Над проектом велась длинная сессия (~75+ коммитов:
-AI core, OCR, storage, workspaces, billing с ЮKassa, AI-refine с
-patch-mode, admin-панель, PostHog аналитика, 20 шаблонов договоров).
-Все детали в CLAUDE.md в корне репозитория.
+Prisma + Neon Postgres. Проект большой (~80 коммитов): AI-анализ
+договоров, генерация из 20 шаблонов с AI-доработкой, чат-юрист,
+проверка контрагентов, workspaces, биллинг через ЮKassa, 2FA,
+audit log, admin-панель, PostHog аналитика. Production стоит на
+https://juriist.vercel.app. Все детали в CLAUDE.md в корне репозитория.
 
-Сделай сейчас:
-1. Прочитай CLAUDE.md полностью.
-2. Кратко (5 буллетов) подтверди что понял:
-   – Что построено (top-level)
-   – Что в pending TODO с приоритетами
-   – Какие foot-guns надо помнить (схема, JWT, ЮKassa idempotence,
-     refine patch-mode, voyageai SDK, и т.д.)
+Что нужно сделать ПЕРВЫМ делом:
+
+1. Прочитай CLAUDE.md полностью. Это ~900 строк, но в нём всё:
+   архитектура по слоям, схема БД, foot-guns с прошлых багов, env
+   vars, дебаг-руководство, план следующих спринтов.
+
+2. Кратко (5-7 буллетов) подтверди что понял:
+   – Что построено (top-level overview)
+   – Что в pending TODO и какой Sprint следующий
+   – Минимум 5 критичных foot-guns (например: JWT всегда re-resolves
+     activeOrgId, refine patch-mode НЕ через generate(zod) на Groq,
+     trial-time workspace creation block использует stored plan а не
+     effective, audit использует redact() для PII, и т.д.)
    – Текущая ветка и production URL
-   – Что я должен сделать на стороне Vercel/внешних сервисов если ты
-     поменяешь что-то критичное
-3. Спроси меня что делаем сегодня.
+   – Что я должен сделать на стороне Vercel/Neon/внешних сервисов
+     если ты затронешь что-то критичное (env vars, миграции, и т.д.)
 
-Правила работы на эту сессию:
-- Коммиты атомарные, со связными сообщениями (как в git log этой ветки).
-- Перед каждым commit: `npx tsc --noEmit` + `npm test` должны пройти.
+3. Спроси меня что делаем сегодня. Если у меня нет конкретики — по
+   приоритету в CLAUDE.md следующий Sprint 5 (REST API + Webhooks).
+
+═══ ПРАВИЛА РАБОТЫ В ЭТОЙ СЕССИИ ═══
+
+КОММИТЫ И PUSH:
+- Коммиты атомарные, со связными сообщениями (изучи стиль в
+  git log этой ветки — multi-line, объясняющие "почему" а не "что").
+- Перед КАЖДЫМ commit: `npx tsc --noEmit` + `npm test` должны пройти.
 - Перед push: `npx next build` должен пройти.
-- Push в claude/intelligent-cerf-a72ede; мерж в main делает пользователь
-  через GitHub PR.
-- Для миграций БД: всё должно проходить `prisma db push` без флага
-  --accept-data-loss. Если push упадёт — переделай схему.
-- НЕ трогай .env. НЕ копируй секреты в чат.
-- Если что-то в проде ломается — НЕ гадай, попроси у меня:
-    a) curl-ответ или скрин Network → Response, ИЛИ
-    b) `npx vercel inspect <deployment-id> --logs`
-- Если мой запрос двусмысленный — переспроси одной короткой строчкой
-  до начала работы, не делай предположения тихо.
-- Большие задачи (>2 часов работы) — обязательно опиши план до начала.
-- Используй TodoWrite для tracking'а на больших задачах.
+- Push в claude/intelligent-cerf-a72ede; мерж в main делает
+  пользователь через GitHub PR.
+- Identity: Claude <noreply@anthropic.com>. Используй -c флаги при
+  commit, не меняй git config глобально.
 
-Готов? Прочитай CLAUDE.md и приступай.
+СХЕМА БД:
+- Все миграции должны проходить `prisma db push` без флага
+  --accept-data-loss. Если push потенциально потеряет данные —
+  переделай схему (добавь nullable column вместо изменения,
+  оставь старые поля как deprecated, и т.д.).
+- В Vercel build pipeline: `prisma db push --skip-generate` (НЕ
+  `migrate deploy` — старые миграции в SQLite-синтаксисе).
+
+БЕЗОПАСНОСТЬ:
+- НЕ трогай .env (он в .gitignore — обратно не возвращать).
+- НЕ копируй секреты в чат (если показал — попроси меня их
+  проротейтить).
+- НЕ пиши тесты с реальными API ключами — мокай или используй env
+  fixtures.
+
+КОММУНИКАЦИЯ:
+- Если мой запрос двусмысленный — переспроси ОДНОЙ короткой строчкой
+  до начала работы. Не делай предположения тихо.
+- Если что-то в проде ломается — НЕ гадай. Попроси у меня:
+    (a) curl-ответ или Network → Response из DevTools, ИЛИ
+    (b) `npx vercel inspect <deployment-id> --logs`
+- Если задача >2 часов — опиши план ДО начала кода (TodoWrite +
+  numbered list в чате).
+- Используй TodoWrite для tracking'а на любых задачах из 3+ шагов.
+- Когда commit готов — пиши короткое summary что сделал, не
+  пересказывай весь diff.
+
+КАЧЕСТВО КОДА:
+- Уровень — senior-engineer rigor. Никаких `any`, валидация на
+  границах, явный error-handling.
+- Сохраняй существующие паттерны: comments в стиле "why not what",
+  fire-and-forget для analytics/audit, провайдер-абстракции для
+  интеграций.
+- НЕ переписывай чужой код "просто потому что". Если refactor —
+  отдельный коммит с явным rationale.
+- Не создавай документацию (.md, README) кроме CLAUDE.md если я не
+  просил явно.
+
+NEXT.JS 16 NUANCES:
+- `useSearchParams()` ДОЛЖЕН быть обёрнут в `<Suspense>` (см.
+  существующие примеры в /password-reset, /admin/users).
+- Server actions с `cookies()` / `headers()` — `await` обязательно
+  (это Next 16, не Next 14).
+- Перед использованием Next.js features — `Read
+  node_modules/next/dist/docs/...` если не уверен (это Next 16, не
+  та Next.js которую помнит твоё обучение).
+
+ЕСЛИ Я НЕ ОТВЕЧАЮ НА ВОПРОС: переспроси один раз. Если всё ещё
+неясно — сделай минимально-инвазивную версию + явно отметь что
+оставил под уточнение.
+
+Готов? Читай CLAUDE.md, потом 5-7 буллетов подтверждения, потом
+вопрос «что делаем сегодня».
 ```
 
 ---
 
 # ЮрИИст — состояние проекта
 
-**Дата последнего обновления**: 2026-05-10  
+**Дата последнего обновления**: 2026-05-10 (после Sprint 4 — handoff к новой сессии)  
 **Production URL**: https://juriist.vercel.app  
 **Repo**: https://github.com/zzzz212/don  
 **Active branch**: `claude/intelligent-cerf-a72ede` (мержится в `main` через PR)
@@ -778,17 +835,122 @@ HAVING COUNT(*) > 1;
 ## Приоритет следующих спринтов
 
 ### Sprint 5 — Public API + Webhooks (~7-9ч) ← **СЛЕДУЮЩИЙ**
-REST API + API keys → webhooks → внешние интеграции.
+
+Цель: открыть программный доступ к продукту, чтобы клиенты могли
+интегрировать ЮрИИст в свой workflow (ERP, Bitrix24, Slack-боты).
+
+Deliverables:
+- `ApiKey` модель на Organization. Поля: `id`, `orgId`, `name`,
+  `keyHash` (SHA-256 — plaintext только в момент создания),
+  `lastUsedAt`, `revokedAt`, `createdAt`, `createdBy`.
+- `POST /api/organizations/[id]/api-keys` (OWNER+) — генерирует
+  ключ формата `juriist_<32-hex>` (префикс брендовый, чтобы не
+  триггерить GitHub secret-scanning по `sk_*`). Plaintext возвращается
+  ОДИН РАЗ. Rate-limit 5/min.
+- `DELETE /api/organizations/[id]/api-keys/[keyId]` — revoke
+  (set `revokedAt`).
+- Authentication middleware для `/api/v1/*` — проверяет
+  `Authorization: Bearer juriist_...` через хеш, обновляет
+  `lastUsedAt`, attaches orgId/userId-of-creator к запросу.
+- Public endpoints: `POST /api/v1/analyze`, `POST /api/v1/generate`,
+  `GET /api/v1/documents`, `GET /api/v1/documents/[id]`. Та же логика
+  что внутренние, но с API-key auth и без UI-side state.
+- Per-key rate limit (отдельный endpoint в `rate-limit.ts`):
+  100/min для analyze+generate, 1000/min для GET.
+- `Webhook` модель: `orgId`, `url`, `events` (string[]), `secret`
+  (для HMAC SHA-256 подписи), `enabled`, `lastSuccessAt`,
+  `lastFailureAt`, `failureCount`.
+- Webhook dispatcher: после `analysis_completed`, `payment_succeeded`,
+  и т.д. — асинхронно POST'ит на все enabled webhooks с
+  `X-Juriist-Signature` header. Retry с exponential backoff (1m, 5m,
+  30m, 2h). После 5 failures подряд — авто-disable + audit
+  `webhook.auto_disabled`.
+- UI: `/settings/organization/api` — таблица ключей (имя, last used,
+  «отозвать») + создание + раздел «Webhooks» с тестом доставки
+  («Send test event»).
+- API docs страница: `/docs/api` (просто README-style, не Mintlify).
+  Показывает curl-примеры для каждого эндпоинта.
+- Audit log: `api_key.created`, `api_key.revoked`, `webhook.created`,
+  `webhook.deleted`, `webhook.auto_disabled`.
 
 ### Sprint 6 — Большие фичи продукта (~10-12ч)
-Bulk upload + compare contracts + onboarding tour + counterparty
-monitoring.
+
+Цель: фичи, которые юзеры явно просят и которые повышают retention.
+
+Deliverables:
+- **Bulk upload** на `/analyze` — drop ≥ 2 файлов → параллельная
+  обработка через Promise.all с concurrency=4. UI с progress per
+  file, общий прогресс-бар. Failed files не блокируют успешные.
+- **Compare 2 contracts** — новый endpoint `POST /api/compare`
+  принимающий два documentId, использует существующий `computeDiff`
+  из `src/lib/diff.ts`. UI: `/dashboard` → выбрать 2 документа →
+  «Сравнить» → side-by-side view с word-level diff.
+- **Onboarding tour** — `intro.js` или собственный тур (2-3 экрана):
+  сразу после signup показывает «Шаг 1: загрузите договор», «Шаг 2:
+  попробуйте чат», «Шаг 3: проверьте контрагента». Состояние в
+  `User.onboardingCompletedAt`. Skip-кнопка.
+- **Counterparty monitoring** — cron в Vercel (`/api/cron/counterparty-monitor`,
+  раз в день, secret-key защита) проходит по всем
+  `CounterpartyCheck` за последние 90 дней, дёргает DaData, при
+  изменении `statusCode` или `riskLevel` шлёт email юзеру через
+  Resend (новый template `counterparty-changed.ts`).
+- **Email-уведомления о готовности анализа** — для длинных анализов
+  (>30s map-reduce). После background completion → отправить email
+  юзеру через Resend. Новый template `analysis-ready.ts`.
+- **Templates search/filter** — на /templates когда шаблонов ≥ 20
+  (сейчас как раз 20). Поиск по названию/описанию + фильтр
+  категорий. Tailwind animations.
 
 ### Sprint 7 — DX (~8-10ч)
-GitHub Actions CI + E2E + pre-commit + Storybook.
+
+Цель: защитить себя от регрессий и ускорить разработку. Особенно
+ценно перед привлечением сторонних разработчиков.
+
+Deliverables:
+- **GitHub Actions CI** — `.github/workflows/ci.yml`. Триггер: PR в
+  main + push в любую `claude/*` ветку. Шаги: `npm ci` → `npx prisma
+  generate` → `npx tsc --noEmit` → `npm test` → `npx next build` (без
+  prisma db push в CI). Time: ~2-3 мин на PR.
+- **E2E Playwright** — `tests/e2e/`. Минимум 3 сценария:
+  `signup → first-analysis`, `templates → generate → version`,
+  `billing-checkout (test mode)`. Headless в CI, headed для отладки.
+- **Pre-commit hooks** — husky + lint-staged. На staged файлы:
+  `eslint --fix` + `prettier --write`. Skip с `--no-verify` если
+  очень надо.
+- **Storybook** для критичных компонентов: `<RefinePanel>`,
+  `<UsageWidget>`, `<OrgSwitcher>`, `<RiskBadge>`,
+  `<ScoreRing>`. Mocked Session/Toast providers.
+- **React component tests** — RTL + vitest. Минимум: `<RefinePanel>`
+  на 4 фазы, `<OrgSwitcher>` на admin-link visibility,
+  `<UsageWidget>` на trial state.
+- **API docs** автогенерация — Scalar или Mintlify. Опционально, если
+  будем делать публичный API-spec. Можно скипнуть в этом спринте.
 
 ### Sprint 8 — UI polish (~10-14ч)
-Dark mode + mobile + a11y + i18n.
+
+Цель: продуктово-зрелый UX. Делать ПОСЛЕ Sprint 5-7 чтобы не
+полировать то, что потом всё равно перепишется.
+
+Deliverables:
+- **Dark mode toggle** — Tailwind `dark:` variants. CSS-переменные в
+  `globals.css` уже подготовлены под смену темы. Toggle в Header или
+  OrgSwitcher. Сохранение выбора в localStorage + `prefers-color-
+  scheme` media query как default.
+- **Mobile-first overhaul** — текущий UI desktop-приоритетный. Пройтись
+  по всем основным страницам (dashboard, analyze, templates,
+  generated, chat, billing, settings) и поправить:
+  hamburger-меню в Header (уже есть, но можно улучшить), responsive
+  таблицы (стэк в карточки на mobile), touch targets ≥ 44px.
+- **A11y audit** — axe-core или Lighthouse. Цели:
+  - Все form fields с `<label>` или `aria-label`
+  - Контраст ≥ 4.5:1 (некоторые `text-muted` могут не пройти)
+  - Keyboard navigation работает везде (Tab/Shift+Tab/Enter)
+  - Screen reader friendly: alt-text на all images, `<main>`/`<nav>`
+    landmarks, focus management в модалах
+- **i18n (RU + EN)** — `next-intl`. Все UI-строки в `messages/ru.json`
+  + `messages/en.json`. Email templates тоже. Языковой переключатель
+  в Header. Маркетинговые лендинг (страница `/`) и legal-страницы
+  пока остаются RU-only — клиенты RU-юристы.
 
 ---
 
