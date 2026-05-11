@@ -98,6 +98,7 @@ describe("legal-info trial constants stay in sync", () => {
     const { TRIAL_DAYS, TRIAL_DAYS_LABEL } = await import("../legal-info");
     const expected: Record<number, string> = {
       1: "один",
+      2: "два",
       3: "три",
       5: "пять",
       7: "семь",

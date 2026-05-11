@@ -76,10 +76,11 @@ export function isPaidPlan(plan: string): plan is PaidPlan {
   return plan === "PRO" || plan === "BUSINESS";
 }
 
-/** Trial period for new workspaces, in days. */
-export const TRIAL_DAYS = 7;
+/** Trial period, in days. Granted ONLY via explicit activation through
+ *  /api/billing/activate-trial — no longer auto-set at signup. */
+export const TRIAL_DAYS = 2;
 /** Cyrillic spell-out of TRIAL_DAYS for the legal pages — must match. */
-export const TRIAL_DAYS_LABEL = "семь";
+export const TRIAL_DAYS_LABEL = "два";
 
 export function isOperatorPlaceholder(): boolean {
   return OPERATOR.legalName.startsWith("[");

@@ -9,7 +9,6 @@
 // into it inside one transaction. No batch migration job needed.
 
 import { prisma } from "@/lib/db";
-import { TRIAL_DAYS } from "@/lib/legal-info";
 
 export type Role = "OWNER" | "ADMIN" | "MEMBER";
 
@@ -156,15 +155,13 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
       : `Workspace ${local}`;
   const slug = await reserveSlug(candidateName);
 
-  // Grant the trial only on the user's *first* org. Subsequent orgs they
-  // explicitly create later must not re-extend the trial — that's the
-  // anti-abuse guard. We're inside the bootstrap branch (no other
-  // memberships) so this is the first-org case by construction. The
-  // trial is now user-scoped (User.trialEndsAt is authoritative); the
-  // Organization.trialEndsAt copy is kept in sync only so legacy
-  // queries don't break.
-  const now = new Date();
-  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  // Auto-trial removed: new users sign up directly onto FREE. The
+  // trial is claimable only through the explicit "Активировать
+  // пробный период" CTA on /billing (POST /api/billing/activate-trial)
+  // — that route still writes User.trialActivatedAt + User.trialEndsAt
+  // atomically and is one-per-user-lifetime, which is the anti-abuse
+  // contract we need. Removing auto-grant keeps the trial as a
+  // deliberate decision the user has to make.
 
   const orgId = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
@@ -172,7 +169,6 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
         name: candidateName,
         slug,
         plan: user.plan ?? "FREE",
-        trialEndsAt,
       },
       select: { id: true },
     });
@@ -183,15 +179,7 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
 
     await tx.user.update({
       where: { id: userId },
-      data: {
-        activeOrgId: org.id,
-        // Mark the trial as claimed (lifetime flag) and grant the trial
-        // window on the user record itself — single source of truth for
-        // quota lookups. Mirrors Organization.trialEndsAt above for
-        // legacy compatibility.
-        trialActivatedAt: now,
-        trialEndsAt,
-      },
+      data: { activeOrgId: org.id },
     });
 
     // Backfill existing per-user data into the new personal workspace so

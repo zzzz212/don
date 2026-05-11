@@ -14,6 +14,19 @@ import {
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { BillingCardSkeleton } from "@/components/skeleton";
+import { TRIAL_DAYS } from "@/lib/legal-info";
+
+// Russian plural for "день" depending on count — 1 день / 2-4 дня / 5+ дней.
+// The trial UI only needs the singular ("1 день"), few ("2-4 дня") and many
+// ("5+ дней") forms; mirrors the same helper /billing already uses for
+// "trial X days left" rendering.
+function dayWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "дня";
+  return "дней";
+}
 
 interface SubscriptionInfo {
   plan: string;
@@ -321,9 +334,9 @@ export default function BillingPage() {
                           Активируйте бесплатный пробный период «Про»
                         </p>
                         <p className="mt-1 text-sm text-muted">
-                          7 дней безлимитного анализа договоров, генерации
-                          документов и OCR. Без привязки карты и
-                          автосписаний. Доступно один раз для каждого
+                          {TRIAL_DAYS} {dayWord(TRIAL_DAYS)} безлимитного анализа
+                          договоров, генерации документов и OCR. Без привязки
+                          карты и автосписаний. Доступно один раз для каждого
                           аккаунта.
                         </p>
                         {trialError && (
@@ -346,7 +359,7 @@ export default function BillingPage() {
                           ) : (
                             <>
                               <Sparkles className="h-4 w-4" />
-                              Активировать на 7 дней
+                              Активировать на {TRIAL_DAYS} {dayWord(TRIAL_DAYS)}
                             </>
                           )}
                         </button>
