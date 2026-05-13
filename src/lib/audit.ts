@@ -54,7 +54,9 @@ export type AuditAction =
   // a delivery audit and as a dedup key — the cron checks for the
   // most recent send before re-firing.
   | "email.trial_expiring_sent"
-  | "email.trial_expired_sent";
+  | "email.trial_expired_sent"
+  | "email.inactive_reengagement_sent"
+  | "email.checkout_abandoned_sent";
 
 export type TargetType =
   | "workspace"

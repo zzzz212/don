@@ -17,6 +17,9 @@ import { gphVsIp } from "./content/gph-vs-ip";
 import { servicesContract } from "./content/services-contract";
 import { marketplaceAgent } from "./content/marketplace-agent";
 import { supplyContract } from "./content/supply-contract";
+import { labourProbation } from "./content/labour-probation";
+import { loanBetweenCompanies } from "./content/loan-between-companies";
+import { agencyContract } from "./content/agency-contract";
 
 export interface BlogPost {
   slug: string;
@@ -44,6 +47,9 @@ export interface BlogPost {
 }
 
 export const POSTS: BlogPost[] = [
+  labourProbation,
+  loanBetweenCompanies,
+  agencyContract,
   servicesContract,
   marketplaceAgent,
   supplyContract,

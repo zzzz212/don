@@ -65,6 +65,8 @@ const ACTION_LABELS: Record<string, string> = {
   "account.signup_consent_granted": "Принято согласие на обработку ПДн",
   "email.trial_expiring_sent": "Письмо об окончании триала",
   "email.trial_expired_sent": "Письмо о завершении триала",
+  "email.inactive_reengagement_sent": "Реактивационное письмо",
+  "email.checkout_abandoned_sent": "Письмо о недозавершённом платеже",
 };
 
 const ACTION_GROUPS: Array<{ label: string; values: string[] }> = [

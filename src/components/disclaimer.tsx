@@ -19,6 +19,18 @@ export function Disclaimer() {
             className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1"
           >
             <Link
+              href="/blog"
+              className="hover:text-foreground hover:underline"
+            >
+              Журнал
+            </Link>
+            <Link
+              href="/help"
+              className="hover:text-foreground hover:underline"
+            >
+              Помощь
+            </Link>
+            <Link
               href="/privacy"
               className="hover:text-foreground hover:underline"
             >

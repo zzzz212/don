@@ -373,7 +373,7 @@ export default function DashboardPage() {
                 <EmptyState
                   illustration={<DocsEmptyIllustration />}
                   title="Загрузите первый договор"
-                  description="AI прочитает каждый пункт, оценит риски и подсветит опасные места. Поддерживаются PDF и DOCX, а на «Про» — даже сканы."
+                  description="Модель пройдёт по тексту со справочником ГК РФ — найдёт несоразмерные штрафы, кабальные условия и пропущенные существенные пункты. Поддерживаются PDF и DOCX, а на «Про» — даже сканы. Не готовы загружать свой? Откройте пример отчёта."
                   actions={
                     <>
                       <Link
@@ -384,18 +384,18 @@ export default function DashboardPage() {
                         Анализировать договор
                       </Link>
                       <Link
+                        href="/sample-report"
+                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                      >
+                        <FileText className="h-4 w-4" aria-hidden="true" />
+                        Посмотреть пример отчёта
+                      </Link>
+                      <Link
                         href="/chat"
                         className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                       >
                         <MessageCircle className="h-4 w-4" aria-hidden="true" />
                         Спросить AI-юриста
-                      </Link>
-                      <Link
-                        href="/counterparty"
-                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-                      >
-                        <Building2 className="h-4 w-4" aria-hidden="true" />
-                        Проверить контрагента
                       </Link>
                     </>
                   }

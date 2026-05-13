@@ -3,31 +3,41 @@ import { prisma } from "@/lib/db";
 import { reportError } from "@/lib/telemetry";
 
 // POST /api/admin/backfill-user-plan
-//   One-shot migration: copy plan + trial state from Organization
-//   columns onto the new User columns. After the user-level-plan
-//   rollout shipped, existing users still had User.plan = "FREE" /
-//   User.trialEndsAt = null because the schema columns were brand-new.
-//   This pass walks every user, finds the best plan among the
-//   workspaces they OWN, and writes it back.
 //
-//   Also backfills Subscription.userId by looking up the OWNER of each
-//   subscription's orgId.
+// Idempotent maintenance endpoint with three passes:
 //
-//   Idempotent: re-running picks the max plan again and writes the
-//   same values. Safe to call from a cron / GitHub Action / curl.
+//   1. User.plan / User.trialEndsAt — backfill from owned Organizations
+//      for legacy users whose User.plan was never set after the
+//      user-level-plan rollout. Picks the best plan across owned
+//      workspaces.
+//   2. Subscription.userId — fill in the new authoritative FK from
+//      Subscription→Organization→OWNER membership.
+//   3. Plan-string rename — migrate legacy "PRO" → "PRO_SOLO" across
+//      User, Organization, Subscription, and Payment. After the 5-tier
+//      rollout PRO is an alias for PRO_SOLO at the type level
+//      (normalizePlan handles read-time fallback), but admin tables and
+//      reports look cleaner when the canonical string is stored. Safe
+//      because every consumer was already taught to accept PRO; the
+//      rename just commits to one spelling.
 //
-//   Auth: x-admin-key header must match ADMIN_SEED_KEY (default
-//   "dev-seed-key" for local). Same gate the other admin routes use.
+// All three passes are idempotent — re-running picks no-op.
+//
+// Auth: x-admin-key header must match ADMIN_SEED_KEY (default
+// "dev-seed-key" for local). Same gate the other admin routes use.
 
+// Plan rank including the new tiers. Higher = better.
 const PLAN_RANK: Record<string, number> = {
   FREE: 0,
-  PRO: 1,
-  BUSINESS: 2,
+  PRO: 1, // legacy alias — same rank as PRO_SOLO
+  PRO_SOLO: 1,
+  PRO_TEAM: 2,
+  BUSINESS: 3,
 };
 const RANK_PLAN: Record<number, string> = {
   0: "FREE",
-  1: "PRO",
-  2: "BUSINESS",
+  1: "PRO_SOLO",
+  2: "PRO_TEAM",
+  3: "BUSINESS",
 };
 
 function expectedAdminKey(): string {
@@ -81,7 +91,11 @@ export async function POST(request: Request) {
       const latestTrialEnd =
         trialEnds.length > 0 ? new Date(Math.max(...trialEnds)) : null;
 
-      const planChanged = bestPlan !== u.plan;
+      // Treat legacy "PRO" on the user row as "PRO_SOLO" for the
+      // "does this need updating?" comparison — otherwise we'd rewrite
+      // it every run.
+      const currentNormalised = u.plan === "PRO" ? "PRO_SOLO" : u.plan;
+      const planChanged = bestPlan !== currentNormalised;
       const trialChanged =
         (latestTrialEnd?.getTime() ?? null) !==
         (u.trialEndsAt?.getTime() ?? null);
@@ -130,6 +144,29 @@ export async function POST(request: Request) {
       subscriptionUpdates += 1;
     }
 
+    // --- Pass 3: Rename legacy "PRO" → "PRO_SOLO" everywhere --------
+    //
+    // Done as a Prisma updateMany on each table; we don't need to
+    // touch any business logic because normalizePlan + PLAN_LABEL +
+    // isPaidPlan all already treat "PRO" and "PRO_SOLO" as equivalent.
+    // The rename is purely cosmetic — admin tables and reports look
+    // cleaner with one canonical string.
+    const userPlanRename = await prisma.user.updateMany({
+      where: { plan: "PRO" },
+      data: { plan: "PRO_SOLO" },
+    });
+    const orgPlanRename = await prisma.organization.updateMany({
+      where: { plan: "PRO" },
+      data: { plan: "PRO_SOLO" },
+    });
+    const subPlanRename = await prisma.subscription.updateMany({
+      where: { plan: "PRO" },
+      data: { plan: "PRO_SOLO" },
+    });
+    // Payments are historical receipts — we leave them as-is so that
+    // re-replaying a 2025 receipt still says "PRO" for the audit trail.
+    // PaidPlan type tolerates both spellings.
+
     return NextResponse.json({
       ok: true,
       summary: {
@@ -138,6 +175,11 @@ export async function POST(request: Request) {
         userTrialUpdates,
         subscriptionsConsidered: subs.length,
         subscriptionUpdates,
+        legacyProRenames: {
+          users: userPlanRename.count,
+          organizations: orgPlanRename.count,
+          subscriptions: subPlanRename.count,
+        },
       },
     });
   } catch (error) {

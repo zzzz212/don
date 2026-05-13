@@ -87,7 +87,7 @@ invasive вариант + явная отметка что оставил под
 
 # ЮрИИст — состояние проекта
 
-**Дата последнего обновления**: 2026-05-12 (после Sprint 8 UI polish + AI calibration round)
+**Дата последнего обновления**: 2026-05-14 (после Sprint 9: revenue-фокус, SEO, retention infra)
 **Production URL**: https://juriist.vercel.app
 **Repo**: https://github.com/zzzz212/don
 **Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR)
@@ -96,7 +96,10 @@ Russian legal-tech SaaS: AI-анализ договоров с verdict и per-ri
 + 20 шаблонов генерации + AI-refine + чат-юрист + проверка контрагентов
 (DaData/ЕГРЮЛ; КАД/ФССП — заглушки, скрыты в UI) + workspaces +
 ЮKassa-биллинг + 2FA + audit log + admin-панель + PostHog + dark mode
-+ i18n infra + ⌘K + AccountMenu + onboarding + кастомные 404/500/OG.
++ i18n infra + ⌘K + AccountMenu + onboarding + кастомные 404/500/OG
++ **/blog с 9 cornerstone-статьями + /help FAQ + /sample-report
+preview + sitemap/robots/JSON-LD + Vercel cron для trial-/inactive-/
+abandoned-email lifecycle**.
 
 **Stack**: Next.js 16 / React 19 / TypeScript / Prisma + Neon Postgres
 (pgvector) / NextAuth v5 beta.30 / Tailwind 4 (CSS-first + @custom-variant) /
@@ -368,13 +371,72 @@ Next.js паттернов — это Next 16, не та Next.js что помн
   /api/refine, /api/chat, /api/documents/[id]/reanalyze (Pro plan
   required; Hobby clamps to 60s).
 
+### Acquisition / SEO — `src/app/{blog,help,sample-report,sitemap,robots}/`
+- **`/sample-report`** — публичный preview анализа без логина (типовой
+  IT-services договор, 2 critical + 2 medium + 1 low; verdict
+  do_not_sign / score 2). Главный conversion-рычаг — preview of value.
+  Линкуется из landing hero, /analyze, /help, dashboard empty-state.
+- **`/blog`** — 9 cornerstone-статей (~1500-2500 слов каждая):
+  - `gph-vs-ip-kogo-vybrat` — ГПХ vs ИП vs самозанятый, налоги 2026
+  - `nda-dlya-it-kompanii` — почему NDA без режима КТ не работает
+  - `arenda-nezhilogo-pomescheniya-7-punktov` — недвижимость
+  - `dogovor-okazaniya-uslug-razbor` — самый частый B2B
+  - `dogovor-s-marketplaceom-wb-ozon` — WB/OZON оферты
+  - `dogovor-postavki-otsrochka-platezha` — B2B торговля
+  - `trudovoj-dogovor-ispytanie-sroku` — ст. 70 ТК РФ
+  - `dogovor-zayma-yul-naloga` — налоговые риски беспроцентного займа
+  - `agentskij-dogovor-razbor` — ст. 1005 ГК, отчёт агента
+  - Каждая SSG-пререндерится через `generateStaticParams`. JSON-LD
+    `Article` schema, per-post OG-картинки через `next/og`.
+- **`/help`** — 20 FAQ-вопросов с JSON-LD `FAQPage` schema (rich result
+  в SERP) + внутренние линки на статьи.
+- **`/sitemap.xml`** — auto-генерация из BRAND.publicUrl + blog corpus +
+  курированные public-страницы. Исключает auth-gated.
+- **`/robots.txt`** — allow всё публичное, disallow /api, dashboard,
+  settings, admin, report, generated, invites.
+- **Organization JSON-LD** в RootLayout (Google Knowledge Panel).
+- **`metadataBase` + title template** в RootLayout — все relative OG /
+  canonical URLs корректные.
+
+### Lifecycle email cron — `/api/cron/billing-reminders`
+- Раз в сутки (`vercel.json` crons[] — `0 9 * * *`, 12:00 МСК).
+- Auth: `Authorization: Bearer ${CRON_SECRET}` — production обязан
+  выставить CRON_SECRET в Vercel env, иначе 401.
+- Stage 1: **trial expiring** — trialEndsAt ∈ (now, now+24h] + FREE
+  plan → buildTrialExpiringEmail. Dedup window 14 дней.
+- Stage 2: **trial expired** — trialEndsAt ∈ (now-24h, now] + FREE →
+  buildTrialExpiredEmail. Dedup 14 дней.
+- Stage 3: **inactive 14d** — User.plan="FREE", registered >14d, no
+  AiUsage в последние 14d → buildInactiveReengagementEmail. Dedup 90
+  дней. Cap 200 в сутки.
+- Stage 4: **checkout abandoned** — Payment.status ∈ {PENDING,
+  WAITING_FOR_CAPTURE}, createdAt 6-72h назад, succeededAt=null →
+  buildCheckoutAbandonedEmail. Dedup 14 дней по (user, plan).
+- Каждая отправка → `AuditEvent` с `email.*_sent` action — служит
+  delivery audit + dedup key.
+- Idempotent: повторный запуск не задвоит письма.
+
 ---
 
 ## Полный список коммитов работы (новейшие сверху)
 
-### Этот заход (Sprint 8 → AI calibration → trial rework → biz-cleanup)
+### Sprint 9 — revenue + retention + SEO (этот заход)
 ```
-[этот файл] Big CLAUDE.md update + landing cleanup + verdict reframe + KAD/FSSP hide
+[этот файл] CLAUDE.md update reflecting Sprint 9 state
+<свежий> Lifecycle email expansion: inactive-14d + checkout-abandoned + help + 3 more SEO articles + welcome refresh + dashboard sample CTA + backfill rename
+63a9d5d Trial-conversion email cron + 3 more SEO articles + per-post OG images
+b6b8706 SEO foundation: blog scaffold + sitemap + robots + 3 cornerstone articles
+2551d8c Sample report page: preview of value without auth
+690dbd6 Refresh landing copy
+28ac21d Ground analyze/chat prompts in legal reference
+523a97d 5-tier pricing rollout
+f579027 152-ФЗ dual-consent
+fc6a9a5 FREE → Haiku
+```
+
+### Sprint 8 → AI calibration → trial rework → biz-cleanup (предыдущий заход)
+```
+c2e39d1 Big CLAUDE.md update + landing cleanup + verdict reframe + KAD/FSSP hide
 64e22c0 Retry prisma db push with backoff during Vercel build
 64c366c Trial: stop auto-granting at signup, cut to 2 days
 82ff4f7 Trim analyze prompts: shorter, less paranoid, more single-pass
@@ -467,6 +529,7 @@ bdc0e4c Hard-reload after workspace switch
 | `NEXT_PUBLIC_POSTHOG_KEY` + `NEXT_PUBLIC_POSTHOG_HOST` | Client-side аналитика | Pageviews не уходят |
 | `ADMIN_USER_IDS` | CSV User.id для /admin | /admin показывает 403 |
 | `ADMIN_SEED_KEY` | Защита `/api/admin/*` | Default `dev-seed-key` (опасно в prod) |
+| `CRON_SECRET` | Защита `/api/cron/billing-reminders` | В prod без него крон 401; в dev / preview доступ открыт для curl |
 
 ⚠️ **Все секреты должны быть проротейтены** если они когда-либо засветились в чате.
 
@@ -822,7 +885,8 @@ GROUP BY model;
 ## Оперативный кэш (что свежо в голове у предыдущей сессии)
 
 - **Sprint 8 (UI polish) и AI calibration** — закрыты. Dark mode + i18n + ⌘K + AccountMenu + onboarding + custom 404/500 + Geist + oklch + motion. Plan/trial переехали на User. Verdict UI добавлен. Apply-fix per-risk + inline edit готовы. Tier policy по action × plan. Cache_control на system + tool. Retry script на Neon cold-start.
-- **Sprint 9 (бизнес-roadmap)** — следующий. См. секцию выше. **Это не код-задачи в основном.**
+- **Sprint 9 (revenue + retention + SEO)** — закрыт. Sample report + blog scaffold с 9 cornerstone-статьями + /help FAQ + sitemap/robots/Organization-JSON-LD/FAQPage-JSON-LD/per-post-OG-images + 5-tier pricing + 152-ФЗ dual-consent + FREE→Haiku + legal-reference card в analyze prompts (~3-4К токенов закэшированных). **Lifecycle cron** с 4 стадиями: trial-expiring / trial-expired / inactive-14d / checkout-abandoned. Welcome email обновлён под бесплатный «Старт» (10 анализов вместо 3, без auto-trial). Admin backfill endpoint расширен до rename PRO → PRO_SOLO. Все 9 commit'ов запушены в claude/sprint-8-ui-polish.
+- **Sprint 10 (запуск)** — следующий. См. Бизнес-roadmap. **Это user-side задачи**: ИП, ЮKassa, RKN, Resend DNS, .ru домен, Search Console / Яндекс.Webmaster submission, Telegram-канал заведение, и т.д.
 - **AI prompts** — после нескольких raunds tuning'a сейчас sweet spot: ~1.5k токенов system + 4k tool schema = ~5.5k кэшируемого префикса. Anthropic кэширует. Tone сбалансированный — "защищаю клиента, но не выдумываю риски".
 - **TRIAL_DAYS = 2.** Активация только через `/billing` (auto-trial при signup убран).
 - **Verdict UI говорит «уровень риска», не «рекомендация подписать»** (юр.ответственность).
