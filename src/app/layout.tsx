@@ -3,12 +3,47 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Providers } from "@/components/providers";
 import { SkipLink } from "@/components/skip-link";
+import { BRAND, CONTACTS } from "@/lib/legal-info";
 import "./globals.css";
 
+// metadataBase resolves all relative OG / canonical URLs throughout the
+// app to absolute ones — needed for valid Open Graph cards and for
+// canonical tags in metadata exports to render correctly. Title is
+// templated so per-page metadata.title (e.g. "Блог") gets brand suffix
+// automatically.
 export const metadata: Metadata = {
-  title: "ЮрИИст — AI-юрист для бизнеса",
+  metadataBase: new URL(BRAND.publicUrl),
+  title: {
+    default: `${BRAND.name} — ${BRAND.tagline}`,
+    template: `%s — ${BRAND.name}`,
+  },
   description:
-    "Проверка договоров, генерация документов и юридические консультации с помощью искусственного интеллекта. Для малого и среднего бизнеса в РФ.",
+    "Проверка договоров со ссылками на ГК РФ, 20 шаблонов под российское право и история правок. Для малого и среднего бизнеса.",
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: BRAND.name,
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  robots: { index: true, follow: true },
+};
+
+// Organization JSON-LD — surfaces in Google Knowledge Panel and signals
+// to crawlers that this is a real organisation, not a personal blog.
+// Inlined into <head> via a script tag in the body of RootLayout below.
+const ORGANIZATION_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: BRAND.name,
+  url: BRAND.publicUrl,
+  logo: `${BRAND.publicUrl}/icon`,
+  description:
+    "Сервис автоматического аудита договоров под право РФ: проверка по справочнику ГК и ППВС, генерация шаблонов, история правок.",
+  inLanguage: "ru-RU",
+  email: CONTACTS.support,
+  areaServed: { "@type": "Country", name: "RU" },
 };
 
 // Inline script that resolves theme + locale BEFORE React hydrates —
@@ -47,6 +82,12 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FOIT_BOOT_SCRIPT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(ORGANIZATION_JSONLD),
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col">
         <Providers>
