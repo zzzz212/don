@@ -20,7 +20,15 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [googleEnabled, setGoogleEnabled] = useState(false);
+  // Two independent 152-ФЗ consents. The "general" one bundles TOS + offer
+  // + processing of personal data (Art. 9). The "transborder" one is the
+  // separate consent that Art. 12 requires whenever data is moved outside
+  // RF — true here because the AI providers (Anthropic, Voyage AI) are
+  // US-based. They MUST be two distinct checkboxes; the law does not let
+  // us bundle cross-border transfer into the general consent.
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedTransborder, setAcceptedTransborder] = useState(false);
+  const transborderId = `${formId}-transborder`;
 
   useEffect(() => {
     isGoogleAuthEnabled().then(setGoogleEnabled);
@@ -94,6 +102,19 @@ export default function RegisterPage() {
       );
       return;
     }
+    if (!acceptedTransborder) {
+      setError(
+        "Чтобы продолжить, подтвердите отдельное согласие на трансграничную передачу персональных данных."
+      );
+      return;
+    }
+
+    // Mirror both consents into the FormData payload so the server action
+    // can validate them and write them to the audit log — the checkbox
+    // <input>s themselves aren't named (they're React state), so without
+    // this the server has no record of what was agreed to.
+    formData.set("consent_general", "1");
+    formData.set("consent_transborder", "1");
 
     setIsLoading(true);
 
@@ -296,7 +317,8 @@ export default function RegisterPage() {
                 >
                   Публичную оферту
                 </Link>{" "}
-                и даю согласие на обработку персональных данных в соответствии с{" "}
+                и даю согласие на обработку персональных данных на территории
+                Российской Федерации в соответствии с{" "}
                 <Link
                   href="/privacy"
                   target="_blank"
@@ -308,9 +330,41 @@ export default function RegisterPage() {
               </span>
             </label>
 
+            {/* Separate 152-ФЗ Art. 12 consent — cross-border transfer is
+                a distinct legal basis and CANNOT be bundled into the
+                main acceptance above. AI inference and embeddings run on
+                Anthropic and Voyage AI infrastructure in the United States;
+                without this checkbox we'd be in violation. */}
+            <label
+              htmlFor={transborderId}
+              className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted"
+            >
+              <input
+                id={transborderId}
+                type="checkbox"
+                checked={acceptedTransborder}
+                onChange={(e) => setAcceptedTransborder(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary/30"
+              />
+              <span>
+                Даю отдельное согласие на трансграничную передачу персональных
+                данных в США и другие страны для обработки сервисами AI-провайдеров
+                (Anthropic Inc., Voyage AI Innovations Inc. и иными, перечисленными
+                в{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Политике конфиденциальности
+                </Link>
+                ) в соответствии со ст. 12 152-ФЗ.
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={isLoading || !acceptedTerms}
+              disabled={isLoading || !acceptedTerms || !acceptedTransborder}
               aria-busy={isLoading}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
             >

@@ -62,6 +62,7 @@ const ACTION_LABELS: Record<string, string> = {
   "auth.password_reset": "Сброшен пароль",
   "auth.2fa_enabled": "Включена 2FA",
   "auth.2fa_disabled": "Отключена 2FA",
+  "account.signup_consent_granted": "Принято согласие на обработку ПДн",
 };
 
 const ACTION_GROUPS: Array<{ label: string; values: string[] }> = [

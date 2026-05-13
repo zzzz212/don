@@ -14,11 +14,20 @@ import {
 } from "@/lib/password-reset";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit } from "@/lib/audit";
+import { LEGAL_EFFECTIVE_DATE } from "@/lib/legal-info";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  // 152-ФЗ requires explicit consent at the moment of account creation,
+  // with cross-border transfer (Art. 12) as a SEPARATE legal basis from
+  // domestic processing (Art. 9). The client form sets these flags only
+  // after the user ticks both boxes; the server re-validates because a
+  // crafted request bypassing the UI would still hit this code path.
+  const consentGeneral = formData.get("consent_general") === "1";
+  const consentTransborder = formData.get("consent_transborder") === "1";
 
   if (!email || !password) {
     return { error: "Email и пароль обязательны" };
@@ -26,6 +35,16 @@ export async function registerUser(formData: FormData) {
 
   if (password.length < 6) {
     return { error: "Пароль должен быть не менее 6 символов" };
+  }
+
+  if (!consentGeneral || !consentTransborder) {
+    // Generic message — the UI separates the two checkboxes so the user
+    // already knows which one they missed; we don't need to leak which
+    // one was missing back to the server response.
+    return {
+      error:
+        "Для регистрации необходимо принять оба согласия — на обработку персональных данных и на их трансграничную передачу.",
+    };
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -43,6 +62,38 @@ export async function registerUser(formData: FormData) {
     },
     select: { id: true },
   });
+
+  // Persist consent capture to the audit log — this is the legal-grade
+  // record that survives even if the user account is deleted later
+  // (AuditEvent.orgId is nullable + onDelete: SetNull). Best-effort: if
+  // the audit write fails we still let signup proceed, but Sentry catches
+  // the failure via reportError inside logAudit.
+  try {
+    const h = await headers();
+    const ip =
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      h.get("x-real-ip") ??
+      null;
+    const userAgent = h.get("user-agent");
+    void logAudit({
+      orgId: null,
+      userId: newUser.id,
+      action: "account.signup_consent_granted",
+      target: newUser.id,
+      targetType: "user",
+      payload: {
+        consentGeneral,
+        consentTransborder,
+        legalEffectiveDate: LEGAL_EFFECTIVE_DATE,
+        provider: "credentials",
+      },
+      ip,
+      userAgent,
+    });
+  } catch {
+    // headers() can rarely throw outside a request scope — never block
+    // signup on it. logAudit itself is also already swallow-and-report.
+  }
 
   // Fire-and-forget: don't block sign-in if mail fails. sendEmail() never
   // throws — errors are reported to telemetry inside the helper.

@@ -45,7 +45,11 @@ export type AuditAction =
   // Account security
   | "auth.password_reset"
   | "auth.2fa_enabled"
-  | "auth.2fa_disabled";
+  | "auth.2fa_disabled"
+  // 152-ФЗ consent capture at signup. payload records which legal-page
+  // version the user agreed to and whether they granted the separate
+  // cross-border-transfer consent required by Art. 12 of 152-ФЗ.
+  | "account.signup_consent_granted";
 
 export type TargetType =
   | "workspace"
