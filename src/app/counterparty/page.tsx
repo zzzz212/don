@@ -331,41 +331,25 @@ export default function CounterpartyPage() {
                 </div>
               </div>
 
-              {/* Risk factors */}
+              {/* Risk factors. Court / debt rows are gated until the real
+                  KAD (api-fns.ru) and FSSP integrations are wired —
+                  showing literal zeros from the stub providers gave users
+                  a false sense of safety on counterparties that actually
+                  had lawsuits or bailiff cases. ЕГРЮЛ-derived signals
+                  stay visible. */}
               <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">
                   Факторы риска
                 </h3>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">
-                      Активные судебные дела
-                    </span>
-                    <span className="font-bold text-lg">
-                      {profile.activeLawsuits}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">
-                      Закрытые судебные дела
-                    </span>
-                    <span className="font-bold text-lg">
-                      {profile.completedLawsuits}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">Проигранные дела</span>
-                    <span className="font-bold text-lg">{profile.lossesCount}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">Наличие долгов</span>
-                    <span className="font-bold">
-                      {profile.debtFound ? "❌ Да" : "✅ Нет"}
-                    </span>
+                  <div
+                    role="status"
+                    className="rounded-lg border border-warning/30 bg-warning-light/50 p-3 text-xs text-warning"
+                  >
+                    Проверка по арбитражным делам (КАД) и исполнительным
+                    производствам (ФССП) скоро будет доступна. Сейчас
+                    показываем только данные из ЕГРЮЛ и DaData.
                   </div>
 
                   {profile.riskFactors.length > 0 && (

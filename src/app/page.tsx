@@ -7,7 +7,6 @@ import {
   Zap,
   CheckCircle,
   ArrowRight,
-  Star,
   FileText,
   Scale,
   Users,
@@ -37,11 +36,14 @@ const features = [
   },
 ];
 
+// Stats are now grounded in things we can actually point at instead
+// of vanity numbers ("99% точность" — измерено где?). Keep them honest:
+// you can defend each value to a sceptical visitor.
 const stats = [
-  { value: "30 сек", label: "Среднее время анализа" },
-  { value: "10x", label: "Дешевле юриста" },
-  { value: "150+", label: "Типов проверок" },
-  { value: "99%", label: "Точность выявления рисков" },
+  { value: "≈ 30 сек", label: "Среднее время анализа договора" },
+  { value: "11", label: "Категорий критичных рисков по ГК РФ" },
+  { value: "20+", label: "Шаблонов готовых договоров" },
+  { value: "ГК РФ", label: "Каждое замечание — со ссылкой на статью" },
 ];
 
 const pricing = [
@@ -94,26 +96,11 @@ const pricing = [
   },
 ];
 
-const reviews = [
-  {
-    name: "Алексей К.",
-    role: "Основатель IT-агентства",
-    text: "Раньше каждый договор с клиентом отправлял юристу за 15 000₽. Теперь проверяю сам за минуту. За год сэкономил больше 200 000₽.",
-    rating: 5,
-  },
-  {
-    name: "Мария С.",
-    role: "Владелица онлайн-школы",
-    text: "ЮрИИст нашёл в договоре аренды пункт, который позволял арендодателю расторгнуть договор в любой момент. Юрист это пропустил.",
-    rating: 5,
-  },
-  {
-    name: "Дмитрий В.",
-    role: "Директор логистической компании",
-    text: "Генерация НДА и договоров подряда — то, что нужно. Заполнил форму, получил готовый документ. Юрист подтвердил качество.",
-    rating: 5,
-  },
-];
+// Reviews intentionally removed from this file. The previous fake
+// testimonials (Алексей К., Мария С., Дмитрий В.) hurt credibility:
+// any visitor familiar with B2B landing pages spots invented quotes
+// instantly. Reinstate this list only with real customers who agreed
+// to be quoted by full name + company.
 
 export default function LandingPage() {
   return (
@@ -251,44 +238,63 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Reviews */}
+      {/* What we actually do — replaces the fake-reviews section. Real
+          testimonials get added back here once we have 5+ paying users
+          who'd let us quote them with name + company. */}
       <section className="py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Нам доверяют предприниматели
+              Как мы это делаем
             </h2>
+            <p className="mt-4 text-lg text-muted">
+              Без магии. Конкретный AI-конвейер под российское право.
+            </p>
           </div>
-          <div className="mt-12 grid gap-8 lg:grid-cols-3">
-            {reviews.map((review) => (
-              <div
-                key={review.name}
-                className="rounded-2xl border border-border bg-card p-6"
-              >
-                <div className="mb-3 flex gap-0.5">
-                  {Array.from({ length: review.rating }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-4 w-4 fill-amber-400 text-amber-400"
-                    />
-                  ))}
-                </div>
-                <p className="text-sm leading-relaxed text-foreground">
-                  &ldquo;{review.text}&rdquo;
-                </p>
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-sm font-bold text-primary">
-                    {review.name[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {review.name}
-                    </p>
-                    <p className="text-xs text-muted">{review.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="mt-12 grid gap-6 sm:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Модель
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">
+                Claude Sonnet 4.6 / Opus 4.7 для анализа. Промпт калиброван
+                на 11 типичных кабальных условий из ГК РФ — штраф за
+                расторжение, односторонняя расторжка, безлимитная неустойка
+                и др.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Хранение
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">
+                Документы загружаются по защищённому соединению, метаданные
+                в Neon Postgres. Прозрачно указываем трансграничную передачу
+                на странице «Конфиденциальность».
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Что AI находит
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">
+                Несоразмерные штрафы (ст. 333 ГК), кабальные условия
+                (ст. 179 ГК), односторонние изменения (ст. 450.1 ГК),
+                отказ от ответственности за умысел (ст. 401 ГК), отсутствие
+                существенных условий (ст. 432 ГК) — со ссылкой на статью.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Чего AI не заменит
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">
+                Судебная стратегия, представительство, регистрация ИС —
+                это к живому юристу. Мы — про быструю предсделочную
+                диагностику и подготовку шаблонов. Ответ носит
+                информационный характер.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -363,16 +369,17 @@ export default function LandingPage() {
           <div className="rounded-3xl bg-gradient-to-br from-primary to-blue-700 px-8 py-16 text-center text-white shadow-2xl shadow-primary/20 sm:px-16">
             <Users className="mx-auto mb-4 h-10 w-10 opacity-80" />
             <h2 className="text-3xl font-bold sm:text-4xl">
-              Присоединяйтесь к 2 000+ предпринимателей
+              Проверить договор за 30 секунд
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-blue-100">
-              Которые уже экономят время и деньги на юридической рутине
+              Загрузите PDF или DOCX — получите заключение с цитатами из ГК РФ.
+              Первые проверки бесплатно, без привязки карты.
             </p>
             <Link
               href="/analyze"
               className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-blue-700 transition-colors hover:bg-blue-50"
             >
-              Начать бесплатно
+              Загрузить договор
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

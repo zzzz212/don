@@ -475,10 +475,10 @@ export default function ReportPage({
                         }`}
                       >
                         {analysis.verdict === "sign"
-                          ? "Можно подписывать"
+                          ? "Низкий уровень риска"
                           : analysis.verdict === "negotiate"
-                            ? "Нужно обсудить и согласовать правки"
-                            : "Подписывать НЕ рекомендуется"}
+                            ? "Средний уровень риска — есть что обсудить"
+                            : "Высокий уровень риска"}
                       </p>
                       {analysis.verdictReason && (
                         <p
@@ -493,6 +493,11 @@ export default function ReportPage({
                           {analysis.verdictReason}
                         </p>
                       )}
+                      <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                        Это автоматическая оценка по тексту договора, а не
+                        юридическая консультация. Перед подписанием значимых
+                        сделок проконсультируйтесь со специалистом.
+                      </p>
                     </div>
                   </div>
                 )}
