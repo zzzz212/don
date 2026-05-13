@@ -92,14 +92,27 @@ export async function GET() {
 
     // MRR: sum of monthly subscription prices for active subs. We don't
     // bill annually yet, so every active sub contributes its plan's
-    // monthly price. If we add annual plans, divide by 12 here.
+    // monthly price. If we add annual plans, divide by 12 here. Plans
+    // unknown to PRICING_KOPECKS (e.g. a future tier or a typo'd row)
+    // are skipped — better to under-report MRR than to crash the
+    // admin dashboard on a stale string.
     const mrrKopecks = activeSubscriptions.reduce((sum, s) => {
-      if (s.plan === "PRO") return sum + PRICING_KOPECKS.PRO;
-      if (s.plan === "BUSINESS") return sum + PRICING_KOPECKS.BUSINESS;
-      return sum;
+      const price =
+        PRICING_KOPECKS[s.plan as keyof typeof PRICING_KOPECKS];
+      return typeof price === "number" ? sum + price : sum;
     }, 0);
 
-    const planCounts: Record<string, number> = { FREE: 0, PRO: 0, BUSINESS: 0 };
+    // planCounts is keyed by raw DB string — legacy "PRO" rows show up
+    // alongside new "PRO_SOLO" / "PRO_TEAM" so we can see the migration
+    // tail at a glance. Initialise every known key to 0 so the response
+    // shape is stable for the UI.
+    const planCounts: Record<string, number> = {
+      FREE: 0,
+      PRO_SOLO: 0,
+      PRO_TEAM: 0,
+      BUSINESS: 0,
+      PRO: 0,
+    };
     for (const row of orgsByPlan) {
       planCounts[row.plan] = (planCounts[row.plan] ?? 0) + row._count;
     }

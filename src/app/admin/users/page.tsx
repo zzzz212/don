@@ -42,14 +42,24 @@ interface UsersResponse {
 
 const PLAN_CHIP: Record<string, { label: string; cls: string; icon: typeof Zap }> = {
   FREE: { label: "Старт", cls: "bg-surface text-muted", icon: Zap },
-  PRO: {
-    label: "Про",
+  PRO_SOLO: {
+    label: "Pro Solo",
+    cls: "bg-primary-light text-primary-dark",
+    icon: Crown,
+  },
+  PRO_TEAM: {
+    label: "Pro Team",
     cls: "bg-primary-light text-primary-dark",
     icon: Crown,
   },
   BUSINESS: {
     label: "Бизнес",
     cls: "bg-warning-light text-warning",
+    icon: Crown,
+  },
+  PRO: {
+    label: "Pro Solo",
+    cls: "bg-primary-light text-primary-dark",
     icon: Crown,
   },
 };
@@ -170,8 +180,10 @@ function UsersPageInner() {
             >
               <option value="">Все тарифы</option>
               <option value="FREE">Старт</option>
-              <option value="PRO">Про</option>
+              <option value="PRO_SOLO">Pro Solo</option>
+              <option value="PRO_TEAM">Pro Team</option>
               <option value="BUSINESS">Бизнес</option>
+              <option value="PRO">Pro (legacy)</option>
             </select>
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground">
               <input

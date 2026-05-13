@@ -38,8 +38,10 @@ interface PaymentsResponse {
 }
 
 const PLAN_LABEL: Record<string, string> = {
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 function formatDateTime(iso: string): string {

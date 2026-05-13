@@ -14,7 +14,7 @@ import {
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { BillingCardSkeleton } from "@/components/skeleton";
-import { TRIAL_DAYS } from "@/lib/legal-info";
+import { TRIAL_DAYS, CONTACTS } from "@/lib/legal-info";
 
 // Russian plural for "день" depending on count — 1 день / 2-4 дня / 5+ дней.
 // The trial UI only needs the singular ("1 день"), few ("2-4 дня") and many
@@ -49,11 +49,18 @@ interface PaymentRow {
   failureReason: string | null;
 }
 
+// Effective plan strings that quota / tier-policy ever resolves to.
+// Legacy "PRO" is still tolerated on the wire (PaidPlan type widens to
+// include it) but the API normalises it to PRO_SOLO before rendering,
+// so the union here stays narrow.
+type EffectivePlanCode = "FREE" | "PRO_SOLO" | "PRO_TEAM" | "BUSINESS";
+type CheckoutPlanCode = "PRO_SOLO" | "PRO_TEAM" | "BUSINESS";
+
 interface BillingStatus {
   orgId: string;
   orgName: string;
-  effectivePlan: "FREE" | "PRO" | "BUSINESS";
-  baselinePlan: "FREE" | "PRO" | "BUSINESS";
+  effectivePlan: EffectivePlanCode;
+  baselinePlan: EffectivePlanCode;
   isTrial: boolean;
   trialEndsAt: string | null;
   trialDaysLeft: number | null;
@@ -64,31 +71,53 @@ interface BillingStatus {
 
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  // Legacy: status API may still surface old "PRO" rows.
+  PRO: "Pro Solo",
 };
 
-const PLAN_PRICE_RUB: Record<"PRO" | "BUSINESS", number> = {
-  PRO: 3990,
+const PLAN_PRICE_RUB: Record<CheckoutPlanCode, number> = {
+  PRO_SOLO: 1990,
+  PRO_TEAM: 4990,
   BUSINESS: 14990,
 };
 
-const PLAN_FEATURES: Record<"PRO" | "BUSINESS", string[]> = {
-  PRO: [
-    "Безлимитный анализ договоров",
+const PLAN_DESCRIPTION: Record<CheckoutPlanCode, string> = {
+  PRO_SOLO: "Для ИП и фрилансеров",
+  PRO_TEAM: "Для команд до 5 человек",
+  BUSINESS: "Для компаний и юр.отделов",
+};
+
+const PLAN_FEATURES: Record<CheckoutPlanCode, string[]> = {
+  PRO_SOLO: [
+    "До 100 анализов договоров в месяц",
     "Безлимитная генерация документов",
     "OCR для скан-PDF",
     "Векторный поиск по договорам",
     "Приоритетная поддержка",
   ],
-  BUSINESS: [
-    "Всё из тарифа «Про»",
-    "До 10 участников рабочего пространства",
+  PRO_TEAM: [
+    "Всё из Pro Solo",
+    "До 5 участников рабочего пространства",
+    "500 анализов в месяц на команду",
     "Совместная история анализов",
-    "API-доступ (после релиза)",
+  ],
+  BUSINESS: [
+    "Всё из Pro Team",
+    "Безлимитные анализы",
+    "Анализ на модели Opus (точнее, дороже)",
+    "Расширенная история (без ограничения)",
     "Персональный менеджер",
   ],
 };
+
+const CHECKOUT_PLANS: readonly CheckoutPlanCode[] = [
+  "PRO_SOLO",
+  "PRO_TEAM",
+  "BUSINESS",
+];
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -144,7 +173,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<
-    "PRO" | "BUSINESS" | null
+    CheckoutPlanCode | null
   >(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [trialActivating, setTrialActivating] = useState(false);
@@ -200,7 +229,7 @@ export default function BillingPage() {
     }
   };
 
-  const handleCheckout = async (plan: "PRO" | "BUSINESS") => {
+  const handleCheckout = async (plan: CheckoutPlanCode) => {
     setCheckoutLoading(plan);
     setCheckoutError(null);
     try {
@@ -377,14 +406,23 @@ export default function BillingPage() {
                 </div>
               )}
 
-              <section className="mb-10 grid gap-6 md:grid-cols-2">
-                {(["PRO", "BUSINESS"] as const).map((plan) => {
+              <section className="mb-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {CHECKOUT_PLANS.map((plan) => {
+                  // Subscription.plan may still be the legacy "PRO" string
+                  // for grandfathered customers — treat it as PRO_SOLO so
+                  // the "current tariff" highlight is correct.
+                  const subPlan = data.subscription?.plan ?? null;
+                  const normalisedSubPlan =
+                    subPlan === "PRO" ? "PRO_SOLO" : subPlan;
                   const isCurrent =
-                    data.subscription?.plan === plan &&
+                    normalisedSubPlan === plan &&
                     data.subscription?.status === "ACTIVE" &&
                     new Date(data.subscription.currentPeriodEnd).getTime() >
                       Date.now();
-                  const popular = plan === "PRO";
+                  // PRO_SOLO is the popularly marketed tier — most signups
+                  // start here. Pro Team gets ringed too, secondary, when
+                  // we have the team-pricing story.
+                  const popular = plan === "PRO_SOLO";
                   return (
                     <div
                       key={plan}
@@ -399,9 +437,7 @@ export default function BillingPage() {
                         {PLAN_LABEL[plan]}
                       </h3>
                       <p className="mt-1 text-sm text-muted">
-                        {plan === "PRO"
-                          ? "Для ИП и фрилансеров"
-                          : "Для компаний до 10 человек"}
+                        {PLAN_DESCRIPTION[plan]}
                       </p>
                       <div className="mt-4">
                         <span className="text-3xl font-extrabold text-foreground">
@@ -448,6 +484,31 @@ export default function BillingPage() {
                     </div>
                   );
                 })}
+              </section>
+
+              {/* Enterprise is intentionally not a checkout target — the
+                  sales conversation happens by email (SLA, on-prem,
+                  custom data residency are case-by-case). Keeps the
+                  pricing page honest about what you can self-serve. */}
+              <section className="mb-10 rounded-2xl border border-border bg-surface/30 p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">
+                      Enterprise
+                    </h3>
+                    <p className="mt-1 text-sm text-muted">
+                      SLA 99.9%, on-premise / частное облако, индивидуальные
+                      условия по данным, отдельный контракт. От 20 рабочих
+                      мест.
+                    </p>
+                  </div>
+                  <a
+                    href={`mailto:${CONTACTS.support}?subject=Enterprise%20%E2%80%94%20%D0%97%D0%B0%D0%BF%D1%80%D0%BE%D1%81%20%D1%83%D1%81%D0%BB%D0%BE%D0%B2%D0%B8%D0%B9`}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  >
+                    Связаться <ArrowRight className="h-4 w-4" />
+                  </a>
+                </div>
               </section>
 
               {/* Payment history */}

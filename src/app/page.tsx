@@ -46,6 +46,10 @@ const stats = [
   { value: "ГК РФ", label: "Каждое замечание — со ссылкой на статью" },
 ];
 
+// Pricing tiles. Numbers and limits MUST match src/lib/legal-info.ts
+// PRICING_RUB and src/lib/plans.ts PLAN_LIMITS — those are the source
+// of truth for billing / quota; this landing block is a marketing
+// mirror that gets edited alongside.
 const pricing = [
   {
     name: "Старт",
@@ -53,8 +57,8 @@ const pricing = [
     period: "",
     description: "Для знакомства с сервисом",
     features: [
-      "3 анализа договоров в месяц",
-      "2 генерации документов",
+      "10 анализов договоров в месяц",
+      "5 генераций документов",
       "Базовый отчёт о рисках",
     ],
     cta: "Начать бесплатно",
@@ -62,33 +66,47 @@ const pricing = [
     popular: false,
   },
   {
-    name: "Про",
-    price: "3 990",
+    name: "Pro Solo",
+    price: "1 990",
     period: "/ мес",
     description: "Для ИП и фрилансеров",
     features: [
-      "Безлимитный анализ договоров",
+      "100 анализов договоров в месяц",
       "Безлимитная генерация документов",
-      "Расширенный отчёт с рекомендациями",
+      "OCR для скан-PDF",
+      "Векторный поиск по договорам",
       "Приоритетная поддержка",
-      "Экспорт отчётов в PDF",
     ],
-    cta: "Подключить Про",
+    cta: "Подключить Pro Solo",
     href: "/billing",
     popular: true,
+  },
+  {
+    name: "Pro Team",
+    price: "4 990",
+    period: "/ мес",
+    description: "Для команд до 5 человек",
+    features: [
+      "Всё из Pro Solo",
+      "До 5 участников",
+      "500 анализов в месяц на команду",
+      "Совместная история анализов",
+    ],
+    cta: "Подключить Pro Team",
+    href: "/billing",
+    popular: false,
   },
   {
     name: "Бизнес",
     price: "14 990",
     period: "/ мес",
-    description: "Для компаний до 50 человек",
+    description: "Для компаний и юр.отделов",
     features: [
-      "Всё из тарифа Про",
-      "До 10 пользователей",
-      "Командный дашборд",
-      "API-доступ",
+      "Всё из Pro Team",
+      "Безлимитные анализы",
+      "Анализ на модели Opus",
+      "Расширенная история",
       "Персональный менеджер",
-      "SLA 99.9%",
     ],
     cta: "Перейти на Бизнес",
     href: "/billing",
@@ -307,10 +325,10 @@ export default function LandingPage() {
               Простые тарифы
             </h2>
             <p className="mt-4 text-lg text-muted">
-              В 10 раз дешевле юриста. Первые 3 анализа бесплатно.
+              В 10 раз дешевле юриста. Первые 10 анализов бесплатно.
             </p>
           </div>
-          <div className="mt-12 grid gap-8 lg:grid-cols-3">
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {pricing.map((plan) => (
               <div
                 key={plan.name}

@@ -56,8 +56,10 @@ interface UsageResponse {
 
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 const FEATURE_META: Record<
@@ -179,7 +181,7 @@ export default function OrgUsagePage() {
                         ) : (
                           <Crown className="h-4 w-4" />
                         )}
-                        {PLAN_LABEL[data.plan.effective]}
+                        {PLAN_LABEL[data.plan.effective] ?? data.plan.effective}
                       </span>
                       {data.plan.isTrial &&
                         typeof data.plan.trialDaysLeft === "number" && (

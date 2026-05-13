@@ -24,15 +24,20 @@ import {
 } from "lucide-react";
 
 interface BillingSummary {
-  plan: "FREE" | "PRO" | "BUSINESS";
+  // Accepts both new ("PRO_SOLO" / "PRO_TEAM") and legacy ("PRO") strings
+  // from /api/account/plan — the chip falls back to the raw key if a
+  // future tier slips through before we relabel here.
+  plan: string;
   isTrial: boolean;
   trialDaysLeft: number | null;
 }
 
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 export function AccountMenu() {
@@ -171,7 +176,7 @@ export function AccountMenu() {
                         : "bg-primary-light text-primary-dark"
                     }`}
                   >
-                    {PLAN_LABEL[billing.plan]}
+                    {PLAN_LABEL[billing.plan] ?? billing.plan}
                   </span>
                   {billing.isTrial &&
                     typeof billing.trialDaysLeft === "number" && (

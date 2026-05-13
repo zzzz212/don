@@ -15,9 +15,17 @@ interface Options {
   periodEnd: string;
 }
 
+// Human-readable label for the email subject + body. Mirrors PLAN_LABEL
+// in legal-info but lives here so the email template doesn't pick up
+// future UI-only relabelling (e.g. localising "Pro Solo" → "Pro Соло"
+// in the marketing UI shouldn't change the legal receipt text).
 const PLAN_LABEL: Record<PaidPlan, string> = {
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  // Legacy: any historical Subscription.plan = 'PRO' replays through
+  // here when we re-send a receipt; show the same label as PRO_SOLO.
+  PRO: "Pro Solo",
 };
 
 function formatRub(amount: number): string {

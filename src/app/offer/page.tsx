@@ -33,8 +33,15 @@ const TOC = [
   { id: "details", title: "Реквизиты исполнителя" },
 ];
 
-const PRICE_PRO = new Intl.NumberFormat("ru-RU").format(PRICING_RUB.PRO);
-const PRICE_BUSINESS = new Intl.NumberFormat("ru-RU").format(PRICING_RUB.BUSINESS);
+const PRICE_PRO_SOLO = new Intl.NumberFormat("ru-RU").format(
+  PRICING_RUB.PRO_SOLO
+);
+const PRICE_PRO_TEAM = new Intl.NumberFormat("ru-RU").format(
+  PRICING_RUB.PRO_TEAM
+);
+const PRICE_BUSINESS = new Intl.NumberFormat("ru-RU").format(
+  PRICING_RUB.BUSINESS
+);
 
 export default function OfferPage() {
   return (
@@ -122,17 +129,27 @@ export default function OfferPage() {
           <tr>
             <td>Старт</td>
             <td>0 (бесплатно)</td>
-            <td>Знакомство с Сервисом, ограниченный функционал</td>
+            <td>Знакомство с Сервисом: 10 анализов договоров и 5 генераций документов в месяц</td>
           </tr>
           <tr>
-            <td>Про</td>
-            <td>{PRICE_PRO}</td>
-            <td>Безлимитный анализ и генерация документов, OCR, приоритетная поддержка</td>
+            <td>Pro Solo</td>
+            <td>{PRICE_PRO_SOLO}</td>
+            <td>До 100 анализов договоров в месяц, безлимит на генерацию и чат, OCR, приоритетная поддержка</td>
+          </tr>
+          <tr>
+            <td>Pro Team</td>
+            <td>{PRICE_PRO_TEAM}</td>
+            <td>До 5 участников рабочего пространства, общий пул из 500 анализов в месяц, командные функции</td>
           </tr>
           <tr>
             <td>Бизнес</td>
             <td>{PRICE_BUSINESS}</td>
-            <td>Возможности тарифа «Про» + до 10 участников рабочего пространства, командные функции</td>
+            <td>Безлимитные анализы (на модели Opus) и генерация, расширенная история, персональный менеджер</td>
+          </tr>
+          <tr>
+            <td>Enterprise</td>
+            <td>По запросу</td>
+            <td>SLA, on-premise / частное облако, индивидуальные условия по данным. От 20 рабочих мест</td>
           </tr>
         </tbody>
       </table>

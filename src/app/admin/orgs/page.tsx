@@ -45,14 +45,26 @@ interface OrgsResponse {
 
 const PLAN_CHIP: Record<string, { label: string; cls: string; icon: typeof Zap }> = {
   FREE: { label: "Старт", cls: "bg-surface text-muted", icon: Zap },
-  PRO: {
-    label: "Про",
+  PRO_SOLO: {
+    label: "Pro Solo",
+    cls: "bg-primary-light text-primary-dark",
+    icon: Crown,
+  },
+  PRO_TEAM: {
+    label: "Pro Team",
     cls: "bg-primary-light text-primary-dark",
     icon: Crown,
   },
   BUSINESS: {
     label: "Бизнес",
     cls: "bg-warning-light text-warning",
+    icon: Crown,
+  },
+  // Legacy rows still surface as "PRO" in the DB; map to Pro Solo
+  // visually so the admin filter actually finds them.
+  PRO: {
+    label: "Pro Solo",
+    cls: "bg-primary-light text-primary-dark",
     icon: Crown,
   },
 };
@@ -153,8 +165,10 @@ function OrgsPageInner() {
             >
               <option value="">Все тарифы</option>
               <option value="FREE">Старт</option>
-              <option value="PRO">Про</option>
+              <option value="PRO_SOLO">Pro Solo</option>
+              <option value="PRO_TEAM">Pro Team</option>
               <option value="BUSINESS">Бизнес</option>
+              <option value="PRO">Pro (legacy)</option>
             </select>
           </div>
 

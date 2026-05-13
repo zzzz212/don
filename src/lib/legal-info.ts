@@ -58,22 +58,67 @@ export const CONTACTS = {
   noReply: "no-reply@juriist.ru",
 } as const;
 
-/** Pricing in RUB / month. Single source of truth — referenced from /offer and the landing pricing block. */
+/**
+ * Pricing in RUB / month. Single source of truth — referenced from /offer
+ * and the landing pricing block.
+ *
+ * Legacy "PRO" is kept as an alias to PRO_SOLO so old code paths (email
+ * receipts replaying historical Subscription rows, admin tools dumping
+ * raw plan strings, etc.) keep producing valid amounts. New checkouts
+ * use PRO_SOLO / PRO_TEAM / BUSINESS exclusively.
+ */
 export const PRICING_RUB = {
-  PRO: 3990,
+  PRO_SOLO: 1990,
+  PRO_TEAM: 4990,
   BUSINESS: 14990,
+  // Legacy alias — same price as PRO_SOLO. Anything still reading "PRO"
+  // (subscription rows, receipt emails for past payments) gets sensible
+  // numbers without a destructive backfill.
+  PRO: 1990,
 } as const;
 
 /** Pricing in kopecks (integer) — used for billing math to dodge float drift. */
 export const PRICING_KOPECKS = {
-  PRO: PRICING_RUB.PRO * 100,
+  PRO_SOLO: PRICING_RUB.PRO_SOLO * 100,
+  PRO_TEAM: PRICING_RUB.PRO_TEAM * 100,
   BUSINESS: PRICING_RUB.BUSINESS * 100,
+  PRO: PRICING_RUB.PRO * 100,
 } as const;
 
-export type PaidPlan = "PRO" | "BUSINESS";
+/**
+ * Canonical paid-plan strings. Legacy "PRO" is accepted at the type level
+ * so existing call sites passing it (emails, audit logs, historical
+ * subscriptions) continue to typecheck.
+ */
+export type PaidPlan = "PRO_SOLO" | "PRO_TEAM" | "BUSINESS" | "PRO";
 
 export function isPaidPlan(plan: string): plan is PaidPlan {
-  return plan === "PRO" || plan === "BUSINESS";
+  return (
+    plan === "PRO_SOLO" ||
+    plan === "PRO_TEAM" ||
+    plan === "BUSINESS" ||
+    plan === "PRO"
+  );
+}
+
+/**
+ * Human-readable plan label. Single source of truth for the UI chrome
+ * (account menu, billing page, admin tools, email subject lines).
+ * Legacy "PRO" maps to the PRO_SOLO label since that's its current
+ * pricing alias.
+ */
+export const PLAN_LABEL: Record<string, string> = {
+  FREE: "Старт",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
+  BUSINESS: "Бизнес",
+  // Legacy
+  PRO: "Pro Solo",
+};
+
+export function planLabel(plan: string | null | undefined): string {
+  if (!plan) return PLAN_LABEL.FREE;
+  return PLAN_LABEL[plan] ?? plan;
 }
 
 /** Trial period, in days. Granted ONLY via explicit activation through

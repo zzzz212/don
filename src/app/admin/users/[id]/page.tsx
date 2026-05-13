@@ -71,10 +71,17 @@ interface UserDetail {
   }>;
 }
 
+// Plan tier label set kept in sync with src/lib/legal-info.ts PLAN_LABEL.
+// We mirror it locally rather than import to avoid pulling a server-only
+// module into this "use client" page.
+type AdminPlanCode = "FREE" | "PRO_SOLO" | "PRO_TEAM" | "BUSINESS";
+
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 function formatDateTime(iso: string): string {
@@ -173,7 +180,7 @@ export default function AdminUserDetailPage() {
 
   const handleChangePlan = async (
     orgId: string,
-    plan: "FREE" | "PRO" | "BUSINESS"
+    plan: AdminPlanCode
   ) => {
     if (
       !confirm(
@@ -398,7 +405,7 @@ interface WorkspaceCardProps {
   isOwner: boolean;
   acting: string | null;
   onExtendTrial: (days: number) => void;
-  onChangePlan: (plan: "FREE" | "PRO" | "BUSINESS") => void;
+  onChangePlan: (plan: AdminPlanCode) => void;
 }
 
 function WorkspaceCard({
@@ -409,7 +416,14 @@ function WorkspaceCard({
   onChangePlan,
 }: WorkspaceCardProps) {
   const { org, role } = membership;
-  const planChip = org.plan === "PRO" ? "bg-primary-light text-primary-dark" : org.plan === "BUSINESS" ? "bg-warning-light text-warning" : "bg-surface text-muted";
+  const planChip =
+    org.plan === "BUSINESS"
+      ? "bg-warning-light text-warning"
+      : org.plan === "PRO_SOLO" ||
+          org.plan === "PRO_TEAM" ||
+          org.plan === "PRO"
+        ? "bg-primary-light text-primary-dark"
+        : "bg-surface text-muted";
   const PlanIcon =
     org.plan === "FREE" ? Zap : Crown;
   const trialActive =
@@ -462,7 +476,7 @@ function WorkspaceCard({
             <select
               defaultValue={org.plan}
               onChange={(e) => {
-                const v = e.target.value as "FREE" | "PRO" | "BUSINESS";
+                const v = e.target.value as AdminPlanCode;
                 if (v !== org.plan) onChangePlan(v);
               }}
               disabled={acting === `plan-${org.id}`}
@@ -470,7 +484,8 @@ function WorkspaceCard({
               title="Сменить тариф вручную (без оплаты)"
             >
               <option value="FREE">→ Старт</option>
-              <option value="PRO">→ Про</option>
+              <option value="PRO_SOLO">→ Pro Solo</option>
+              <option value="PRO_TEAM">→ Pro Team</option>
               <option value="BUSINESS">→ Бизнес</option>
             </select>
           </div>
