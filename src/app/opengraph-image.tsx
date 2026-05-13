@@ -15,7 +15,7 @@ import { ImageResponse } from "next/og";
 // Inlined fonts would bloat the route — we lean on Inter via system
 // fallbacks (next/og's default).
 
-export const alt = "ЮрИИст — AI-юрист для бизнеса";
+export const alt = "ЮрИИст — аудит договоров со ссылками на ГК РФ";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -74,15 +74,15 @@ export default function OpengraphImage() {
         {/* Headline */}
         <div
           style={{
-            fontSize: 96,
+            fontSize: 92,
             fontWeight: 800,
             color: "#0f172a",
             lineHeight: 1.05,
             letterSpacing: -3,
-            maxWidth: 980,
+            maxWidth: 1000,
           }}
         >
-          AI-юрист, который проверит договор за 30 секунд
+          Аудит договоров. Со ссылками на закон.
         </div>
 
         {/* Subhead */}
@@ -91,12 +91,12 @@ export default function OpengraphImage() {
             marginTop: 28,
             fontSize: 32,
             color: "#475569",
-            maxWidth: 860,
+            maxWidth: 880,
             lineHeight: 1.35,
           }}
         >
-          Анализ рисков, генерация документов, проверка контрагентов — в одном
-          сервисе.
+          60+ статей ГК и ППВС в каждом отчёте. Готовые формулировки правок.
+          10 проверок в месяц бесплатно.
         </div>
 
         {/* Footer mark */}

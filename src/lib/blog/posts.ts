@@ -14,6 +14,9 @@ import type { ReactNode } from "react";
 import { rentalEssentials } from "./content/rental-essentials";
 import { ndaForIt } from "./content/nda-for-it";
 import { gphVsIp } from "./content/gph-vs-ip";
+import { servicesContract } from "./content/services-contract";
+import { marketplaceAgent } from "./content/marketplace-agent";
+import { supplyContract } from "./content/supply-contract";
 
 export interface BlogPost {
   slug: string;
@@ -41,6 +44,9 @@ export interface BlogPost {
 }
 
 export const POSTS: BlogPost[] = [
+  servicesContract,
+  marketplaceAgent,
+  supplyContract,
   gphVsIp,
   ndaForIt,
   rentalEssentials,

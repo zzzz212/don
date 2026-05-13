@@ -63,6 +63,8 @@ const ACTION_LABELS: Record<string, string> = {
   "auth.2fa_enabled": "Включена 2FA",
   "auth.2fa_disabled": "Отключена 2FA",
   "account.signup_consent_granted": "Принято согласие на обработку ПДн",
+  "email.trial_expiring_sent": "Письмо об окончании триала",
+  "email.trial_expired_sent": "Письмо о завершении триала",
 };
 
 const ACTION_GROUPS: Array<{ label: string; values: string[] }> = [

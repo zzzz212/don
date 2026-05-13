@@ -49,7 +49,12 @@ export type AuditAction =
   // 152-ФЗ consent capture at signup. payload records which legal-page
   // version the user agreed to and whether they granted the separate
   // cross-border-transfer consent required by Art. 12 of 152-ФЗ.
-  | "account.signup_consent_granted";
+  | "account.signup_consent_granted"
+  // Lifecycle emails sent by the billing-reminders cron. Used both as
+  // a delivery audit and as a dedup key — the cron checks for the
+  // most recent send before re-firing.
+  | "email.trial_expiring_sent"
+  | "email.trial_expired_sent";
 
 export type TargetType =
   | "workspace"
