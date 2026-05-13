@@ -139,7 +139,17 @@ export default function AnalyzePage() {
                   Анализ договора
                 </h1>
                 <p className="mt-2 text-muted">
-                  Загрузите договор — AI проверит каждый пункт и найдёт риски
+                  Загрузите PDF или DOCX. Модель пройдёт по тексту со
+                  справочником ГК РФ и вернёт структурированный отчёт.
+                </p>
+                <p className="mt-2 text-xs text-muted">
+                  Хотите сначала посмотреть формат?{" "}
+                  <Link
+                    href="/sample-report"
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Открыть пример отчёта →
+                  </Link>
                 </p>
               </div>
 
@@ -231,10 +241,10 @@ export default function AnalyzePage() {
                 </div>
               </div>
               <h2 className="text-xl font-bold text-foreground">
-                AI анализирует ваш договор
+                Проверяем ваш договор
               </h2>
               <p className="mt-2 text-sm text-muted">
-                Это займёт около 30 секунд
+                Обычно 30–60 секунд. Не закрывайте вкладку.
               </p>
 
               <div className="mx-auto mt-10 max-w-md">

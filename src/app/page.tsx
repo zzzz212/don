@@ -169,7 +169,13 @@ export default function LandingPage() {
               </Link>
             </div>
             <p className="animate-fade-in stagger-4 mt-6 text-xs text-muted">
-              10 анализов в месяц бесплатно. Без привязки карты.
+              10 анализов в месяц бесплатно. Без привязки карты.{" "}
+              <Link
+                href="/sample-report"
+                className="font-semibold text-primary hover:underline"
+              >
+                Посмотреть пример отчёта →
+              </Link>
             </p>
           </div>
         </div>
