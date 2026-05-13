@@ -2,48 +2,52 @@
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import {
-  Shield,
   FileSearch,
-  Zap,
   CheckCircle,
   ArrowRight,
   FileText,
   Scale,
-  Users,
+  ScrollText,
+  ChevronDown,
 } from "lucide-react";
 
+// Three concrete capabilities, not "AI does everything" handwave. The
+// third card got rewritten from "Юридический скоринг" (which is just
+// part of analysis, not a separate feature) to "Сравнение версий" —
+// it's actually a distinct piece of the product and a real workflow
+// для юристов и менеджеров.
 const features = [
   {
     icon: FileSearch,
-    title: "Анализ договоров",
+    title: "Аудит договоров",
     description:
-      "Загрузите договор — AI найдёт опасные пункты, скрытые риски и предложит конкретные правки за 30 секунд.",
+      "Загрузите PDF или DOCX — модель находит несоразмерные штрафы, кабальные условия, пропущенные существенные пункты. Каждое замечание со ссылкой на статью ГК РФ.",
     href: "/analyze",
   },
   {
     icon: FileText,
-    title: "Генерация документов",
+    title: "Шаблоны под право РФ",
     description:
-      "Создавайте типовые документы — НДА, аренда, купля-продажа — заполнив простую форму. Юридически грамотно.",
+      "20 типов договоров — NDA, аренда, услуги, поставка, подряд, трудовой. Все формулировки соответствуют статьям ГК РФ и ТК РФ. После генерации — точечная AI-доработка под ваш кейс.",
     href: "/templates",
   },
   {
-    icon: Shield,
-    title: "Юридический скоринг",
+    icon: ScrollText,
+    title: "История и сравнение версий",
     description:
-      "Каждый договор получает оценку от 1 до 10. Вы сразу видите, безопасно ли подписывать.",
-    href: "/analyze",
+      "Каждая правка договора сохраняется. Версии сравниваются построчно с подсветкой изменений. Откат на любую предыдущую редакцию — одним кликом.",
+    href: "/templates",
   },
 ];
 
-// Stats are now grounded in things we can actually point at instead
-// of vanity numbers ("99% точность" — измерено где?). Keep them honest:
-// you can defend each value to a sceptical visitor.
+// Stats grounded in things we can actually point at — every number is
+// defensible to a sceptical visitor. No "99% точность", no "10 000
+// довольных клиентов" while we're still pre-launch.
 const stats = [
-  { value: "≈ 30 сек", label: "Среднее время анализа договора" },
-  { value: "11", label: "Категорий критичных рисков по ГК РФ" },
-  { value: "20+", label: "Шаблонов готовых договоров" },
-  { value: "ГК РФ", label: "Каждое замечание — со ссылкой на статью" },
+  { value: "30–60 сек", label: "Время анализа договора средней длины" },
+  { value: "60+", label: "Статей ГК / ППВС в справочнике модели" },
+  { value: "20", label: "Готовых шаблонов договоров" },
+  { value: "Сонэт 4.6", label: "Модель Claude для платных тарифов" },
 ];
 
 // Pricing tiles. Numbers and limits MUST match src/lib/legal-info.ts
@@ -125,21 +129,28 @@ export default function LandingPage() {
     <div className="flex min-h-full flex-col">
       <Header />
 
-      {/* Hero */}
+      {/* Hero. Deliberately understated — the "нового поколения" badge
+          was the giveaway that the page was AI-marketing-fluff. Lead
+          with what the product actually does, in legalese a senior
+          юрист would recognise as competent. */}
       <section className="relative overflow-hidden bg-hero-gradient py-20 lg:py-28">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary-light/50 px-4 py-1.5 text-sm font-medium text-primary-dark">
-              <Zap className="h-4 w-4" />
-              AI-юрист нового поколения
+            <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+              <Scale className="h-3.5 w-3.5" aria-hidden="true" />
+              Договорное право РФ · ГК · ППВС
             </div>
             <h1 className="animate-fade-in stagger-1 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Проверь договор
-              <span className="text-primary"> за 30 секунд</span>
+              Аудит договоров.{" "}
+              <span className="text-primary">
+                Со ссылками на закон.
+              </span>
             </h1>
             <p className="animate-fade-in stagger-2 mt-6 text-lg text-muted sm:text-xl max-w-2xl mx-auto leading-relaxed">
-              Загрузите договор — искусственный интеллект найдёт опасные пункты,
-              оценит риски и предложит правки. В 10 раз дешевле юриста.
+              Загрузите PDF или DOCX. Модель пройдёт по договору со справочником
+              из 60+ статей ГК РФ и постановлений Пленумов ВС — отдельно
+              отметит несоразмерные штрафы, кабальные условия, пропущенные
+              существенные пункты. Каждый риск с цитатой и готовой правкой.
             </p>
             <div className="animate-fade-in stagger-3 mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <Link
@@ -157,6 +168,9 @@ export default function LandingPage() {
                 Создать документ
               </Link>
             </div>
+            <p className="animate-fade-in stagger-4 mt-6 text-xs text-muted">
+              10 анализов в месяц бесплатно. Без привязки карты.
+            </p>
           </div>
         </div>
       </section>
@@ -208,7 +222,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* How it works. Each step describes what specifically happens —
+          file format, the model and reference base, the structure of
+          the output. No "AI does its magic" black-box step. */}
       <section className="bg-surface/50 py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
@@ -216,28 +232,28 @@ export default function LandingPage() {
               Как это работает
             </h2>
             <p className="mt-4 text-lg text-muted">
-              Три простых шага до полного анализа
+              Без чёрного ящика. Конкретные шаги — конкретный результат.
             </p>
           </div>
           <div className="mt-16 grid gap-8 lg:grid-cols-3">
             {[
               {
                 step: "1",
-                title: "Загрузите договор",
+                title: "Загрузите файл",
                 description:
-                  "Перетащите файл PDF или DOCX в окно загрузки. Поддерживаются любые типы договоров.",
+                  "PDF или DOCX до 30 страниц. Если PDF скан — подключается Yandex OCR (на платных тарифах). Текст и метаданные шифруются по TLS.",
               },
               {
                 step: "2",
-                title: "AI анализирует",
+                title: "Модель проходит по договору",
                 description:
-                  "Искусственный интеллект читает каждый пункт, сверяет с законодательством РФ и находит риски.",
+                  "Claude Sonnet 4.6 (Opus 4.7 на «Бизнесе») сверяет каждый пункт со встроенным справочником из 60+ статей ГК РФ и Постановлений Пленумов ВС. Длинные договоры режутся на главы и обрабатываются параллельно с дедупликацией.",
               },
               {
                 step: "3",
-                title: "Получите отчёт",
+                title: "Структурированный отчёт",
                 description:
-                  "Подробный отчёт с оценкой, списком рисков и конкретными рекомендациями по каждому пункту.",
+                  "Уровень риска (низкий / средний / высокий), список замечаний с цитатой и точной статьёй, готовый юридический текст правки, чек-лист «что проверить до подписания». Применить правку — одна кнопка, экспорт в DOCX.",
               },
             ].map((item) => (
               <div key={item.step} className="relative text-center">
@@ -272,45 +288,49 @@ export default function LandingPage() {
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Модель
+                Модель и справочник
               </p>
               <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Claude Sonnet 4.6 / Opus 4.7 для анализа. Промпт калиброван
-                на 11 типичных кабальных условий из ГК РФ — штраф за
-                расторжение, односторонняя расторжка, безлимитная неустойка
-                и др.
+                Claude Sonnet 4.6 / Opus 4.7. В системный промпт зашит
+                справочник из 60+ статей ГК РФ и постановлений Пленумов
+                ВС — модель цитирует статьи из этого списка, а не
+                «вспоминает» номера. Меньше выдуманных ссылок,
+                стабильное качество от запроса к запросу.
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Хранение
+                Калибровка под РФ
               </p>
               <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Документы загружаются по защищённому соединению, метаданные
-                в Neon Postgres. Прозрачно указываем трансграничную передачу
-                на странице «Конфиденциальность».
+                Промпт настроен на 11 кабальных конструкций из российской
+                судебной практики: штраф за расторжение (ст. 333, 179, 450.1),
+                односторонняя расторжка (ст. 450.1), безлимитная неустойка
+                (ст. 333), отказ от ответственности за умысел (ст. 401, п. 4)
+                и др. Каждый паттерн со статьёй.
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Что AI находит
+                Хранение и передача
               </p>
               <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Несоразмерные штрафы (ст. 333 ГК), кабальные условия
-                (ст. 179 ГК), односторонние изменения (ст. 450.1 ГК),
-                отказ от ответственности за умысел (ст. 401 ГК), отсутствие
-                существенных условий (ст. 432 ГК) — со ссылкой на статью.
+                Документы по TLS, метаданные в Neon Postgres. Инференс —
+                на серверах Anthropic / Voyage в США; трансграничная
+                передача явно фиксируется отдельным согласием по
+                ст. 12 152-ФЗ при регистрации.
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Чего AI не заменит
+                Чего сервис не делает
               </p>
               <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Судебная стратегия, представительство, регистрация ИС —
-                это к живому юристу. Мы — про быструю предсделочную
-                диагностику и подготовку шаблонов. Ответ носит
-                информационный характер.
+                Не представляет в суде, не подаёт документы в Росреестр
+                и Роспатент, не выстраивает налоговую структуру.
+                Это к живому юристу. Мы — предсделочная диагностика,
+                шаблоны и история правок. Отчёт носит информационный
+                характер (ст. 779 ГК РФ).
               </p>
             </div>
           </div>
@@ -325,7 +345,8 @@ export default function LandingPage() {
               Простые тарифы
             </h2>
             <p className="mt-4 text-lg text-muted">
-              В 10 раз дешевле юриста. Первые 10 анализов бесплатно.
+              От 1 990 ₽/мес. Первые 10 анализов в месяц — бесплатно, без
+              карты.
             </p>
           </div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -381,17 +402,82 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ. Addresses the questions that show up in every B2B SaaS
+          sales conversation: "AI это надёжно?", "А если ошибётся?",
+          "Кто отвечает?", "Что с данными?". Skipping these is what
+          makes a site read как лендинг типового AI-стартапа. */}
+      <section id="faq" className="py-20 lg:py-28">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              Частые вопросы
+            </h2>
+            <p className="mt-4 text-lg text-muted">
+              Прямые ответы. Без маркетинговых формулировок.
+            </p>
+          </div>
+          <div className="mt-12 space-y-3">
+            {[
+              {
+                q: "AI может ошибиться. Кто несёт ответственность за решение подписать?",
+                a: "Ответственность за подписание — на вас или вашем юристе. Наш отчёт — автоматическая оценка рисков, формально не является юридической консультацией (ст. 779 ГК РФ). Мы фиксируем это в дисклеймере под каждым отчётом и в публичной оферте. Для сделок с существенной ценой обязательно покажите отчёт живому юристу.",
+              },
+              {
+                q: "Чем это отличается от ChatGPT, в который можно вставить договор?",
+                a: "Тремя вещами. (1) Промпт калиброван под кабальные конструкции из российской судебной практики — 11 паттернов критичных нарушений, каждый со статьёй. (2) В системе зашит справочник из 60+ статей ГК и ППВС, модель сверяет с ним номера — реже выдумывает несуществующие пункты. (3) Структурированный JSON-вывод: одна кнопка применяет правку к договору и экспортирует чистый DOCX. ChatGPT даёт абзац текста; мы — готовый патч.",
+              },
+              {
+                q: "Какие модели вы используете и где обрабатываются данные?",
+                a: "Anthropic Claude Sonnet 4.6 на платных тарифах, Haiku 4.5 на бесплатном, Opus 4.7 на «Бизнесе» только для анализа. Серверы Anthropic — США. На странице регистрации вы даёте отдельное согласие на трансграничную передачу (ст. 12 152-ФЗ). Свои метаданные (логи, пользователи, аудит) храним в Neon Postgres (Россия / ЕС в зависимости от региона). Документы — Vercel Blob.",
+              },
+              {
+                q: "Что делать с длинным договором (50+ страниц)?",
+                a: "Договоры до 50 000 символов модель анализирует за один проход. Длиннее — режутся на главы, каждая обрабатывается параллельно, потом результаты сводятся с дедупликацией повторных рисков. На «Бизнесе» подключается Opus 4.7, который лучше держит контекст длинных документов.",
+              },
+              {
+                q: "Какие документы поддерживаются?",
+                a: "Любые договорные документы по праву РФ: купля-продажа, поставка, аренда, подряд, услуги, NDA, трудовые, агентский, заём, лицензионный и т.д. Не подходим для процессуальных документов (исковые, отзывы, апелляции), судебных стратегий, налоговых консультаций, регистрации интеллектуальной собственности.",
+              },
+              {
+                q: "Можно ли использовать сгенерированные шаблоны без юриста?",
+                a: "Для типовых сделок небольшого объёма — да, шаблоны рабочие и проходят формальные требования ГК РФ. Для сделок с существенной ценой (от ~500 тыс. руб.), уникальной структурой, иностранными контрагентами, ИС — лучше показать юристу. Мы экономим юристу 80% рутины, не заменяем его на сложных кейсах.",
+              },
+              {
+                q: "Можно отказаться от подписки и забрать деньги?",
+                a: "Подписка отменяется в личном кабинете в любой момент — доступ сохраняется до конца оплаченного периода. Возврат за неиспользованную часть — по правилам публичной оферты (ст. 32 Закона о защите прав потребителей). Возврат вычитает стоимость уже оказанных услуг (анализы, генерации) по тарифам разовой оплаты.",
+              },
+            ].map((item, i) => (
+              <details
+                key={i}
+                className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-border-strong"
+              >
+                <summary className="flex cursor-pointer items-start justify-between gap-3 text-base font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+                  <span>{item.q}</span>
+                  <ChevronDown
+                    className="mt-0.5 h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180"
+                    aria-hidden="true"
+                  />
+                </summary>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl bg-gradient-to-br from-primary to-blue-700 px-8 py-16 text-center text-white shadow-2xl shadow-primary/20 sm:px-16">
-            <Users className="mx-auto mb-4 h-10 w-10 opacity-80" />
+            <Scale className="mx-auto mb-4 h-10 w-10 opacity-80" />
             <h2 className="text-3xl font-bold sm:text-4xl">
-              Проверить договор за 30 секунд
+              Загрузите договор — узнайте, что в нём не так
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg text-blue-100">
-              Загрузите PDF или DOCX — получите заключение с цитатами из ГК РФ.
-              Первые проверки бесплатно, без привязки карты.
+              PDF или DOCX. Отчёт со ссылками на ГК и готовыми правками.
+              10 анализов в месяц бесплатно, без карты.
             </p>
             <Link
               href="/analyze"
