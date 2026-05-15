@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
+import { SendForReview } from "@/components/send-for-review";
 import {
   ArrowLeft,
   FileText,
@@ -340,6 +341,9 @@ export default function ReportPage({
                   )}
                   Перепроанализировать
                 </button>
+              )}
+              {analysis.documentId && (
+                <SendForReview documentId={analysis.documentId} />
               )}
               <button
                 onClick={handleExportPDF}

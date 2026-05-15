@@ -75,3 +75,30 @@ export async function areConnected(a: string, b: string): Promise<boolean> {
   });
   return c !== null;
 }
+
+// Prisma `select` for the user fields a network card needs. profile is a
+// left join — a user may not have opened the network section yet.
+export const NETWORK_USER_SELECT = {
+  id: true,
+  name: true,
+  image: true,
+  profile: { select: { displayName: true, headline: true } },
+} as const;
+
+export type NetworkUser = {
+  id: string;
+  name: string | null;
+  image: string | null;
+  profile: { displayName: string | null; headline: string | null } | null;
+};
+
+/** Collapse a user row into the public-facing shape used across the
+ *  network UI — display name falls back from profile to account name. */
+export function shapeNetworkUser(u: NetworkUser) {
+  return {
+    userId: u.id,
+    displayName: u.profile?.displayName ?? u.name ?? "Пользователь",
+    headline: u.profile?.headline ?? null,
+    image: u.image,
+  };
+}

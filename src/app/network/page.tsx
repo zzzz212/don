@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import {
@@ -13,6 +14,9 @@ import {
   Loader2,
   Save,
   Briefcase,
+  FileText,
+  MessageSquare,
+  ChevronRight,
   AlertCircle,
 } from "lucide-react";
 
@@ -46,7 +50,17 @@ interface Profile {
   specialization: string | null;
 }
 
-type Tab = "directory" | "connections" | "profile";
+interface ShareSummary {
+  id: string;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "COMPLETED";
+  message: string | null;
+  createdAt: string;
+  commentCount: number;
+  documentName: string;
+  counterpart: { displayName: string; image: string | null };
+}
+
+type Tab = "directory" | "connections" | "shares" | "profile";
 
 function Avatar({
   name,
@@ -102,6 +116,10 @@ export default function NetworkPage() {
   const [incoming, setIncoming] = useState<ConnEntry[]>([]);
   const [outgoing, setOutgoing] = useState<ConnEntry[]>([]);
 
+  // Shares (contracts sent for review)
+  const [sharesReceived, setSharesReceived] = useState<ShareSummary[]>([]);
+  const [sharesSent, setSharesSent] = useState<ShareSummary[]>([]);
+
   // Profile
   const [profile, setProfile] = useState<Profile | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -110,9 +128,10 @@ export default function NetworkPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Initial load: connections + own profile.
+  // Initial load: connections, shares and own profile.
   useEffect(() => {
     void refreshConnections();
+    void refreshShares();
     void (async () => {
       try {
         const r = await fetch("/api/network/profile");
@@ -151,6 +170,19 @@ export default function NetworkPage() {
         setConnected(d.connected);
         setIncoming(d.incoming);
         setOutgoing(d.outgoing);
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  async function refreshShares() {
+    try {
+      const r = await fetch("/api/network/shares");
+      if (r.ok) {
+        const d = await r.json();
+        setSharesReceived(d.received);
+        setSharesSent(d.sent);
       }
     } catch {
       // non-fatal
@@ -230,6 +262,9 @@ export default function NetworkPage() {
     }
   }
 
+  const pendingShares = sharesReceived.filter(
+    (s) => s.status === "PENDING"
+  ).length;
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: "directory", label: "Каталог" },
     {
@@ -237,6 +272,7 @@ export default function NetworkPage() {
       label: "Связи",
       badge: incoming.length || undefined,
     },
+    { id: "shares", label: "Ревью", badge: pendingShares || undefined },
     { id: "profile", label: "Мой профиль" },
   ];
 
@@ -311,6 +347,10 @@ export default function NetworkPage() {
               onRespond={respond}
               onRemove={removeConnection}
             />
+          )}
+
+          {tab === "shares" && (
+            <SharesTab received={sharesReceived} sent={sharesSent} />
           )}
 
           {tab === "profile" && (
@@ -692,6 +732,104 @@ function ProfileTab({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+const SHARE_STATUS: Record<
+  ShareSummary["status"],
+  { label: string; cls: string }
+> = {
+  PENDING: { label: "Ожидает", cls: "bg-warning-light text-warning" },
+  ACCEPTED: { label: "На ревью", cls: "bg-primary-light text-primary-dark" },
+  DECLINED: { label: "Отклонено", cls: "bg-surface text-muted" },
+  COMPLETED: { label: "Завершено", cls: "bg-success-light text-success" },
+};
+
+function ShareRow({ share, who }: { share: ShareSummary; who: string }) {
+  const st = SHARE_STATUS[share.status];
+  return (
+    <Link
+      href={`/network/shares/${share.id}`}
+      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-surface/50"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface">
+        <FileText className="h-4 w-4 text-muted" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-foreground">
+          {share.documentName}
+        </p>
+        <p className="truncate text-xs text-muted">{who}</p>
+      </div>
+      {share.commentCount > 0 && (
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted">
+          <MessageSquare className="h-3.5 w-3.5" />
+          {share.commentCount}
+        </span>
+      )}
+      <span
+        className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold ${st.cls}`}
+      >
+        {st.label}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+    </Link>
+  );
+}
+
+function SharesTab({
+  received,
+  sent,
+}: {
+  received: ShareSummary[];
+  sent: ShareSummary[];
+}) {
+  if (received.length === 0 && sent.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border bg-card py-16 text-center">
+        <FileText className="mx-auto mb-3 h-8 w-8 text-muted/50" />
+        <p className="mx-auto max-w-md text-sm text-muted">
+          Здесь появятся договоры на ревью. Чтобы отправить договор коллеге,
+          откройте его анализ и нажмите «Отправить на ревью».
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-6">
+      {received.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">
+            Мне на ревью ({received.length})
+          </h2>
+          <div className="space-y-2">
+            {received.map((s) => (
+              <ShareRow
+                key={s.id}
+                share={s}
+                who={`От: ${s.counterpart.displayName}`}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+      {sent.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-foreground">
+            Я отправил ({sent.length})
+          </h2>
+          <div className="space-y-2">
+            {sent.map((s) => (
+              <ShareRow
+                key={s.id}
+                share={s}
+                who={`Кому: ${s.counterpart.displayName}`}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
