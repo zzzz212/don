@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, ScrollText, BookOpen, Wand2, Undo2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ScrollText,
+  BookOpen,
+  Wand2,
+  Undo2,
+  AlertTriangle,
+} from "lucide-react";
 import { RiskBadge, type RiskLevel } from "./risk-badge";
 
 export interface RiskItem {
@@ -9,6 +17,9 @@ export interface RiskItem {
   clauseTitle: string;
   level: RiskLevel;
   description: string;
+  /** Concrete fallout for the client if the clause is signed as-is.
+   *  Optional — analyses produced before this field existed omit it. */
+  consequence?: string;
   legalReference: string;
   originalText: string;
   recommendedText: string;
@@ -78,9 +89,25 @@ export function AnalysisCard({
       <h3 className="mb-2 font-semibold text-foreground">{risk.clauseTitle}</h3>
 
       {/* Description */}
-      <p className="mb-4 text-sm leading-relaxed text-muted">
+      <p className="mb-3 text-sm leading-relaxed text-muted">
         {risk.description}
       </p>
+
+      {/* Consequence — what the client concretely stands to lose */}
+      {risk.consequence && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning-light/40 p-3">
+          <AlertTriangle
+            className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-warning">Чем это грозит</p>
+            <p className="mt-0.5 text-sm leading-relaxed text-foreground/80">
+              {risk.consequence}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Original text */}
       {risk.originalText && risk.originalText !== "—" && (

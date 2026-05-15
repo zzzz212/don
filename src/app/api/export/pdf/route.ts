@@ -8,6 +8,7 @@ interface RiskItem {
   clauseTitle: string;
   level: string;
   description: string;
+  consequence?: string;
   legalReference: string;
   originalText: string;
   recommendedText: string;
@@ -161,6 +162,15 @@ export async function POST(request: NextRequest) {
       // Description
       doc.font(fontRegular).fontSize(10).fillColor("#333333")
         .text(risk.description, { width: pageWidth });
+
+      // Consequence — what the client concretely stands to lose
+      if (risk.consequence) {
+        doc.moveDown(0.2);
+        doc.font(fontBold).fontSize(9).fillColor("#CC8800")
+          .text("Чем грозит:", { width: pageWidth });
+        doc.font(fontRegular).fontSize(9).fillColor("#8A5A00")
+          .text(risk.consequence, { width: pageWidth });
+      }
 
       // Original text
       if (risk.originalText && risk.originalText !== "—" && risk.originalText !== "Пункт в договоре отсутствует") {

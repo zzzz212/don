@@ -14,6 +14,11 @@ export const AnalysisRiskSchema = z.object({
   clauseTitle: z.string(),
   level: RiskLevelSchema,
   description: z.string(),
+  // Practical fallout: what the client concretely stands to lose —
+  // money, time, rights — if the clause is signed as-is. Optional so a
+  // model omission never fails the whole analysis, and so analyses
+  // persisted before this field existed still parse cleanly.
+  consequence: z.string().optional(),
   legalReference: z.string(),
   originalText: z.string(),
   recommendedText: z.string(),

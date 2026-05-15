@@ -19,6 +19,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "critical",
       description:
         "Условие об одностороннем отказе от договора без симметричного права у второй стороны создаёт дисбаланс.",
+      consequence:
+        "Контрагент сможет в любой момент выйти из договора без вашего согласия и без компенсации, тогда как вы такого права лишены — это срывает планирование и оставляет вас без защиты при внезапном расторжении.",
       legalReference: "ст. 450.1 ГК РФ",
       originalText: "В тексте договора найдено упоминание одностороннего отказа",
       recommendedText:
@@ -34,6 +36,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "medium",
       description:
         "Договор содержит условия о штрафных санкциях. Размер неустойки может быть признан несоразмерным.",
+      consequence:
+        "При просрочке вы рискуете выплатить неустойку, многократно превышающую реальные потери контрагента; взыскать её он сможет через суд — до возможного снижения по ст. 333 ГК РФ.",
       legalReference: "ст. 333 ГК РФ",
       originalText: "В договоре указан размер неустойки",
       recommendedText:
@@ -49,6 +53,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "medium",
       description:
         "Не определён предельный размер индексации, что позволяет арендодателю произвольно повышать плату.",
+      consequence:
+        "Арендодатель сможет повышать плату на любой процент и сколь угодно часто — за срок аренды платёж рискует вырасти в разы, а оспорить такое повышение будет почти невозможно.",
       legalReference: "ст. 614 ГК РФ",
       originalText: "Условие об индексации в договоре",
       recommendedText:
@@ -63,6 +69,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       clauseTitle: "Гарантийный срок",
       level: "medium",
       description: "Не установлен или не чётко определён гарантийный срок на товар.",
+      consequence:
+        "Без чёткого гарантийного срока вы не сможете бесплатно устранить заводской брак и рискуете оплачивать ремонт или замену товара за свой счёт.",
       legalReference: "ст. 470-477 ГК РФ",
       originalText: "Условия гарантии в договоре",
       recommendedText:
@@ -78,6 +86,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "low",
       description:
         "В договоре не определён обязательный претензионный порядок, что может затянуть разрешение споров.",
+      consequence:
+        "Без согласованного претензионного порядка спор затянется, а если он обязателен по закону — суд может вернуть иск или оставить его без рассмотрения.",
       legalReference: "ст. 4 АПК РФ",
       originalText: "Пункт в договоре отсутствует",
       recommendedText:

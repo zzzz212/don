@@ -226,6 +226,19 @@ export async function exportDOCX(data: ExportData) {
       })
     );
 
+    // Consequence — what the client concretely stands to lose
+    if (risk.consequence) {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: "Чем грозит: ", bold: true, size: 20, font: "Arial", color: "CC8800" }),
+            new TextRun({ text: risk.consequence, size: 20, font: "Arial", color: "8A5A00" }),
+          ],
+          spacing: { after: 100 },
+        })
+      );
+    }
+
     // Original text
     if (risk.originalText && risk.originalText !== "—") {
       children.push(
