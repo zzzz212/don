@@ -62,6 +62,17 @@ model User {
   subscriptions       Subscription[]
   auditEvents         AuditEvent[]
   totp                TotpCredential?
+
+  // Cross-user network (see models at the end of this file).
+  profile             UserProfile?
+  connectionsSent     Connection[]    @relation("ConnectionRequester")
+  connectionsReceived Connection[]    @relation("ConnectionAddressee")
+  sharesSent          DocumentShare[] @relation("ShareFrom")
+  sharesReceived      DocumentShare[] @relation("ShareTo")
+  shareComments       ShareComment[]
+  conversationsA      Conversation[]  @relation("ConvUserA")
+  conversationsB      Conversation[]  @relation("ConvUserB")
+  directMessages      DirectMessage[]
 }
 
 // Time-based One-Time Password (TOTP) credential for 2FA. One row per
@@ -357,6 +368,7 @@ model Document {
   blobKey   String?
   analysis  Analysis?
   chunks    DocumentChunk[]
+  shares    DocumentShare[]
   createdAt DateTime        @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -410,6 +422,7 @@ model GeneratedDocument {
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization?     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   versions     DocumentVersion[]
+  shares       DocumentShare[]
 
   @@index([userId])
   @@index([orgId])
@@ -614,4 +627,136 @@ model CounterpartyCheck {
   @@index([userId])
   @@index([orgId])
   @@index([inn])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Cross-user network — a layer above workspaces. Lets users discover
+// each other, connect into teams, send contracts for review, and talk.
+// Everything is opt-in: a user stays invisible until they enable a
+// discoverable profile (152-ФЗ — no PII in a public catalogue without
+// explicit consent). All six tables are new, so `prisma db push`
+// applies them with no data-loss flag.
+// ─────────────────────────────────────────────────────────────────────
+
+// Public-facing profile. One row per user, created lazily the first
+// time they open the network section. `discoverable` gates whether the
+// row is ever returned by catalogue search.
+model UserProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  // Listed in the catalogue only when true. Default false: an account
+  // must explicitly opt in before its name/headline become searchable.
+  discoverable   Boolean @default(false)
+  displayName    String?
+  headline       String?
+  bio            String?
+  // Free-text areas of practice, e.g. "Корпоративное право, M&A".
+  specialization String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discoverable])
+}
+
+// A connection between two users — the "form a team" primitive.
+// requester sends, addressee accepts/declines. The (requester,
+// addressee) pair is unique; the API checks both directions so a
+// duplicate request the other way is rejected too.
+model Connection {
+  id          String    @id @default(cuid())
+  requesterId String
+  addresseeId String
+  // "PENDING" | "ACCEPTED" | "DECLINED"
+  status      String    @default("PENDING")
+  message     String?
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  requester User @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("ConnectionAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+}
+
+// A contract sent from one user to another for review or collaboration.
+// Exactly one of documentId / generatedDocId is set. The recipient gets
+// read-only access while the share is ACCEPTED and may copy the
+// document into their own workspace.
+model DocumentShare {
+  id             String    @id @default(cuid())
+  fromUserId     String
+  toUserId       String
+  documentId     String?
+  generatedDocId String?
+  // "REVIEW" | "COLLAB"
+  kind           String    @default("REVIEW")
+  // "PENDING" | "ACCEPTED" | "DECLINED" | "COMPLETED"
+  status         String    @default("PENDING")
+  message        String?
+  createdAt      DateTime  @default(now())
+  respondedAt    DateTime?
+
+  fromUser     User               @relation("ShareFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser       User               @relation("ShareTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  document     Document?          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  generatedDoc GeneratedDocument? @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
+  comments     ShareComment[]
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@index([documentId])
+  @@index([generatedDocId])
+}
+
+// A comment in the review thread attached to a DocumentShare.
+model ShareComment {
+  id        String   @id @default(cuid())
+  shareId   String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  share  DocumentShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([shareId, createdAt])
+}
+
+// A 1:1 direct-message conversation. pairKey is the two user ids sorted
+// and joined with ':' so a pair maps to exactly one row (the API
+// upserts against it). updatedAt is bumped on every message so the
+// inbox can sort by recency.
+model Conversation {
+  id        String   @id @default(cuid())
+  pairKey   String   @unique
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userA    User            @relation("ConvUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB    User            @relation("ConvUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages DirectMessage[]
+
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model DirectMessage {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

@@ -21,6 +21,7 @@ import {
   X,
   LogOut,
   Building2,
+  Users,
 } from "lucide-react";
 
 export function Header() {
@@ -36,6 +37,7 @@ export function Header() {
     { name: t("nav.templates"), href: "/templates", icon: FolderOpen },
     { name: t("nav.counterparty"), href: "/counterparty", icon: Building2 },
     { name: t("nav.chat"), href: "/chat", icon: MessageCircle },
+    { name: t("nav.network"), href: "/network", icon: Users },
   ];
 
   const user = session?.user;

@@ -24,6 +24,7 @@ import {
   FolderOpen,
   Building2,
   MessageCircle,
+  Users,
   CreditCard,
   Lock,
   Settings,
@@ -102,6 +103,14 @@ export function CommandPalette() {
         group: "Навигация",
         icon: MessageCircle,
         run: () => router.push("/chat"),
+      },
+      {
+        id: "nav.network",
+        label: "Сеть",
+        hint: "Каталог коллег, связи, ревью",
+        group: "Навигация",
+        icon: Users,
+        run: () => router.push("/network"),
       },
       {
         id: "act.new-analysis",
