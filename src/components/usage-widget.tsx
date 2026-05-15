@@ -20,7 +20,10 @@ interface FeatureUsage {
 }
 
 interface UsageData {
-  plan: "FREE" | "PRO" | "BUSINESS";
+  // Raw plan code from /api/usage — FREE / PRO / PRO_SOLO / PRO_TEAM /
+  // BUSINESS. Typed as string deliberately: a new tier must never crash
+  // the widget just because it isn't in PLAN_META yet.
+  plan: string;
   isTrial?: boolean;
   trialDaysLeft?: number | null;
   resetsAt: string;
@@ -47,8 +50,13 @@ const FEATURE_META: Record<
   ocr: { label: "Распознавание сканов", icon: Sparkles },
 };
 
+// Keyed by every plan code /api/usage can return. The 5-tier pricing
+// rollout added PRO_SOLO / PRO_TEAM and a legacy "PRO" still exists in
+// the DB. A missing key here used to crash the whole dashboard
+// (PLAN_META[plan].icon read on undefined) — the lookup below also
+// falls back, so an unknown future tier degrades instead of crashing.
 const PLAN_META: Record<
-  UsageData["plan"],
+  string,
   { label: string; chipBg: string; chipText: string; icon: typeof Crown }
 > = {
   FREE: {
@@ -59,6 +67,18 @@ const PLAN_META: Record<
   },
   PRO: {
     label: "Про",
+    chipBg: "bg-primary-light",
+    chipText: "text-primary-dark",
+    icon: Crown,
+  },
+  PRO_SOLO: {
+    label: "Pro Solo",
+    chipBg: "bg-primary-light",
+    chipText: "text-primary-dark",
+    icon: Crown,
+  },
+  PRO_TEAM: {
+    label: "Pro Team",
     chipBg: "bg-primary-light",
     chipText: "text-primary-dark",
     icon: Crown,
@@ -141,7 +161,9 @@ export function UsageWidget() {
     return null;
   }
 
-  const planMeta = PLAN_META[data.plan];
+  // Fall back to FREE styling for any plan code missing from the table —
+  // the dashboard must degrade gracefully, never crash, on a new tier.
+  const planMeta = PLAN_META[data.plan] ?? PLAN_META.FREE;
   const PlanIcon = planMeta.icon;
   const isFree = data.plan === "FREE";
   const isTrial = !!data.isTrial;
