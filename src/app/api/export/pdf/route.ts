@@ -21,6 +21,7 @@ interface ExportData {
   summary: string;
   contractType?: string;
   parties?: string;
+  balance?: { favor: string; comment: string };
   risks: RiskItem[];
   notarization?: { required: boolean; reason: string };
   registration?: { required: boolean; reason: string };
@@ -108,6 +109,21 @@ export async function POST(request: NextRequest) {
     doc.font(fontRegular).fontSize(10).fillColor("#333333")
       .text(data.summary, { width: pageWidth });
     doc.moveDown(0.8);
+
+    // Side-balance assessment
+    if (data.balance) {
+      doc.font(fontBold).fontSize(11).fillColor("#1a1a1a")
+        .text("Баланс сторон: ", { continued: true });
+      doc.fillColor(data.balance.favor === "balanced" ? "#228B22" : "#CC8800")
+        .text(
+          data.balance.favor === "balanced"
+            ? "договор сбалансирован"
+            : "смещён в пользу одной стороны"
+        );
+      doc.font(fontRegular).fontSize(9).fillColor("#666666")
+        .text(data.balance.comment, { width: pageWidth });
+      doc.moveDown(0.8);
+    }
 
     // Notarization
     if (data.notarization) {

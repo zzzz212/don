@@ -21,6 +21,7 @@ import {
   FileImage,
   Stamp,
   Building2,
+  Scale,
   ListChecks,
   ClipboardCheck,
   Users,
@@ -47,6 +48,7 @@ interface AnalysisData {
   parties?: string;
   verdict?: Verdict;
   verdictReason?: string;
+  balance?: { favor: "balanced" | "first" | "second"; comment: string };
   risks: RiskItem[];
   notarization?: NotarizationInfo;
   registration?: RegistrationInfo;
@@ -533,6 +535,34 @@ export default function ReportPage({
               </div>
             </div>
           </div>
+
+          {/* Side-balance assessment */}
+          {analysis.balance && (
+            <div className="mt-6 rounded-xl border border-border bg-card p-5">
+              <div className="mb-2 flex items-center gap-2">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                    analysis.balance.favor === "balanced"
+                      ? "bg-success-light text-success"
+                      : "bg-warning-light text-warning"
+                  }`}
+                >
+                  <Scale className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Баланс сторон</p>
+                  <p className="font-semibold text-foreground">
+                    {analysis.balance.favor === "balanced"
+                      ? "Договор сбалансирован"
+                      : "Договор смещён в пользу одной стороны"}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm leading-relaxed text-muted">
+                {analysis.balance.comment}
+              </p>
+            </div>
+          )}
 
           {/* Notarization & Registration */}
           {(analysis.notarization || analysis.registration) && (

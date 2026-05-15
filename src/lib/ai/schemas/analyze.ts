@@ -35,6 +35,14 @@ export const RegistrationSchema = z.object({
   reason: z.string(),
 });
 
+// Side-balance assessment — whose interests the contract leans toward.
+// `favor` drives UI colour ("balanced" is good; "first"/"second" flag a
+// tilt); `comment` names the favoured role and the clauses behind it.
+export const BalanceSchema = z.object({
+  favor: z.enum(["balanced", "first", "second"]),
+  comment: z.string(),
+});
+
 export const AnalysisResultSchema = z.object({
   score: z.number().int().min(1).max(10),
   summary: z.string(),
@@ -45,6 +53,10 @@ export const AnalysisResultSchema = z.object({
   // band so the three signals never disagree.
   verdict: VerdictSchema,
   verdictReason: z.string(),
+  // Whose side the contract favours. Optional so a model omission never
+  // fails the analysis and analyses persisted before this field existed
+  // still parse cleanly.
+  balance: BalanceSchema.optional(),
   risks: z.array(AnalysisRiskSchema),
   notarization: NotarizationSchema,
   registration: RegistrationSchema,
@@ -55,6 +67,7 @@ export const AnalysisResultSchema = z.object({
 export type AnalysisRisk = z.infer<typeof AnalysisRiskSchema>;
 export type NotarizationInfo = z.infer<typeof NotarizationSchema>;
 export type RegistrationInfo = z.infer<typeof RegistrationSchema>;
+export type Balance = z.infer<typeof BalanceSchema>;
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema> & {
   isDemo?: boolean;
 };

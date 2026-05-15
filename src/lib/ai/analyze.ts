@@ -248,6 +248,11 @@ function fallbackSynthesis(
       "Стороны не определены автоматически",
     verdict,
     verdictReason,
+    balance: {
+      favor: "balanced" as const,
+      comment:
+        "Автоматическая оценка баланса сторон не завершилась — проверьте договор на односторонние права и санкции вручную.",
+    },
     notarization: {
       required: false,
       reason:

@@ -141,6 +141,25 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
         ? `${contractType} в целом приемлем, но содержит ${mediumCount} замечаний, которые рекомендуется устранить.`
         : `${contractType} не содержит явных рисков по автоматической проверке.`;
 
+  const balance =
+    criticalCount > 0
+      ? {
+          favor: "second" as const,
+          comment:
+            "Ряд условий смещён в пользу второй стороны — есть пункты с односторонними правами и санкциями.",
+        }
+      : mediumCount > 0
+        ? {
+            favor: "second" as const,
+            comment:
+              "Небольшой перекос в пользу второй стороны по отдельным пунктам.",
+          }
+        : {
+            favor: "balanced" as const,
+            comment:
+              "Грубых перекосов между сторонами автоматическая проверка не выявила.",
+          };
+
   return {
     score,
     summary,
@@ -148,6 +167,7 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
     parties: "Стороны не определены автоматически (демо-режим)",
     verdict: calibration.verdict,
     verdictReason: calibration.verdictReason,
+    balance,
     risks,
     notarization: {
       required: false,
