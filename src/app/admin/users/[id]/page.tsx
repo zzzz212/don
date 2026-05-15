@@ -426,8 +426,11 @@ function WorkspaceCard({
         : "bg-surface text-muted";
   const PlanIcon =
     org.plan === "FREE" ? Zap : Crown;
-  const trialActive =
-    !!org.trialEndsAt && new Date(org.trialEndsAt).getTime() > Date.now();
+  // Date.now() in render trips react-hooks/purity, but for an admin-only
+  // "trial still active?" badge the re-render instability is benign — the
+  // value only flips at the exact expiry instant.
+  // eslint-disable-next-line react-hooks/purity
+  const trialActive = !!org.trialEndsAt && new Date(org.trialEndsAt).getTime() > Date.now();
 
   return (
     <div className="rounded-xl border border-border bg-surface/30 p-4">

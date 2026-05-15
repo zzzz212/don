@@ -102,11 +102,6 @@ function UsersPageInner() {
     });
   }, [q, page, trialOnly, planFilter, router]);
 
-  // Reset page when filters change.
-  useEffect(() => {
-    setPage(1);
-  }, [q, trialOnly, planFilter]);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -168,14 +163,20 @@ function UsersPageInner() {
               <input
                 type="search"
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Email или имя"
                 className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
               value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
+              onChange={(e) => {
+                setPlanFilter(e.target.value);
+                setPage(1);
+              }}
               className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Все тарифы</option>
@@ -189,7 +190,10 @@ function UsersPageInner() {
               <input
                 type="checkbox"
                 checked={trialOnly}
-                onChange={(e) => setTrialOnly(e.target.checked)}
+                onChange={(e) => {
+                  setTrialOnly(e.target.checked);
+                  setPage(1);
+                }}
                 className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30"
               />
               Только активный триал

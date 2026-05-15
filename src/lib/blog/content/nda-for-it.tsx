@@ -8,7 +8,6 @@ import type { BlogPost } from "../posts";
 import {
   P,
   H2,
-  H3,
   UL,
   LI,
   Quote,

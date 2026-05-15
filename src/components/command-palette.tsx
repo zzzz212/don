@@ -172,11 +172,6 @@ export function CommandPalette() {
     return out;
   }, [filtered]);
 
-  // Reset selection on filter change.
-  useEffect(() => {
-    setActiveIdx(0);
-  }, [query]);
-
   // Reset query when opened (so each new open starts clean) and focus.
   useEffect(() => {
     if (open) {
@@ -275,7 +270,10 @@ export function CommandPalette() {
                   ref={inputRef}
                   type="text"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setActiveIdx(0);
+                  }}
                   placeholder="Куда перейти или что сделать?"
                   className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
                   aria-label="Поиск по командной палитре"

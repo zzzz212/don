@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPageShell } from "@/components/legal-page-shell";
 import {
   BRAND,
@@ -155,7 +156,7 @@ export default function OfferPage() {
       </table>
       <p>
         Подробный перечень функций каждого Тарифа доступен на странице{" "}
-        <a href="/#pricing">тарифов</a>. Перечень функций может изменяться
+        <Link href="/#pricing">тарифов</Link>. Перечень функций может изменяться
         Исполнителем в одностороннем порядке с уведомлением Заказчика.
         Для уже оплаченных Расчётных периодов состав Тарифа фиксируется на
         дату оплаты.

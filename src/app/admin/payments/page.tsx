@@ -10,7 +10,6 @@ import {
   Loader2,
   AlertCircle,
   ArrowLeft,
-  CreditCard,
 } from "lucide-react";
 
 interface PaymentRow {
@@ -101,8 +100,6 @@ function PaymentsPageInner() {
     });
   }, [q, statusFilter, planFilter, page, router]);
 
-  useEffect(() => setPage(1), [q, statusFilter, planFilter]);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -158,14 +155,20 @@ function PaymentsPageInner() {
               <input
                 type="search"
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Email или имя пользователя"
                 className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
               className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Любой статус</option>
@@ -176,7 +179,10 @@ function PaymentsPageInner() {
             </select>
             <select
               value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
+              onChange={(e) => {
+                setPlanFilter(e.target.value);
+                setPage(1);
+              }}
               className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Любой тариф</option>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPageShell } from "@/components/legal-page-shell";
 import { BRAND, OPERATOR, CONTACTS } from "@/lib/legal-info";
 
@@ -137,8 +138,8 @@ export default function TermsPage() {
         Сервис предоставляется на следующих основных Тарифах: «Старт»
         (бесплатный, с ограниченными лимитами), «Про» и «Бизнес» (платные).
         Актуальные стоимости и количественные лимиты Тарифов размещены на
-        странице <a href="/#pricing">тарифов</a> и в{" "}
-        <a href="/offer">Публичной оферте</a>.
+        странице <Link href="/#pricing">тарифов</Link> и в{" "}
+        <Link href="/offer">Публичной оферте</Link>.
       </p>
       <p>
         Оплата платных Тарифов производится в порядке и на условиях,

@@ -7,10 +7,10 @@
 // тип B2B-договора с большим search volume.
 
 import type { BlogPost } from "../posts";
+import Link from "next/link";
 import {
   P,
   H2,
-  H3,
   UL,
   LI,
   Quote,
@@ -265,12 +265,12 @@ function ServicesContractBody() {
         коммерческой информации заказчика — обязательно включить
         обязательства о конфиденциальности с привязкой к ФЗ-98 «О
         коммерческой тайне». Подробнее об этом — в нашей статье{" "}
-        <a
+        <Link
           href="/blog/nda-dlya-it-kompanii"
           className="font-medium text-primary underline decoration-primary/40 underline-offset-2"
         >
           NDA для IT-компании
-        </a>
+        </Link>
         .
       </P>
       <P>

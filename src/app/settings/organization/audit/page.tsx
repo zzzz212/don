@@ -128,8 +128,6 @@ export default function AuditLogPage() {
   const [actionFilter, setActionFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
-  useEffect(() => setPage(1), [actionFilter]);
-
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
@@ -199,7 +197,10 @@ export default function AuditLogPage() {
                 <button
                   key={g.label}
                   type="button"
-                  onClick={() => setActionFilter(g.values)}
+                  onClick={() => {
+                    setActionFilter(g.values);
+                    setPage(1);
+                  }}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     active
                       ? "bg-primary text-white"

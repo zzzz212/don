@@ -99,8 +99,6 @@ function OrgsPageInner() {
     router.replace(qs ? `/admin/orgs?${qs}` : "/admin/orgs", { scroll: false });
   }, [q, planFilter, page, router]);
 
-  useEffect(() => setPage(1), [q, planFilter]);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -153,14 +151,20 @@ function OrgsPageInner() {
               <input
                 type="search"
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Название, slug или email владельца"
                 className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
               value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
+              onChange={(e) => {
+                setPlanFilter(e.target.value);
+                setPage(1);
+              }}
               className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Все тарифы</option>
