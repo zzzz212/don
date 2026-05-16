@@ -34,6 +34,7 @@ import {
   Moon,
   CalendarClock,
   MessagesSquare,
+  GitCompare,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -143,6 +144,14 @@ export function CommandPalette() {
         group: "Действия",
         icon: Sparkles,
         run: () => router.push("/templates"),
+      },
+      {
+        id: "act.compare-contracts",
+        label: "Сравнить два договора",
+        hint: "Diff и AI-разбор отличий",
+        group: "Действия",
+        icon: GitCompare,
+        run: () => router.push("/compare-contracts"),
       },
       {
         id: "set.billing",
