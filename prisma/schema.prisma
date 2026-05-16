@@ -448,6 +448,10 @@ model GeneratedDocument {
   organization Organization?     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   versions     DocumentVersion[]
   shares       DocumentShare[]
+  // Chat messages this document was forwarded into (see Feature: forward
+  // generated documents to chats).
+  workspaceAttachments WorkspaceMessage[]
+  dmAttachments        DirectMessage[]
 
   @@index([userId])
   @@index([orgId])
@@ -808,10 +812,14 @@ model DirectMessage {
   senderId       String
   body           String
   readAt         DateTime?
+  // Optional forwarded generated document. onDelete: SetNull keeps the
+  // message intact when the document is deleted.
+  attachmentGeneratedDocId String?
   createdAt      DateTime  @default(now())
 
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
 
   @@index([conversationId, createdAt])
 }
@@ -824,10 +832,14 @@ model WorkspaceMessage {
   orgId     String
   senderId  String
   body      String
+  // Optional forwarded generated document. onDelete: SetNull keeps the
+  // message intact when the document is deleted.
+  attachmentGeneratedDocId String?
   createdAt DateTime @default(now())
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sender       User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
 
   @@index([orgId, createdAt])
 }

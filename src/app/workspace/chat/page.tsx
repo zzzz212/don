@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { DocAttachmentCard } from "@/components/doc-attachment-card";
 import {
   MessagesSquare,
   Send,
@@ -23,6 +24,7 @@ interface ChatMessage {
   senderName: string;
   senderImage: string | null;
   isMe: boolean;
+  attachment: { id: string; name: string } | null;
 }
 
 const POLL_MS = 10_000;
@@ -216,9 +218,17 @@ export default function WorkspaceChatPage() {
                               </span>
                             </div>
                           )}
-                          <p className="whitespace-pre-wrap break-words text-sm text-foreground">
-                            {m.body}
-                          </p>
+                          {m.body && (
+                            <p className="whitespace-pre-wrap break-words text-sm text-foreground">
+                              {m.body}
+                            </p>
+                          )}
+                          {m.attachment && (
+                            <DocAttachmentCard
+                              name={m.attachment.name}
+                              href={`/generated/${m.attachment.id}`}
+                            />
+                          )}
                         </div>
                       </div>
                     </li>

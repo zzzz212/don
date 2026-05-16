@@ -50,7 +50,10 @@ export async function GET() {
       where: { orgId },
       orderBy: { createdAt: "desc" },
       take: MAX_MESSAGES,
-      include: { sender: { select: senderSelect } },
+      include: {
+        sender: { select: senderSelect },
+        attachment: { select: { id: true, name: true } },
+      },
     });
 
     await prisma.membership.update({
@@ -68,6 +71,9 @@ export async function GET() {
         senderName: senderName(m.sender),
         senderImage: m.sender.image,
         isMe: m.senderId === userId,
+        attachment: m.attachment
+          ? { id: m.attachment.id, name: m.attachment.name }
+          : null,
       }));
 
     return NextResponse.json({
@@ -88,7 +94,9 @@ export async function GET() {
 }
 
 const SendSchema = z.object({
-  body: z.string().trim().min(1).max(4000),
+  body: z.string().trim().max(4000).optional().default(""),
+  // A generated document forwarded into the channel.
+  attachmentGeneratedDocId: z.string().min(1).optional(),
 });
 
 // POST /api/workspace/chat — post a message. MEMBER+ only; a VIEWER is
@@ -117,14 +125,43 @@ export async function POST(request: NextRequest) {
     );
     if (!parsed.success) {
       return NextResponse.json(
+        { error: "Некорректное сообщение" },
+        { status: 400 }
+      );
+    }
+    const { body, attachmentGeneratedDocId } = parsed.data;
+    if (!body && !attachmentGeneratedDocId) {
+      return NextResponse.json(
         { error: "Сообщение не может быть пустым" },
         { status: 400 }
       );
     }
 
+    // A forwarded document must belong to this workspace.
+    if (attachmentGeneratedDocId) {
+      const doc = await prisma.generatedDocument.findUnique({
+        where: { id: attachmentGeneratedDocId },
+        select: { orgId: true },
+      });
+      if (!doc || doc.orgId !== orgId) {
+        return NextResponse.json(
+          { error: "Документ недоступен в этом рабочем пространстве" },
+          { status: 404 }
+        );
+      }
+    }
+
     const created = await prisma.workspaceMessage.create({
-      data: { orgId, senderId: userId, body: parsed.data.body },
-      include: { sender: { select: senderSelect } },
+      data: {
+        orgId,
+        senderId: userId,
+        body,
+        attachmentGeneratedDocId: attachmentGeneratedDocId ?? null,
+      },
+      include: {
+        sender: { select: senderSelect },
+        attachment: { select: { id: true, name: true } },
+      },
     });
 
     // The sender has implicitly read up to their own message.
@@ -142,6 +179,9 @@ export async function POST(request: NextRequest) {
         senderName: senderName(created.sender),
         senderImage: created.sender.image,
         isMe: true,
+        attachment: created.attachment
+          ? { id: created.attachment.id, name: created.attachment.name }
+          : null,
       },
     });
   } catch (error) {

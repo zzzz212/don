@@ -54,6 +54,7 @@ export async function GET(
       where: { conversationId: id },
       orderBy: { createdAt: "asc" },
       take: MESSAGE_LIMIT,
+      include: { attachment: { select: { id: true, name: true } } },
     });
 
     const other = convo.userAId === me ? convo.userB : convo.userA;
@@ -65,6 +66,9 @@ export async function GET(
         body: m.body,
         createdAt: m.createdAt,
         mine: m.senderId === me,
+        attachment: m.attachment
+          ? { id: m.attachment.id, name: m.attachment.name }
+          : null,
       })),
     });
   } catch (error) {
@@ -77,7 +81,9 @@ export async function GET(
 }
 
 const SendSchema = z.object({
-  body: z.string().trim().min(1).max(4000),
+  body: z.string().trim().max(4000).optional().default(""),
+  // A generated document forwarded into the conversation.
+  attachmentGeneratedDocId: z.string().min(1).optional(),
 });
 
 // POST /api/network/messages/[id] — send a message into the thread.
@@ -103,6 +109,13 @@ export async function POST(
     );
     if (!parsed.success) {
       return NextResponse.json(
+        { error: "Некорректное сообщение" },
+        { status: 400 }
+      );
+    }
+    const { body, attachmentGeneratedDocId } = parsed.data;
+    if (!body && !attachmentGeneratedDocId) {
+      return NextResponse.json(
         { error: "Сообщение не может быть пустым" },
         { status: 400 }
       );
@@ -119,8 +132,28 @@ export async function POST(
       );
     }
 
+    // A forwarded document must belong to the sender.
+    if (attachmentGeneratedDocId) {
+      const doc = await prisma.generatedDocument.findUnique({
+        where: { id: attachmentGeneratedDocId },
+        select: { userId: true },
+      });
+      if (!doc || doc.userId !== me) {
+        return NextResponse.json(
+          { error: "Документ недоступен" },
+          { status: 404 }
+        );
+      }
+    }
+
     const message = await prisma.directMessage.create({
-      data: { conversationId: id, senderId: me, body: parsed.data.body },
+      data: {
+        conversationId: id,
+        senderId: me,
+        body,
+        attachmentGeneratedDocId: attachmentGeneratedDocId ?? null,
+      },
+      include: { attachment: { select: { id: true, name: true } } },
     });
 
     // Email the other side only for the very first message of a thread —
@@ -149,7 +182,7 @@ export async function POST(
             to: recipient.email,
             fromName:
               sender?.profile?.displayName ?? sender?.name ?? "Пользователь",
-            preview: parsed.data.body.slice(0, 140),
+            preview: (body || "Вам прислали документ").slice(0, 140),
             threadUrl: `${BRAND.publicUrl}/network/messages/${id}`,
           })
         );
@@ -162,6 +195,9 @@ export async function POST(
         body: message.body,
         createdAt: message.createdAt,
         mine: true,
+        attachment: message.attachment
+          ? { id: message.attachment.id, name: message.attachment.name }
+          : null,
       },
     });
   } catch (error) {

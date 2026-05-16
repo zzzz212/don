@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
+import { DocAttachmentCard } from "@/components/doc-attachment-card";
 import { ArrowLeft, Loader2, Send, AlertCircle } from "lucide-react";
 
 interface Msg {
@@ -10,6 +12,7 @@ interface Msg {
   body: string;
   createdAt: string;
   mine: boolean;
+  attachment: { id: string; name: string } | null;
 }
 
 interface Thread {
@@ -24,11 +27,13 @@ export default function ThreadPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
   const [thread, setThread] = useState<Thread | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Load once, then poll quietly — there is no socket, so a light 12s
@@ -56,6 +61,29 @@ export default function ThreadPage({
       if (!silent) setError("Не удалось загрузить переписку");
     } finally {
       if (!silent) setLoading(false);
+    }
+  }
+
+  // A forwarded document belongs to the sender's workspace, so the
+  // recipient saves their own copy before they can open it.
+  async function copyAttachment(messageId: string) {
+    setCopyingId(messageId);
+    try {
+      const r = await fetch(`/api/network/messages/${id}/copy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId }),
+      });
+      if (r.ok) {
+        const { documentId } = await r.json();
+        router.push(`/generated/${documentId}`);
+      } else {
+        setError(
+          (await r.json()).error ?? "Не удалось сохранить документ"
+        );
+      }
+    } finally {
+      setCopyingId(null);
     }
   }
 
@@ -152,15 +180,35 @@ export default function ThreadPage({
                 key={m.id}
                 className={`flex flex-col ${m.mine ? "items-end" : "items-start"}`}
               >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-                    m.mine
-                      ? "bg-primary text-primary-fg"
-                      : "bg-surface text-foreground"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{m.body}</p>
-                </div>
+                {m.body && (
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                      m.mine
+                        ? "bg-primary text-primary-fg"
+                        : "bg-surface text-foreground"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{m.body}</p>
+                  </div>
+                )}
+                {m.attachment && (
+                  <div className="w-full max-w-[80%]">
+                    <DocAttachmentCard
+                      name={m.attachment.name}
+                      href={
+                        m.mine
+                          ? `/generated/${m.attachment.id}`
+                          : undefined
+                      }
+                      onCopy={
+                        m.mine
+                          ? undefined
+                          : () => copyAttachment(m.id)
+                      }
+                      copying={copyingId === m.id}
+                    />
+                  </div>
+                )}
                 <span className="mt-0.5 text-[11px] text-muted">
                   {new Date(m.createdAt).toLocaleString("ru-RU", {
                     day: "2-digit",

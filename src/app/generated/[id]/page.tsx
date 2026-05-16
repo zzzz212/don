@@ -8,6 +8,7 @@ import { Disclaimer } from "@/components/disclaimer";
 import { useToast } from "@/components/toast";
 import { RefinePanel } from "@/components/refine-panel";
 import { InlineEdit } from "@/components/inline-edit";
+import { SendToChat } from "@/components/send-to-chat";
 import { getTemplate } from "@/lib/templates";
 import {
   ArrowLeft,
@@ -310,6 +311,7 @@ export default function ViewGeneratedPage() {
                 <Download className="h-4 w-4" />
                 Скачать DOCX
               </button>
+              <SendToChat documentId={doc.id} documentName={doc.name} />
               <Link
                 href={`/generated/${doc.id}/versions`}
                 className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
