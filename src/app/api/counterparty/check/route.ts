@@ -91,7 +91,10 @@ export async function POST(request: Request) {
       }
 
       const courtData = await fetchCourtData(inn);
-      const debtData = await fetchDebtData(inn);
+      // ФССП searches a legal entity by name — pass the resolved company
+      // name so the real provider can query; without it, it returns null
+      // and the chain falls back to the stub.
+      const debtData = await fetchDebtData(inn, egrulData?.name);
 
       // Use real DaData finance data if available, fallback to mock
       const debtFound = financeData?.debt ? financeData.debt > 0 : debtData.found;

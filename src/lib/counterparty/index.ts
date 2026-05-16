@@ -1,11 +1,13 @@
 // Counterparty data orchestrator. Routes a single INN through the provider
 // chain: company data (DaData → ЕГРЮЛ → mock), court cases (КАД stub),
-// debts (ФССП stub). Each layer is a swappable adapter — adding api-fns.ru
-// or Контур.Фокус is a single new provider file plus a one-line registration.
+// debts (ФССП API → stub). Each layer is a swappable adapter — adding
+// api-fns.ru or Контур.Фокус is a single new provider file plus a
+// one-line registration.
 
 import { dadataProvider } from "./providers/dadata";
 import { egrulProvider } from "./providers/egrul";
 import { kadStubProvider } from "./providers/kad";
+import { fsspApiProvider } from "./providers/fssp-api";
 import { fsspStubProvider } from "./providers/fssp";
 
 import type {
@@ -33,7 +35,9 @@ export type { ScoreInput, ScoreResult } from "./score";
 // or Контур, prepend the new provider here and it becomes the primary.
 const COMPANY_CHAIN: CompanyProvider[] = [dadataProvider, egrulProvider];
 const COURT_CHAIN: CourtProvider[] = [kadStubProvider];
-const DEBT_CHAIN: DebtProvider[] = [fsspStubProvider];
+// Real ФССП API first; the stub stays as the fallback for envs without
+// an FSSP_AUTH_KEY (and when no company name is available to search by).
+const DEBT_CHAIN: DebtProvider[] = [fsspApiProvider, fsspStubProvider];
 
 // Mock fallback for known test INNs — kept for realistic local development
 // when no real providers are configured at all.
@@ -84,11 +88,14 @@ export async function fetchCourtData(inn: string): Promise<CourtData> {
   return { activeLawsuits: 0, completedLawsuits: 0, lossesCount: 0 };
 }
 
-export async function fetchDebtData(inn: string): Promise<DebtData> {
+export async function fetchDebtData(
+  inn: string,
+  companyName?: string
+): Promise<DebtData> {
   for (const provider of DEBT_CHAIN) {
     if (!provider.available) continue;
     try {
-      const result = await provider.fetchDebts(inn);
+      const result = await provider.fetchDebts(inn, companyName);
       if (result) return result;
     } catch (e) {
       console.error(`[counterparty] ${provider.name} failed:`, (e as Error).message);

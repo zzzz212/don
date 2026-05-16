@@ -43,5 +43,8 @@ export interface CourtProvider {
 export interface DebtProvider {
   readonly name: string;
   readonly available: boolean;
-  fetchDebts(inn: string): Promise<DebtData | null>;
+  // companyName is required by the real ФССП search (it queries a legal
+  // entity by name, not by ИНН); the stub ignores it. Optional so the
+  // stub's narrower signature still satisfies the interface.
+  fetchDebts(inn: string, companyName?: string): Promise<DebtData | null>;
 }

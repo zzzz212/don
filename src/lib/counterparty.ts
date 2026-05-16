@@ -40,8 +40,11 @@ export async function fetchCourtData(inn: string): Promise<CourtData> {
   return fetchCourtDataInternal(inn);
 }
 
-export async function fetchDebtData(inn: string): Promise<DebtData> {
-  return fetchDebtDataInternal(inn);
+export async function fetchDebtData(
+  inn: string,
+  companyName?: string
+): Promise<DebtData> {
+  return fetchDebtDataInternal(inn, companyName);
 }
 
 export const calculateRiskScore = calculateRiskScoreInternal;
