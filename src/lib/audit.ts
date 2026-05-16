@@ -39,6 +39,8 @@ export type AuditAction =
   // Trial
   | "trial.activated"
   | "trial.extended"
+  // Anti-abuse — trial activation flagged as a likely farmed account
+  | "abuse.trial_flagged"
   // Documents
   | "document.deleted"
   | "document.refined_ai"

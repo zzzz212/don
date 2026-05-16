@@ -43,6 +43,21 @@ model User {
   // already on PRO via .plan, no need for the trial bridge).
   trialEndsAt DateTime?
 
+  // ── Anti-abuse signals (layered multi-account defence) ────────────
+  // Captured at signup. normalizedEmail collapses Gmail dots / +aliases
+  // (j.o.hn+x@gmail and john@gmail are one person) — registration
+  // hard-rejects a normalized-email collision and any disposable-domain
+  // address. signupIp / signupFingerprint feed a soft cluster score
+  // computed when the trial is activated; high scores surface in
+  // /admin/abuse for manual review rather than auto-blocking, since
+  // corporate NAT and mobile carriers legitimately share IPs.
+  normalizedEmail   String?
+  signupIp          String?
+  signupUserAgent   String?
+  signupFingerprint String?
+  // 0–100 multi-account risk score, set when the trial is activated.
+  abuseScore        Int     @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -73,6 +88,10 @@ model User {
   conversationsA      Conversation[]  @relation("ConvUserA")
   conversationsB      Conversation[]  @relation("ConvUserB")
   directMessages      DirectMessage[]
+
+  @@index([normalizedEmail])
+  @@index([signupIp])
+  @@index([signupFingerprint])
 }
 
 // Time-based One-Time Password (TOTP) credential for 2FA. One row per

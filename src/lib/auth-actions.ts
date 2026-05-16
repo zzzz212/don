@@ -16,6 +16,11 @@ import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
 import { logAudit } from "@/lib/audit";
 import { LEGAL_EFFECTIVE_DATE } from "@/lib/legal-info";
+import {
+  isDisposableEmail,
+  normalizeEmailForDedup,
+  hashFingerprint,
+} from "@/lib/anti-abuse";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -47,10 +52,56 @@ export async function registerUser(formData: FormData) {
     };
   }
 
+  // ── Anti-abuse: hard blocks ───────────────────────────────────────
+  // Disposable / throwaway addresses can't anchor a real account —
+  // reject before we ever create a row.
+  if (isDisposableEmail(email)) {
+    return {
+      error:
+        "Регистрация с одноразовых почтовых сервисов недоступна. Используйте постоянный email.",
+    };
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { error: "Пользователь с таким email уже существует" };
   }
+
+  // Normalised-email collision — j.o.hn+promo@gmail and john@gmail reach
+  // the same inbox, so they're the same person. This is the main lever
+  // against farming trials with alias variants of one address.
+  const normalizedEmail = normalizeEmailForDedup(email);
+  const normalizedClash = await prisma.user.findFirst({
+    where: { normalizedEmail },
+    select: { id: true },
+  });
+  if (normalizedClash) {
+    return {
+      error:
+        "Аккаунт с таким email уже существует. Если вы добавили точки или +псевдоним — войдите в исходный аккаунт.",
+    };
+  }
+
+  // Capture request attribution once — reused for the User row (signup
+  // signals) and the consent audit event. headers() can rarely throw
+  // outside a request scope, so it's wrapped; never block signup on it.
+  let ip: string | null = null;
+  let userAgent: string | null = null;
+  try {
+    const h = await headers();
+    ip =
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      h.get("x-real-ip") ??
+      null;
+    userAgent = h.get("user-agent");
+  } catch {
+    // non-fatal
+  }
+
+  // Best-effort device fingerprint from the client (see fingerprint.ts).
+  // Stored only as a SHA-256 hash; feeds the trial-activation cluster
+  // score, never auto-blocks on its own.
+  const fingerprintRaw = (formData.get("fingerprint") as string | null) ?? "";
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -59,41 +110,33 @@ export async function registerUser(formData: FormData) {
       name: name || null,
       email,
       password: hashedPassword,
+      normalizedEmail,
+      signupIp: ip,
+      signupUserAgent: userAgent ? userAgent.slice(0, 500) : null,
+      signupFingerprint: hashFingerprint(fingerprintRaw) || null,
     },
     select: { id: true },
   });
 
-  // Persist consent capture to the audit log — this is the legal-grade
-  // record that survives even if the user account is deleted later
-  // (AuditEvent.orgId is nullable + onDelete: SetNull). Best-effort: if
-  // the audit write fails we still let signup proceed, but Sentry catches
-  // the failure via reportError inside logAudit.
-  try {
-    const h = await headers();
-    const ip =
-      h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      h.get("x-real-ip") ??
-      null;
-    const userAgent = h.get("user-agent");
-    void logAudit({
-      orgId: null,
-      userId: newUser.id,
-      action: "account.signup_consent_granted",
-      target: newUser.id,
-      targetType: "user",
-      payload: {
-        consentGeneral,
-        consentTransborder,
-        legalEffectiveDate: LEGAL_EFFECTIVE_DATE,
-        provider: "credentials",
-      },
-      ip,
-      userAgent,
-    });
-  } catch {
-    // headers() can rarely throw outside a request scope — never block
-    // signup on it. logAudit itself is also already swallow-and-report.
-  }
+  // Persist consent capture to the audit log — the legal-grade record
+  // that survives even if the account is deleted later (AuditEvent.orgId
+  // is nullable + onDelete: SetNull). logAudit is swallow-and-report, so
+  // a failed write can't break signup.
+  void logAudit({
+    orgId: null,
+    userId: newUser.id,
+    action: "account.signup_consent_granted",
+    target: newUser.id,
+    targetType: "user",
+    payload: {
+      consentGeneral,
+      consentTransborder,
+      legalEffectiveDate: LEGAL_EFFECTIVE_DATE,
+      provider: "credentials",
+    },
+    ip,
+    userAgent,
+  });
 
   // Fire-and-forget: don't block sign-in if mail fails. sendEmail() never
   // throws — errors are reported to telemetry inside the helper.

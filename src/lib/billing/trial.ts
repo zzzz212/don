@@ -11,6 +11,7 @@
 import { prisma } from "@/lib/db";
 import { TRIAL_DAYS } from "@/lib/legal-info";
 import { getEffectiveUserPlan } from "@/lib/plans";
+import { assessAbuse } from "@/lib/anti-abuse";
 
 export type ActivationFailure =
   | "ALREADY_ACTIVATED"
@@ -23,6 +24,11 @@ export interface ActivationResult {
   reason?: ActivationFailure;
   /** ISO trial-end timestamp on success. */
   trialEndsAt?: string;
+  /** Multi-account risk score computed at activation (0–100). */
+  abuseScore?: number;
+  /** Human-readable risk flags — non-empty when the activation looks
+   *  like a farmed multi-account and should be reviewed by an admin. */
+  abuseFlags?: string[];
 }
 
 /**
@@ -101,13 +107,49 @@ export async function activateTrial(
     return { ok: false, reason: "WORKSPACE_NOT_FOUND" };
   }
 
+  // ── Soft anti-abuse scoring ───────────────────────────────────────
+  // Cluster this activation against accounts that already trialed from
+  // the same signup IP / device fingerprint. We never auto-block here:
+  // corporate NAT and mobile carriers legitimately share IPs (the user
+  // chose the layered, not the strict, policy). A high score is stored
+  // and surfaced in /admin/abuse for a human to review.
+  const signals = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { signupIp: true, signupFingerprint: true },
+  });
+  let fingerprintCluster = 0;
+  let ipCluster = 0;
+  if (signals?.signupFingerprint) {
+    fingerprintCluster = await prisma.user.count({
+      where: {
+        id: { not: userId },
+        signupFingerprint: signals.signupFingerprint,
+        trialActivatedAt: { not: null },
+      },
+    });
+  }
+  if (signals?.signupIp) {
+    ipCluster = await prisma.user.count({
+      where: {
+        id: { not: userId },
+        signupIp: signals.signupIp,
+        trialActivatedAt: { not: null },
+      },
+    });
+  }
+  const assessment = assessAbuse({ ipCluster, fingerprintCluster });
+
   const now = new Date();
   const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
   await prisma.$transaction([
     prisma.user.update({
       where: { id: userId },
-      data: { trialActivatedAt: now, trialEndsAt },
+      data: {
+        trialActivatedAt: now,
+        trialEndsAt,
+        abuseScore: assessment.score,
+      },
     }),
     prisma.organization.update({
       where: { id: orgId },
@@ -115,5 +157,10 @@ export async function activateTrial(
     }),
   ]);
 
-  return { ok: true, trialEndsAt: trialEndsAt.toISOString() };
+  return {
+    ok: true,
+    trialEndsAt: trialEndsAt.toISOString(),
+    abuseScore: assessment.score,
+    abuseFlags: assessment.flags,
+  };
 }

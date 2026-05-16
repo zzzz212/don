@@ -75,6 +75,22 @@ export async function POST() {
       payload: { trialEndsAt: result.trialEndsAt },
     });
 
+    // Layered anti-abuse: the activation is granted regardless, but a
+    // suspicious multi-account cluster is logged for admin review.
+    if (result.abuseFlags && result.abuseFlags.length > 0) {
+      void logAudit({
+        orgId,
+        userId,
+        action: "abuse.trial_flagged",
+        target: userId,
+        targetType: "user",
+        payload: {
+          abuseScore: result.abuseScore ?? 0,
+          flags: result.abuseFlags,
+        },
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       trialEndsAt: result.trialEndsAt,

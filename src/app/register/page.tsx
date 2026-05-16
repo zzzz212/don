@@ -4,6 +4,7 @@ import { useState, useEffect, useId } from "react";
 import Link from "next/link";
 import { Scale, Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
 import { registerUser, loginWithGoogle, isGoogleAuthEnabled } from "@/lib/auth-actions";
+import { computeFingerprint } from "@/lib/fingerprint";
 
 export default function RegisterPage() {
   const formId = useId();
@@ -29,9 +30,13 @@ export default function RegisterPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedTransborder, setAcceptedTransborder] = useState(false);
   const transborderId = `${formId}-transborder`;
+  // Best-effort device fingerprint — an anti-abuse signal sent with the
+  // registration. Computed once after mount (needs the browser APIs).
+  const [fingerprint, setFingerprint] = useState("");
 
   useEffect(() => {
     isGoogleAuthEnabled().then(setGoogleEnabled);
+    setFingerprint(computeFingerprint());
   }, []);
 
   const validateField = (name: string, value: string) => {
@@ -115,6 +120,7 @@ export default function RegisterPage() {
     // this the server has no record of what was agreed to.
     formData.set("consent_general", "1");
     formData.set("consent_transborder", "1");
+    formData.set("fingerprint", fingerprint);
 
     setIsLoading(true);
 

@@ -18,6 +18,7 @@ import {
   Loader2,
   ArrowRight,
   BadgeCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 interface AdminStats {
@@ -180,6 +181,13 @@ export default function AdminOverviewPage() {
               >
                 <BadgeCheck className="h-4 w-4" />
                 Заявки ИНН
+              </Link>
+              <Link
+                href="/admin/abuse"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+              >
+                <ShieldAlert className="h-4 w-4" />
+                Анти-абуз
               </Link>
             </nav>
           </div>
