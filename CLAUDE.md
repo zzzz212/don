@@ -87,19 +87,20 @@ invasive вариант + явная отметка что оставил под
 
 # ЮрИИст — состояние проекта
 
-**Дата последнего обновления**: 2026-05-14 (после Sprint 9: revenue-фокус, SEO, retention infra)
+**Дата последнего обновления**: 2026-05-17 (после Sprint 10: сеть между пользователями, PWA, доработки шаблонов / генерации / анализа)
 **Production URL**: https://juriist.vercel.app
 **Repo**: https://github.com/zzzz212/don
 **Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR)
 
 Russian legal-tech SaaS: AI-анализ договоров с verdict и per-risk apply-fix
 + 20 шаблонов генерации + AI-refine + чат-юрист + проверка контрагентов
-(DaData/ЕГРЮЛ; КАД/ФССП — заглушки, скрыты в UI) + workspaces +
+(DaData/ЕГРЮЛ; ФССП-провайдер под FSSP_AUTH_KEY, КАД — заглушка) + workspaces +
 ЮKassa-биллинг + 2FA + audit log + admin-панель + PostHog + dark mode
 + i18n infra + ⌘K + AccountMenu + onboarding + кастомные 404/500/OG
 + **/blog с 9 cornerstone-статьями + /help FAQ + /sample-report
 preview + sitemap/robots/JSON-LD + Vercel cron для trial-/inactive-/
-abandoned-email lifecycle**.
+abandoned-email lifecycle** + сеть между пользователями (профили,
+связи, ревью договоров, личные сообщения) + установка как PWA на телефон.
 
 **Stack**: Next.js 16 / React 19 / TypeScript / Prisma + Neon Postgres
 (pgvector) / NextAuth v5 beta.30 / Tailwind 4 (CSS-first + @custom-variant) /
@@ -107,7 +108,7 @@ Geist font / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus)
 с prompt caching. **Read `node_modules/next/dist/docs/`** перед изменением
 Next.js паттернов — это Next 16, не та Next.js что помнит твоё обучение.
 
-**Тесты**: 207 unit-тестов через vitest. `npm test`.
+**Тесты**: 234 unit-теста через vitest. `npm test`.
 
 ---
 
@@ -140,6 +141,12 @@ Next.js паттернов — это Next 16, не та Next.js что помн
   **В UI отображается как «уровень риска» (низкий/средний/высокий)**, не
   как императивная «рекомендация подписать» — снижает юридическую
   ответственность за плохой совет (см. foot-gun #31).
+- **Per-risk поля** (Sprint 10): `consequence` («чем конкретно грозит
+  риск») + top-level `balance` («в чью пользу смещён договор») — оба
+  `.optional()` в zod (бэк-совместимость со старыми сохранёнными
+  анализами). `verifyRiskQuotes` (`quote-verify.ts`) пост-обрабатывает
+  `originalText`: снапит цитату к точной подстроке договора при
+  расхождении только по пробелам — чтобы apply-fix не отключался молча.
 - **AI-refine** (`/api/generated/[id]/refine`) — patch-mode (default)
   через extractJsonObject+safeParse (НЕ через `generate(zod)` чтобы не
   бить Groq лишним schema-dump'ом). Fallback на regen streamChat.
@@ -164,10 +171,12 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 
 ### Counterparty — `src/lib/counterparty/`
 - Provider abstraction. **DaData + ЕГРЮЛ работают**.
-- **КАД и ФССП — заглушки.** В UI на /counterparty показывается явная
-  warning-плашка «Проверка по арбитражным делам (КАД) и исполнительным
-  производствам (ФССП) скоро будет доступна» вместо литералов «0 дел»,
-  которые создавали ложное чувство безопасности. См. foot-gun #25 ниже.
+- **КАД — заглушка; ФССП — реальный провайдер** (`providers/fssp-api.ts`,
+  env-gated на `FSSP_AUTH_KEY` — без ключа работает заглушка; async-флоу
+  api-ip.fssp.gov.ru, поиск ЮЛ по имени, не по ИНН). `DebtProvider.
+  fetchDebts` принимает `companyName`. ФССП-провайдер НЕ проверен на
+  живом ключе — контракт ответа сверить при подключении. UI /counterparty
+  показывает warning-плашку вместо литералов «0 дел». См. foot-gun #25.
 
 ### Workspaces — `src/lib/org.ts`
 - `Organization` / `Membership` / `Invite` модели. Lazy migration
@@ -180,6 +189,42 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 - JWT callback **всегда re-resolves** activeOrgId (без guard на
   `trigger === 'update'` — NextAuth v5 beta не всегда передаёт).
 - Workspace switch требует `await update()` ДО `window.location.reload()`.
+
+### Network — сеть между пользователями (Sprint 10) — `src/lib/network.ts`
+- Слой НАД workspaces. Модели Prisma: `UserProfile` (opt-in каталог,
+  флаг `discoverable` — по умолчанию false, 152-ФЗ), `Connection` (связь
+  юзер↔юзер: PENDING / ACCEPTED / DECLINED), `DocumentShare` (договор на
+  ревью), `ShareComment` (тред обсуждения), `Conversation` +
+  `DirectMessage` (личные сообщения, pairKey = sorted id-пара).
+- Хелперы `network.ts`: `ensureProfile`, `connectionStates`,
+  `areConnected`, `conversationPairKey`, `networkRateLimitOk`,
+  `NETWORK_USER_SELECT` / `shapeNetworkUser`.
+- API `/api/network/*`: `profile`, `directory` (поиск только по
+  discoverable), `connections` (+`[id]`), `shares` (+`[id]`, `comments`,
+  `copy`), `messages` (+`[id]`), `users/[id]` (профиль коллеги).
+- Страницы: `/network` (вкладки Каталог / Связи / Ревью / Профиль),
+  `/network/shares/[id]` (ревью договора + тред), `/network/messages`
+  + `/[id]` (диалоги, поллинг 12с), `/network/users/[id]` (профиль).
+- Гейтинг: шеринг и сообщения — только между ACCEPTED-связями. Rate-limit
+  endpoint `network` (30/мин) на content-POST'ах. Уведомления (Resend):
+  `connection-request` / `document-shared` / `network-message` (последнее
+  — только на ПЕРВОЕ сообщение в треде, иначе спам).
+- «Отправить на ревью» — компонент `SendForReview` на `/report/[id]`.
+  «Сеть» в header-nav и ⌘K.
+
+### PWA — установка на телефон (Sprint 10)
+- `src/app/manifest.ts` — манифест (Next авто-линкует `<link rel=
+  "manifest">`). `/pwa/icon` — генерация иконок 192/512/maskable через
+  next/og (без бинарников в репо).
+- `public/sw.js` — рукописный service worker: cache-first для
+  `/_next/static`, network-first для навигаций с офлайн-фоллбэком
+  (`public/offline.html`), `/api/*` НЕ кэшируется (юр-данные не должны
+  устаревать).
+- `ServiceWorkerRegister` — регистрация SW **только в production**
+  (в dev мешает HMR). `InstallPrompt` — баннер установки
+  (`beforeinstallprompt` на Android/Chrome, ручная подсказка на iOS).
+- `layout.tsx`: `viewport` export (theme-color light/dark, viewport-fit
+  cover под чёлку), `appleWebApp` metadata для iOS standalone.
 
 ### Plans + Trial — `src/lib/plans.ts` + `src/lib/legal-info.ts`
 - FREE / PRO / BUSINESS. **План теперь user-scoped**: `User.plan` —
@@ -420,7 +465,26 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 
 ## Полный список коммитов работы (новейшие сверху)
 
-### Sprint 9 — revenue + retention + SEO (этот заход)
+### Sprint 10 — сеть, PWA, доработки (этот заход)
+```
+4d8af64 Verify risk-quote whitespace so apply-fix reliably matches
+690f837 Add a user profile page to the network
+b193cce Add a live document preview to the template form
+9056fde Add search and category filter to the templates page
+5e22f6b Fix mobile layout: invisible onboarding cards, dashboard h-overflow
+b2db444 Make the app an installable PWA
+e137d33 Add a real ФССП debt provider behind FSSP_AUTH_KEY
+43a16e5 Harden the network: rate limits, email notifications, tests
+55ee064 Fix dashboard crash for PRO_SOLO / PRO_TEAM users
+f324323 Add side-balance assessment to contract analysis
+6db4279 Add direct messaging to the network
+cf144f8 Add document review to the network: send, discuss, copy
+af8fe3e Add cross-user network: opt-in profiles, catalogue and connections
+3064d71 Add a per-risk "consequence" field to contract analysis
+8d69f7d Fix all src lint errors and cut npm run lint noise 27k -> 20
+```
+
+### Sprint 9 — revenue + retention + SEO
 ```
 [этот файл] CLAUDE.md update reflecting Sprint 9 state
 <свежий> Lifecycle email expansion: inactive-14d + checkout-abandoned + help + 3 more SEO articles + welcome refresh + dashboard sample CTA + backfill rename
@@ -522,6 +586,7 @@ bdc0e4c Hard-reload after workspace switch
 | `VOYAGE_API_KEY` | Embeddings | Только keyword-search |
 | `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` | Error tracking | console.error only |
 | `DADATA_API_KEY` + `DADATA_SECRET_KEY` | Контрагенты ЕГРЮЛ | Только моки |
+| `FSSP_AUTH_KEY` | ФССП — банк исп. производств (api-ip.fssp.gov.ru, бесплатно) | Долги через заглушку |
 | `RESEND_API_KEY` | Транзакционные письма | Noop-логгер |
 | `RESEND_FROM_ADDRESS` | (опц.) sandbox-from | Default `no-reply@juriist.ru` |
 | `YOOKASSA_SHOP_ID` + `YOOKASSA_SECRET_KEY` | Платежи | /billing/checkout вернёт 503 |
@@ -587,7 +652,7 @@ bdc0e4c Hard-reload after workspace switch
 
 24. **AuditAction — controlled vocab**. Новый action = добавить в TS union в `src/lib/audit.ts` И в `ACTION_LABELS` в `/settings/organization/audit/page.tsx`.
 
-25. **КАД (api-fns.ru, ~3000₽/мес) и ФССП (public API) — заглушки**. UI на /counterparty показывает warning-плашку «скоро будет доступно» вместо литерала 0. **НЕ продавать «проверка контрагента» как ключевую фичу пока эти два не интегрированы** — иначе trust damage.
+25. **КАД — заглушка** (нужен api-fns.ru ~3000₽/мес или Контур). **ФССП — реальный env-gated провайдер** `fssp-api.ts` под `FSSP_AUTH_KEY` (без ключа работает заглушка; провайдер НЕ проверен на живом ключе — сверить контракт ответа при подключении). UI /counterparty показывает warning-плашку. **НЕ продавать «проверку контрагента» как ключевую фичу пока КАД не интегрирован** — иначе trust damage.
 
 26. **`logAudit.payload` гоняется через `redact()`** — sensitive keys (password, secret, token, email, phone) → `"[redacted]"`.
 
@@ -602,6 +667,14 @@ bdc0e4c Hard-reload after workspace switch
 31. **Verdict labels в UI — "уровень риска", не "рекомендация подписать"**. Прямое "рекомендуется подписать" создаёт юридическую ответственность за плохой совет. Сейчас формулировки: "Низкий уровень риска" / "Средний уровень риска" / "Высокий уровень риска" + дисклеймер «это автоматическая оценка, не консультация». Если меняешь — сохрани этот тон.
 
 32. **Vercel function memory limit на Hobby = 1024 MB.** Большой PDF + map-reduce + параллельные chunks могут упереться. Если будет — переход на Pro (3 GB) или streaming-обработка чанков.
+
+33. **Plan-коды — не закрытое множество.** После 5-tier rollout: FREE / PRO / PRO_SOLO / PRO_TEAM / BUSINESS (+ legacy PRO). Любой `SOMEMAP[plan].xxx` без `?? fallback` падает на новом коде — так крешился дашборд (`usage-widget.tsx`, `PLAN_META` без PRO_SOLO). Любой lookup по plan-коду — с fallback.
+
+34. **Service worker регистрируется ТОЛЬКО в production.** В `npm run dev` его нет (мешает HMR) — офлайн / установку PWA тестировать на задеплоенном сайте. `public/**` исключён из eslint (там рукописный `sw.js` с service-worker-глобалами).
+
+35. **Вложенный flex + `truncate`**: `min-w-0` нужен на КАЖДОМ flex-предке между truncate-элементом и ограничителем ширины, не только на ближайшем. Длинное имя файла рвало вёрстку дашборда из-за `<Link flex-1>` без `min-w-0`.
+
+36. **Сетевые мутации gated на ACCEPTED-связь + rate-limit `network` (30/мин).** Шеринг/сообщения между несвязанными юзерами → 403. Новые `/api/network/*`-роуты не забывать гейтить (`areConnected` / `networkRateLimitOk`).
 
 ---
 
@@ -886,11 +959,22 @@ GROUP BY model;
 
 - **Sprint 8 (UI polish) и AI calibration** — закрыты. Dark mode + i18n + ⌘K + AccountMenu + onboarding + custom 404/500 + Geist + oklch + motion. Plan/trial переехали на User. Verdict UI добавлен. Apply-fix per-risk + inline edit готовы. Tier policy по action × plan. Cache_control на system + tool. Retry script на Neon cold-start.
 - **Sprint 9 (revenue + retention + SEO)** — закрыт. Sample report + blog scaffold с 9 cornerstone-статьями + /help FAQ + sitemap/robots/Organization-JSON-LD/FAQPage-JSON-LD/per-post-OG-images + 5-tier pricing + 152-ФЗ dual-consent + FREE→Haiku + legal-reference card в analyze prompts (~3-4К токенов закэшированных). **Lifecycle cron** с 4 стадиями: trial-expiring / trial-expired / inactive-14d / checkout-abandoned. Welcome email обновлён под бесплатный «Старт» (10 анализов вместо 3, без auto-trial). Admin backfill endpoint расширен до rename PRO → PRO_SOLO. Все 9 commit'ов запушены в claude/sprint-8-ui-polish.
-- **Sprint 10 (запуск)** — следующий. См. Бизнес-roadmap. **Это user-side задачи**: ИП, ЮKassa, RKN, Resend DNS, .ru домен, Search Console / Яндекс.Webmaster submission, Telegram-канал заведение, и т.д.
+- **Sprint 10 (сеть + PWA + доработки)** — закрыт (этот заход).
+  Cross-user network (профили / связи / ревью договоров / личные
+  сообщения; rate-limit + Resend-уведомления), установка как PWA,
+  реальный ФССП-провайдер под `FSSP_AUTH_KEY`, поля `consequence` +
+  `balance` в анализе + `verifyRiskQuotes`, хотфикс креша дашборда
+  (`PLAN_META` без PRO_SOLO), фиксы мобильной вёрстки (онбординг был
+  невидим, дашборд уезжал вбок), поиск по шаблонам, живой предпросмотр
+  генерации, страница профиля коллеги. 15 коммитов в
+  `claude/sprint-8-ui-polish` — **в `main` НЕ смержено**.
+- **Sprint 11 (запуск)** — следующий. См. Бизнес-roadmap. **Это
+  user-side задачи**: ИП, ЮKassa, RKN, Resend DNS, .ru домен, Search
+  Console / Яндекс.Webmaster submission, Telegram-канал.
 - **AI prompts** — после нескольких raunds tuning'a сейчас sweet spot: ~1.5k токенов system + 4k tool schema = ~5.5k кэшируемого префикса. Anthropic кэширует. Tone сбалансированный — "защищаю клиента, но не выдумываю риски".
 - **TRIAL_DAYS = 2.** Активация только через `/billing` (auto-trial при signup убран).
 - **Verdict UI говорит «уровень риска», не «рекомендация подписать»** (юр.ответственность).
-- **КАД/ФССП — заглушки, в UI скрыты warning-плашкой.** Не продавать как ключевую фичу пока не интегрировано.
+- **КАД — заглушка; ФССП — реальный провайдер под `FSSP_AUTH_KEY`** (без ключа работает заглушка). Не продавать «проверку контрагента» как ключевую фичу пока КАД не интегрирован.
 - **Vercel maxDuration = 300** на AI routes. Работает только на Pro plan ($20/мес). Hobby clamps to 60s.
 - **Neon cold-start** ловится retry-обёрткой в build script.
 - **Себе PRO выдать**: SQL в Neon → `UPDATE "User" SET plan = 'PRO', "trialEndsAt" = NULL WHERE email = 'твой@email';` → выход/вход для перевыпуска JWT.
