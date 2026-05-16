@@ -32,6 +32,8 @@ import {
   Sparkles,
   Sun,
   Moon,
+  CalendarClock,
+  MessagesSquare,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -111,6 +113,22 @@ export function CommandPalette() {
         group: "Навигация",
         icon: Users,
         run: () => router.push("/network"),
+      },
+      {
+        id: "nav.workspace-chat",
+        label: "Чат компании",
+        hint: "Внутренний чат рабочего пространства",
+        group: "Навигация",
+        icon: MessagesSquare,
+        run: () => router.push("/workspace/chat"),
+      },
+      {
+        id: "nav.deadlines",
+        label: "Сроки и напоминания",
+        hint: "Ключевые даты по договорам",
+        group: "Навигация",
+        icon: CalendarClock,
+        run: () => router.push("/deadlines"),
       },
       {
         id: "act.new-analysis",

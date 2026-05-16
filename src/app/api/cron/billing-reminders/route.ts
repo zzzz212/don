@@ -5,7 +5,9 @@ import { buildTrialExpiringEmail } from "@/lib/email/templates/trial-expiring";
 import { buildTrialExpiredEmail } from "@/lib/email/templates/trial-expired";
 import { buildInactiveReengagementEmail } from "@/lib/email/templates/inactive-reengagement";
 import { buildCheckoutAbandonedEmail } from "@/lib/email/templates/checkout-abandoned";
+import { buildContractReminderEmail } from "@/lib/email/templates/contract-reminder";
 import { logAudit } from "@/lib/audit";
+import { BRAND } from "@/lib/legal-info";
 import { reportError } from "@/lib/telemetry";
 
 // Daily cron — fires lifecycle emails around the trial boundary.
@@ -59,6 +61,8 @@ interface RunResult {
   inactiveSkipped: number;
   abandonedSent: number;
   abandonedSkipped: number;
+  remindersSent: number;
+  remindersSkipped: number;
 }
 
 // Re-engagement / abandoned-checkout dedup windows. Longer than the
@@ -345,6 +349,72 @@ async function runBillingReminders(now: Date): Promise<RunResult> {
     abandonedSent += 1;
   }
 
+  // ── Stage 5: contract deadline reminders — a tracked ContractDeadline
+  // whose dueDate falls within the next 3 days (or slipped by up to a
+  // day) and hasn't been reminded yet. Dedup is the remindedAt column
+  // itself: once stamped, the row drops out of the query.
+  const reminderWindowEnd = new Date(now.getTime() + 3 * MS_PER_DAY);
+  const dueDeadlines = await prisma.contractDeadline.findMany({
+    where: {
+      dismissed: false,
+      remindedAt: null,
+      dueDate: {
+        gt: new Date(now.getTime() - MS_PER_DAY),
+        lte: reminderWindowEnd,
+      },
+    },
+    select: {
+      id: true,
+      label: true,
+      dueDate: true,
+      userId: true,
+      user: { select: { email: true } },
+      document: { select: { fileName: true } },
+    },
+    take: 200,
+  });
+
+  let remindersSent = 0;
+  let remindersSkipped = 0;
+  for (const d of dueDeadlines) {
+    if (!d.user.email) {
+      remindersSkipped += 1;
+      continue;
+    }
+    const daysLeft = Math.max(
+      0,
+      Math.round((d.dueDate.getTime() - now.getTime()) / MS_PER_DAY)
+    );
+    await sendEmail(
+      buildContractReminderEmail({
+        to: d.user.email,
+        deadlineLabel: d.label,
+        documentName: d.document.fileName,
+        dueDateLabel: d.dueDate.toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        daysLeft,
+        deadlinesUrl: `${BRAND.publicUrl}/deadlines`,
+      })
+    );
+    // Stamp first so a mid-loop crash can't double-send on the next run.
+    await prisma.contractDeadline.update({
+      where: { id: d.id },
+      data: { remindedAt: now },
+    });
+    await logAudit({
+      orgId: null,
+      userId: d.userId,
+      action: "email.contract_reminder_sent",
+      target: d.id,
+      targetType: "document",
+      payload: { dueDate: d.dueDate.toISOString() },
+    });
+    remindersSent += 1;
+  }
+
   return {
     expiringSent,
     expiredSent,
@@ -354,5 +424,7 @@ async function runBillingReminders(now: Date): Promise<RunResult> {
     inactiveSkipped,
     abandonedSent,
     abandonedSkipped,
+    remindersSent,
+    remindersSkipped,
   };
 }

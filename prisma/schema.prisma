@@ -76,6 +76,7 @@ model User {
   payments            Payment[]
   subscriptions       Subscription[]
   auditEvents         AuditEvent[]
+  contractDeadlines   ContractDeadline[]
   totp                TotpCredential?
 
   // Cross-user network (see models at the end of this file).
@@ -398,6 +399,7 @@ model Document {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  deadlines    ContractDeadline[]
 
   @@index([userId])
   @@index([orgId])
@@ -822,6 +824,33 @@ model DirectMessage {
   attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
 
   @@index([conversationId, createdAt])
+}
+
+// Key dates extracted by AI from an analysed contract — end of term,
+// auto-renewal cut-off, payment milestones, notice periods. Powers the
+// /deadlines dashboard and the reminder stage of the billing-reminders
+// cron.
+model ContractDeadline {
+  id         String    @id @default(cuid())
+  documentId String
+  userId     String
+  orgId      String?
+  // "expiry" | "renewal" | "payment" | "notice" | "other"
+  kind       String    @default("other")
+  label      String
+  dueDate    DateTime
+  // Set once the cron has emailed a reminder for this deadline so it is
+  // not sent again.
+  remindedAt DateTime?
+  // Dismissed deadlines stay in the DB but drop off the dashboard.
+  dismissed  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@index([documentId])
 }
 
 // Workspace-internal team chat. One implicit channel per Organization —

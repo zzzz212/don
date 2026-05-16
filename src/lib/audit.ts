@@ -64,7 +64,8 @@ export type AuditAction =
   | "email.trial_expiring_sent"
   | "email.trial_expired_sent"
   | "email.inactive_reengagement_sent"
-  | "email.checkout_abandoned_sent";
+  | "email.checkout_abandoned_sent"
+  | "email.contract_reminder_sent";
 
 export type TargetType =
   | "workspace"

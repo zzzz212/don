@@ -7,6 +7,7 @@ import { Disclaimer } from "@/components/disclaimer";
 import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import { SendForReview } from "@/components/send-for-review";
+import { DeadlineScanButton } from "@/components/deadline-scan-button";
 import {
   ArrowLeft,
   FileText,
@@ -346,6 +347,9 @@ export default function ReportPage({
               )}
               {analysis.documentId && (
                 <SendForReview documentId={analysis.documentId} />
+              )}
+              {analysis.documentId && (
+                <DeadlineScanButton documentId={analysis.documentId} />
               )}
               <button
                 onClick={handleExportPDF}
