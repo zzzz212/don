@@ -87,7 +87,7 @@ invasive вариант + явная отметка что оставил под
 
 # ЮрИИст — состояние проекта
 
-**Дата последнего обновления**: 2026-05-17 (после Sprint 10: сеть между пользователями, PWA, доработки шаблонов / генерации / анализа)
+**Дата последнего обновления**: 2026-05-17 (после Sprint 11: ИНН-привязка, анти-абуз, чат компании, роли, пересылка договоров, напоминания, сравнение договоров, публичные ссылки, рефералка)
 **Production URL**: https://juriist.vercel.app
 **Repo**: https://github.com/zzzz212/don
 **Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR)
@@ -465,7 +465,39 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 
 ## Полный список коммитов работы (новейшие сверху)
 
-### Sprint 10 — сеть, PWA, доработки (этот заход)
+### Sprint 11 — социальный слой + анти-абуз (этот заход)
+```
+Add a referral programme with bonus analyses
+Add public read-only links to a contract analysis
+Add side-by-side comparison of two contracts
+Add AI-extracted contract deadlines with email reminders
+Let users forward a generated document into chats
+Add a team chat channel inside the workspace
+Add a read-only VIEWER role and in-place role management
+Let users contact a counterparty directly from the ИНН check
+Add a layered defence against trial-farming with throwaway accounts
+Let users link and verify a company ИНН on their profile
+```
+Что нового:
+- **ИНН на UserProfile** — двухуровневая привязка (`claimed` через checksum
+  + DaData, `verified` через выписку и ручную проверку в `/admin/inn-claims`).
+  Уникальность ИНН — в коде, не DB-constraint.
+- **Анти-абуз** — `normalizedEmail`/`signupIp`/`signupFingerprint` на User;
+  жёсткий блок одноразовых доменов и нормализованных дублей при регистрации;
+  риск-скоринг при активации триала; `/admin/abuse` для ручной проверки.
+- **Чат компании** — `WorkspaceMessage`, один канал на воркспейс,
+  `/workspace/chat`, непрочитанные в header-nav.
+- **Роль VIEWER** — read-only; UI смены ролей в `/settings/organization`.
+- **Пересылка договоров в чаты** — `attachmentGeneratedDocId` на
+  `WorkspaceMessage`/`DirectMessage`; «В чат» на `/generated/[id]`.
+- **Напоминания** — `ContractDeadline`, AI-извлечение дат, `/deadlines`,
+  5-я стадия в lifecycle-cron.
+- **Сравнение договоров** — `/compare-contracts`, stateless.
+- **Публичные ссылки** — `PublicShare`, `/r/[token]` без авторизации.
+- **Рефералка** — `referralCode`/`referredById`/`bonusAnalyses` на User;
+  выплата при активации триала; `/referral`.
+
+### Sprint 10 — сеть, PWA, доработки (предыдущий заход)
 ```
 4d8af64 Verify risk-quote whitespace so apply-fix reliably matches
 690f837 Add a user profile page to the network
@@ -675,6 +707,14 @@ bdc0e4c Hard-reload after workspace switch
 35. **Вложенный flex + `truncate`**: `min-w-0` нужен на КАЖДОМ flex-предке между truncate-элементом и ограничителем ширины, не только на ближайшем. Длинное имя файла рвало вёрстку дашборда из-за `<Link flex-1>` без `min-w-0`.
 
 36. **Сетевые мутации gated на ACCEPTED-связь + rate-limit `network` (30/мин).** Шеринг/сообщения между несвязанными юзерами → 403. Новые `/api/network/*`-роуты не забывать гейтить (`areConnected` / `networkRateLimitOk`).
+
+37. **Роль `VIEWER` — read-only, ранг 0** (ниже MEMBER). `requireMembership(…, "MEMBER")` отсекает её автоматически. Но AI-роуты (analyze/generate/chat/generated POST) НЕ ходят через `requireMembership` — там добавлен явный `getMembership` + блок `role === "VIEWER"`. Любой новый AI-роут, тратящий квоту, тоже гейтить явно.
+
+38. **Уникальность ИНН и referralCode — в коде, не DB-constraint** (foot-gun #2: nullable unique валит `prisma db push`). Проверка коллизии перед записью + `@@index`. То же — для любого нового nullable-поля, которое «должно быть уникальным».
+
+39. **Referral-бонус — пул, потребляется в `/api/analyze`.** `checkQuota` для FREE+analyze считает `limit = base + bonusAnalyses + max(0, used - base)` (держит месячный кап стабильным). `consumeReferralBonus(orgId)` декрементит пул ПОСЛЕ успешного анализа. Не дублировать декремент в других местах и не списывать в `checkQuota` (она вызывается и для отображения).
+
+40. **`/r/[token]` — публичная страница без авторизации**, `force-dynamic` + `robots: noindex`. Токен (192 бита) — и есть доступ. Текст договора там НЕ показывается, только вердикт + риски. `/r/`, `/workspace/`, `/deadlines` добавлены в `robots.txt` Disallow.
 
 ---
 
@@ -981,6 +1021,8 @@ GROUP BY model;
 - **Backfill после plan-on-user миграции** (если ещё не сделан): `curl -X POST -H "x-admin-key:..." https://juriist.vercel.app/api/admin/backfill-user-plan`.
 - **AI стоит $0.15-0.30 за анализ** на Sonnet, $0.02 на Haiku. Cache hit снижает input cost в ~3 раза. Track в Neon: `SELECT model, SUM("inputTokens"), SUM("cachedTokens"), SUM("outputTokens") FROM "AiUsage" WHERE feature = 'analyze' GROUP BY model;`.
 - **План user-scoped.** OWNER membership определяет какой User.plan применяется к workspace.
+- **Sprint 11 (социальный слой + анти-абуз)** — закрыт (этот заход). 10 атомарных коммитов в `claude/sprint-8-ui-polish`, **в `main` НЕ смержено**. ИНН-привязка с двухуровневым подтверждением, слоистый анти-абуз мульти-аккаунтов, чат компании, роль VIEWER + управление ролями, пересылка договоров в чаты, AI-напоминания по срокам, сравнение двух договоров, публичные ссылки на заключение, реферальная программа. `npx tsc --noEmit` + 260 unit-тестов + `npx next build` — зелёные. Новые foot-guns #37–40.
+- **Тесты теперь 260** (было 234): +10 на `inn.ts`, +16 на `anti-abuse.ts`.
 
 ---
 
