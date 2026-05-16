@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -11,6 +12,7 @@ import {
   Settings,
   Users,
   Loader2,
+  MessagesSquare,
 } from "lucide-react";
 
 interface Organization {
@@ -65,7 +67,12 @@ export function OrgSwitcher() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  // Unread count for the workspace chat — the chat lives in this
+  // dropdown (it's a workspace-scoped feature), so the unread indicator
+  // belongs on this pill rather than as its own header nav item.
+  const [chatUnread, setChatUnread] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   // Close on outside click.
   useEffect(() => {
@@ -80,6 +87,23 @@ export function OrgSwitcher() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  // Workspace-chat unread count — re-checked on every route change so
+  // the badge clears right after the chat is opened. Best-effort.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/workspace/chat/unread")
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((d) => {
+        if (!cancelled) {
+          setChatUnread(typeof d.count === "number" ? d.count : 0);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   // Load orgs on mount + on session changes.
   useEffect(() => {
@@ -231,7 +255,7 @@ export function OrgSwitcher() {
         // Compact form on mobile (avatar + chevron only) so the header bar
         // doesn't overflow with the workspace name + plan + trial pill;
         // expands to the full label on sm+ where there is room.
-        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-1.5 py-1 text-sm font-medium transition-colors hover:bg-surface sm:max-w-[260px] sm:gap-2 sm:px-3 sm:py-1.5"
+        className="relative flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-1.5 py-1 text-sm font-medium transition-colors hover:bg-surface sm:max-w-[240px] sm:gap-2 sm:px-3 sm:py-1.5"
       >
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-light text-xs font-bold text-primary-dark">
           {active.name.slice(0, 1).toUpperCase()}
@@ -240,6 +264,12 @@ export function OrgSwitcher() {
           {active.name}
         </span>
         <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
+        {chatUnread > 0 && (
+          <span
+            className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-card"
+            aria-label={`${chatUnread} непрочитанных в чате компании`}
+          />
+        )}
       </button>
 
       <AnimatePresence>
@@ -290,6 +320,24 @@ export function OrgSwitcher() {
               security, admin panel) lives in AccountMenu — listing it
               here too just trained users to second-guess where to click. */}
           <div className="border-t border-border p-1">
+            <Link
+              href="/workspace/chat"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+            >
+              <span className="flex items-center gap-2">
+                <MessagesSquare
+                  className="h-4 w-4 text-muted"
+                  aria-hidden="true"
+                />
+                Чат компании
+              </span>
+              {chatUnread > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-fg">
+                  {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              )}
+            </Link>
             <Link
               href="/settings/organization"
               onClick={() => setOpen(false)}

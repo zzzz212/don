@@ -10,7 +10,6 @@ import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
 import { AccountMenu } from "@/components/account-menu";
-import { WorkspaceChatNavLink } from "@/components/workspace-chat-nav-link";
 import { useT } from "@/components/i18n-provider";
 import {
   Scale,
@@ -70,7 +69,7 @@ export function Header() {
           {/* Desktop navigation */}
           {!isLanding && (
             <nav
-              className="hidden md:flex items-center gap-1"
+              className="hidden lg:flex items-center gap-0.5"
               aria-label={t("nav.primary")}
             >
               {navigation.map((item) => {
@@ -81,18 +80,17 @@ export function Header() {
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-primary-light text-primary-dark"
                         : "text-muted hover:text-foreground hover:bg-surface"
                     )}
                   >
-                    <item.icon className="h-4 w-4" aria-hidden="true" />
+                    <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                     {item.name}
                   </Link>
                 );
               })}
-              <WorkspaceChatNavLink />
             </nav>
           )}
 
@@ -143,7 +141,7 @@ export function Header() {
                   aria-label={mobileOpen ? t("nav.menuClose") : t("nav.menuOpen")}
                   aria-expanded={mobileOpen}
                   aria-controls="mobile-nav"
-                  className="md:hidden flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
+                  className="lg:hidden flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
                 >
                   {mobileOpen ? (
                     <X className="h-5 w-5" aria-hidden="true" />
@@ -166,7 +164,7 @@ export function Header() {
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }}
           transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.7 }}
-          className="md:hidden overflow-hidden border-t border-border bg-card"
+          className="lg:hidden overflow-hidden border-t border-border bg-card"
         >
           <div className="px-4 py-3 space-y-1">
             {/* OrgSwitcher already lives in the header bar (compact avatar
@@ -191,10 +189,6 @@ export function Header() {
                 </Link>
               );
             })}
-            <WorkspaceChatNavLink
-              mobile
-              onNavigate={() => setMobileOpen(false)}
-            />
             <div className="border-t border-border pt-3 mt-2 space-y-1">
               <div className="flex items-center gap-3 px-3 mb-2">
                 <div

@@ -35,10 +35,10 @@ const ru: Dict = {
 
   "nav.primary": "Основная навигация",
   "nav.dashboard": "Дашборд",
-  "nav.analyze": "Анализ договора",
+  "nav.analyze": "Анализ",
   "nav.templates": "Шаблоны",
   "nav.counterparty": "Контрагенты",
-  "nav.chat": "AI-консультант",
+  "nav.chat": "AI-юрист",
   "nav.network": "Сеть",
   "nav.openApp": "В кабинет",
   "nav.menuOpen": "Открыть меню",
@@ -83,7 +83,7 @@ const en: Dict = {
 
   "nav.primary": "Primary navigation",
   "nav.dashboard": "Dashboard",
-  "nav.analyze": "Contract analysis",
+  "nav.analyze": "Analysis",
   "nav.templates": "Templates",
   "nav.counterparty": "Counterparties",
   "nav.chat": "AI lawyer",
