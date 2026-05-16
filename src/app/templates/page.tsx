@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
@@ -17,6 +18,7 @@ import {
   ArrowRight,
   Clock,
   Sparkles,
+  Search,
   FilePlus,
   ClipboardCheck,
   FileCheck,
@@ -65,7 +67,22 @@ const categoryColors: Record<string, { bg: string; text: string; border: string 
   "Документооборот": { bg: "bg-surface", text: "text-foreground", border: "border-border" },
 };
 
+// Distinct categories, in first-seen order — drives the filter chips.
+const CATEGORIES = Array.from(new Set(templates.map((t) => t.category)));
+
 export default function TemplatesPage() {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
+
+  const q = query.trim().toLowerCase();
+  const filtered = templates.filter((t) => {
+    if (category && t.category !== category) return false;
+    if (q && !`${t.name} ${t.description}`.toLowerCase().includes(q)) {
+      return false;
+    }
+    return true;
+  });
+
   return (
     <div className="flex min-h-full flex-col">
       <Header />
@@ -73,7 +90,7 @@ export default function TemplatesPage() {
       <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-10 text-center">
+          <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
               <FolderOpen className="h-7 w-7 text-primary" />
             </div>
@@ -86,55 +103,108 @@ export default function TemplatesPage() {
             </p>
           </div>
 
-          {/* Templates grid */}
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {templates.map((template, i) => {
-              const Icon = iconMap[template.icon] || Shield;
-              const colors = categoryColors[template.category] || categoryColors["Конфиденциальность"];
-
-              return (
-                <Link
-                  key={template.id}
-                  href={`/templates/${template.id}`}
-                  className="animate-slide-up group flex flex-col rounded-2xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-lg"
-                  style={{ animationDelay: `${i * 0.08}s`, opacity: 0 }}
+          {/* Search + category filter */}
+          <div className="mb-8">
+            <div className="relative mx-auto max-w-xl">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Найти шаблон — например, «аренда» или «NDA»"
+                aria-label="Поиск по шаблонам"
+                className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCategory(null)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  category === null
+                    ? "bg-primary text-primary-fg"
+                    : "border border-border bg-card text-muted hover:text-foreground"
+                }`}
+              >
+                Все
+              </button>
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategory(cat === category ? null : cat)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                    category === cat
+                      ? "bg-primary text-primary-fg"
+                      : "border border-border bg-card text-muted hover:text-foreground"
+                  }`}
                 >
-                  <div className="mb-4 flex items-start justify-between">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${colors.bg}`}>
-                      <Icon className={`h-6 w-6 ${colors.text}`} />
-                    </div>
-                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
-                      {template.category}
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                    {template.name}
-                  </h3>
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">
-                    {template.description}
-                  </p>
-
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-xs text-muted">
-                        <Clock className="h-3 w-3" />
-                        {template.estimatedTime}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-muted">
-                        <Sparkles className="h-3 w-3" />
-                        AI
-                      </span>
-                    </div>
-                    <span className="flex items-center gap-1 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                      Создать
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Templates grid */}
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card py-16 text-center">
+              <Search className="mx-auto mb-3 h-8 w-8 text-muted/50" />
+              <p className="text-sm text-muted">
+                Шаблонов по запросу не нашлось. Измените запрос или категорию.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((template, i) => {
+                const Icon = iconMap[template.icon] || Shield;
+                const colors =
+                  categoryColors[template.category] ||
+                  categoryColors["Конфиденциальность"];
+
+                return (
+                  <Link
+                    key={template.id}
+                    href={`/templates/${template.id}`}
+                    className="animate-slide-up group flex flex-col rounded-2xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-lg"
+                    style={{ animationDelay: `${i * 0.05}s`, opacity: 0 }}
+                  >
+                    <div className="mb-4 flex items-start justify-between">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${colors.bg}`}>
+                        <Icon className={`h-6 w-6 ${colors.text}`} />
+                      </div>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
+                        {template.category}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                      {template.name}
+                    </h3>
+                    <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">
+                      {template.description}
+                    </p>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs text-muted">
+                          <Clock className="h-3 w-3" />
+                          {template.estimatedTime}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-muted">
+                          <Sparkles className="h-3 w-3" />
+                          AI
+                        </span>
+                      </div>
+                      <span className="flex items-center gap-1 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                        Создать
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
           {/* Coming soon */}
           <div className="mt-8 rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
