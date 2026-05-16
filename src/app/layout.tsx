@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Providers } from "@/components/providers";
 import { SkipLink } from "@/components/skip-link";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { InstallPrompt } from "@/components/install-prompt";
 import { BRAND, CONTACTS } from "@/lib/legal-info";
 import "./globals.css";
 
@@ -28,6 +30,30 @@ export const metadata: Metadata = {
     card: "summary_large_image",
   },
   robots: { index: true, follow: true },
+  // PWA — Next auto-links the manifest (src/app/manifest.ts). These two
+  // make the installed app feel native: applicationName is the home-
+  // screen label, appleWebApp drives the iOS standalone mode + status bar.
+  applicationName: BRAND.name,
+  appleWebApp: {
+    capable: true,
+    title: BRAND.name,
+    statusBarStyle: "default",
+  },
+  // Stop mobile browsers turning ИНН / contract numbers into "phone" links.
+  formatDetection: { telephone: false },
+};
+
+// Viewport + theme-color get their own export in Next 16. viewportFit
+// "cover" lets content reach under the notch; theme-color is split
+// light / dark so the status bar matches the active theme.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b12" },
+  ],
 };
 
 // Organization JSON-LD — surfaces in Google Knowledge Panel and signals
@@ -93,7 +119,9 @@ export default function RootLayout({
         <Providers>
           <SkipLink />
           {children}
+          <InstallPrompt />
         </Providers>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

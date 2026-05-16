@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     "**/build/**",
     // Claude Code local state + git worktrees — not project source.
     ".claude/**",
+    // Static assets served as-is — includes the hand-written service
+    // worker, which uses service-worker globals ESLint would flag.
+    "public/**",
     "next-env.d.ts",
   ]),
   {
