@@ -410,7 +410,7 @@ export default function DashboardPage() {
                     >
                       <Link
                         href={`/report/${doc.id}`}
-                        className="flex flex-1 items-center gap-4"
+                        className="flex min-w-0 flex-1 items-center gap-4"
                       >
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
                           <FileText className="h-5 w-5 text-primary" />
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                   >
                     <Link
                       href={`/generated/${doc.id}`}
-                      className="flex flex-1 items-center gap-4"
+                      className="flex min-w-0 flex-1 items-center gap-4"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
                         <FileText className="h-5 w-5 text-primary" />

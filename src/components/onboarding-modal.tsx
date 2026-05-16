@@ -98,7 +98,7 @@ export function OnboardingModal() {
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 360, damping: 32, mass: 0.8 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+            className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
           >
             <button
               type="button"
@@ -109,7 +109,7 @@ export function OnboardingModal() {
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
 
-            <div className="px-6 pt-8 text-center">
+            <div className="shrink-0 px-6 pt-8 text-center">
               <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Добро пожаловать{session.user.name ? `, ${session.user.name.split(" ")[0]}` : ""}
               </p>
@@ -120,19 +120,17 @@ export function OnboardingModal() {
                 Что в ЮрИИст можно сделать
               </h2>
               <p className="mt-2 text-sm text-muted">
-                Три типичных сценария — выберите, с чего начать. Можно вернуться
-                к любому через ⌘K.
+                Три типичных сценария — выберите, с чего начать.
               </p>
             </div>
 
-            <div className="grid gap-3 p-6 sm:grid-cols-3">
-              {STEPS.map((step, i) => (
+            <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-6 sm:grid-cols-3">
+              {STEPS.map((step) => (
                 <Link
                   key={step.href}
                   href={step.href}
                   onClick={dismiss}
                   className="group flex flex-col rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-card-hover"
-                  style={{ animationDelay: `${i * 80}ms`, opacity: 0 }}
                 >
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary-light text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
                     <step.icon className="h-5 w-5" aria-hidden="true" />
@@ -143,7 +141,7 @@ export function OnboardingModal() {
                   <p className="mt-1 flex-1 text-xs leading-relaxed text-muted">
                     {step.description}
                   </p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                     {step.cta}
                     <ArrowRight className="h-3 w-3" aria-hidden="true" />
                   </span>
@@ -151,8 +149,10 @@ export function OnboardingModal() {
               ))}
             </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-border bg-surface/60 px-6 py-3 text-xs text-muted">
-              <span>Подсказка: ⌘K открывает поиск по всему сервису</span>
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-surface/60 px-6 py-3 text-xs text-muted sm:justify-between">
+              <span className="hidden sm:inline">
+                Подсказка: ⌘K открывает поиск по всему сервису
+              </span>
               <button
                 type="button"
                 onClick={dismiss}
