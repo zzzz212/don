@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { ContactCounterparty } from "@/components/contact-counterparty";
 import {
   Search,
   Loader2,
@@ -330,6 +331,10 @@ export default function CounterpartyPage() {
                   )}
                 </div>
               </div>
+
+              {/* Reach the counterparty directly when its ИНН belongs to
+                  a ЮрИИст account. */}
+              <ContactCounterparty inn={profile.inn} />
 
               {/* Risk factors. Court / debt rows are gated until the real
                   KAD (api-fns.ru) and FSSP integrations are wired —
