@@ -18,6 +18,7 @@ import type { Usage } from "./types";
 import { dedupRisks, byRiskSeverity } from "./dedup";
 import { scoreAndVerdictFromCounts as calibrate } from "./score-calibration";
 import { pickTier } from "./tier-policy";
+import { verifyRiskQuotes } from "./quote-verify";
 
 export type {
   AnalysisRisk,
@@ -46,11 +47,15 @@ export async function analyzeContract(
 
   const tier = pickTier("analyze", plan);
 
-  if (isShortDocument(contractText)) {
-    return analyzeSinglePass(contractText, userId, orgId, tier);
-  }
+  const result = isShortDocument(contractText)
+    ? await analyzeSinglePass(contractText, userId, orgId, tier)
+    : await analyzeMultiPass(contractText, userId, orgId, tier);
 
-  return analyzeMultiPass(contractText, userId, orgId, tier);
+  // Snap each risk's quote to the contract's exact wording where it
+  // differs only in whitespace — the report's apply-fix matches the
+  // quote with an exact substring check, so a stray line break in the
+  // model's citation would otherwise silently disable the fix button.
+  return { ...result, risks: verifyRiskQuotes(contractText, result.risks) };
 }
 
 // ── Short doc: single pass against the full ANALYZE prompt ──────────
