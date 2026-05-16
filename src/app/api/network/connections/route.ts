@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { networkRateLimitOk } from "@/lib/network";
+import { sendEmail } from "@/lib/email";
+import { buildConnectionRequestEmail } from "@/lib/email/templates/connection-request";
+import { BRAND } from "@/lib/legal-info";
 import { reportError } from "@/lib/telemetry";
 
 // Selected user fields needed to render a connection card. profile is a
@@ -97,6 +101,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const me = session.user.id;
+    if (!(await networkRateLimitOk(me))) {
+      return NextResponse.json(
+        { error: "Слишком много действий подряд. Подождите минуту." },
+        { status: 429 }
+      );
+    }
     const parsed = CreateSchema.safeParse(
       await request.json().catch(() => null)
     );
@@ -153,6 +163,33 @@ export async function POST(request: NextRequest) {
         message: message && message.length > 0 ? message : null,
       },
     });
+
+    // Notify the addressee. Awaited — a serverless function can freeze
+    // right after the response — but sendEmail itself never throws.
+    const people = await prisma.user.findMany({
+      where: { id: { in: [me, toUserId] } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profile: { select: { displayName: true } },
+      },
+    });
+    const addressee = people.find((u) => u.id === toUserId);
+    const requester = people.find((u) => u.id === me);
+    if (addressee?.email) {
+      await sendEmail(
+        buildConnectionRequestEmail({
+          to: addressee.email,
+          requesterName:
+            requester?.profile?.displayName ??
+            requester?.name ??
+            "Пользователь",
+          networkUrl: `${BRAND.publicUrl}/network`,
+        })
+      );
+    }
+
     return NextResponse.json({ connection });
   } catch (error) {
     await reportError(error, { op: "network.connections.create" });

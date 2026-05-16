@@ -3,6 +3,7 @@
 // user-to-user connections, document review shares and direct messages.
 
 import { prisma } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
 
 /** Lazily create the network profile row for a user. A profile exists
  *  as soon as the user opens the network section; `discoverable` stays
@@ -101,4 +102,13 @@ export function shapeNetworkUser(u: NetworkUser) {
     headline: u.profile?.headline ?? null,
     image: u.image,
   };
+}
+
+/** Per-user rate-limit gate for network mutations — connection requests,
+ *  shares, comments and messages. Returns false when the user is over
+ *  the limit; the caller should answer 429. Keyed by user id, not IP,
+ *  so a shared office network isn't throttled as one actor. */
+export async function networkRateLimitOk(userId: string): Promise<boolean> {
+  const { ok } = await rateLimit(userId, "network");
+  return ok;
 }

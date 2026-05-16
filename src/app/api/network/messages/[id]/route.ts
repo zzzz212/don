@@ -3,10 +3,14 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  networkRateLimitOk,
   NETWORK_USER_SELECT,
   shapeNetworkUser,
   type NetworkUser,
 } from "@/lib/network";
+import { sendEmail } from "@/lib/email";
+import { buildNetworkMessageEmail } from "@/lib/email/templates/network-message";
+import { BRAND } from "@/lib/legal-info";
 import { reportError } from "@/lib/telemetry";
 
 // Most recent slice of a thread. Conversations rarely need deep history
@@ -87,6 +91,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const me = session.user.id;
+    if (!(await networkRateLimitOk(me))) {
+      return NextResponse.json(
+        { error: "Слишком много сообщений подряд. Подождите минуту." },
+        { status: 429 }
+      );
+    }
     const { id } = await params;
     const parsed = SendSchema.safeParse(
       await request.json().catch(() => null)
@@ -112,6 +122,39 @@ export async function POST(
     const message = await prisma.directMessage.create({
       data: { conversationId: id, senderId: me, body: parsed.data.body },
     });
+
+    // Email the other side only for the very first message of a thread —
+    // an ongoing conversation is covered by the in-app unread badge, so
+    // per-message email would just be noise.
+    const total = await prisma.directMessage.count({
+      where: { conversationId: id },
+    });
+    if (total === 1) {
+      const otherId =
+        convo.userAId === me ? convo.userBId : convo.userAId;
+      const people = await prisma.user.findMany({
+        where: { id: { in: [me, otherId] } },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          profile: { select: { displayName: true } },
+        },
+      });
+      const recipient = people.find((u) => u.id === otherId);
+      const sender = people.find((u) => u.id === me);
+      if (recipient?.email) {
+        await sendEmail(
+          buildNetworkMessageEmail({
+            to: recipient.email,
+            fromName:
+              sender?.profile?.displayName ?? sender?.name ?? "Пользователь",
+            preview: parsed.data.body.slice(0, 140),
+            threadUrl: `${BRAND.publicUrl}/network/messages/${id}`,
+          })
+        );
+      }
+    }
 
     return NextResponse.json({
       message: {

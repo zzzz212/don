@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
+  networkRateLimitOk,
   NETWORK_USER_SELECT,
   shapeNetworkUser,
   type NetworkUser,
@@ -25,6 +26,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const me = session.user.id;
+    if (!(await networkRateLimitOk(me))) {
+      return NextResponse.json(
+        { error: "Слишком много действий подряд. Подождите минуту." },
+        { status: 429 }
+      );
+    }
     const { id } = await params;
     const parsed = CommentSchema.safeParse(
       await request.json().catch(() => null)

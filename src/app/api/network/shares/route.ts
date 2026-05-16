@@ -4,10 +4,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   areConnected,
+  networkRateLimitOk,
   NETWORK_USER_SELECT,
   shapeNetworkUser,
   type NetworkUser,
 } from "@/lib/network";
+import { sendEmail } from "@/lib/email";
+import { buildDocumentSharedEmail } from "@/lib/email/templates/document-shared";
+import { BRAND } from "@/lib/legal-info";
 import { reportError } from "@/lib/telemetry";
 
 // GET /api/network/shares — contracts the viewer has sent for review and
@@ -80,6 +84,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const me = session.user.id;
+    if (!(await networkRateLimitOk(me))) {
+      return NextResponse.json(
+        { error: "Слишком много действий подряд. Подождите минуту." },
+        { status: 429 }
+      );
+    }
     const parsed = CreateSchema.safeParse(
       await request.json().catch(() => null)
     );
@@ -97,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     const document = await prisma.document.findUnique({
       where: { id: documentId },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, fileName: true },
     });
     if (!document || document.userId !== me) {
       return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
@@ -128,6 +138,31 @@ export async function POST(request: NextRequest) {
         message: message && message.length > 0 ? message : null,
       },
     });
+
+    // Notify the reviewer. Awaited; sendEmail never throws.
+    const people = await prisma.user.findMany({
+      where: { id: { in: [me, toUserId] } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profile: { select: { displayName: true } },
+      },
+    });
+    const recipient = people.find((u) => u.id === toUserId);
+    const sender = people.find((u) => u.id === me);
+    if (recipient?.email) {
+      await sendEmail(
+        buildDocumentSharedEmail({
+          to: recipient.email,
+          fromName:
+            sender?.profile?.displayName ?? sender?.name ?? "Пользователь",
+          documentName: document.fileName,
+          shareUrl: `${BRAND.publicUrl}/network/shares/${share.id}`,
+        })
+      );
+    }
+
     return NextResponse.json({ share });
   } catch (error) {
     await reportError(error, { op: "network.shares.create" });

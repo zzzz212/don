@@ -6,6 +6,7 @@ export type RateLimitEndpoint =
   | "chat"
   | "generate"
   | "billing.checkout"
+  | "network"
   | "default";
 
 export interface RateLimitResult {
@@ -23,6 +24,10 @@ const LIMITS: Record<RateLimitEndpoint, { max: number; windowSec: number }> = {
   // legitimate retries (network drop on confirmation page) don't trigger
   // 429s but still cap brute-force attempts.
   "billing.checkout": { max: 10, windowSec: 60 },
+  // Network mutations — connection requests, shares, comments, messages.
+  // Loose enough for a real back-and-forth chat, tight enough that a
+  // script can't fan out hundreds of requests / messages.
+  network: { max: 30, windowSec: 60 },
   default: { max: 60, windowSec: 60 },
 };
 
