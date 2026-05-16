@@ -270,12 +270,16 @@ function TemplateFillPage() {
     }
   };
 
+  // Live preview — generateContract is pure deterministic interpolation,
+  // so re-deriving the document on every keystroke costs nothing.
+  const livePreview = generateContract(template.id, formData);
+
   return (
     <div className="flex min-h-full flex-col">
       <Header />
 
       <main className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:max-w-6xl lg:px-8">
           {/* Back link */}
           <Link
             href="/templates"
@@ -312,6 +316,7 @@ function TemplateFillPage() {
                 </div>
               )}
 
+              <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
               {/* Form */}
               <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
                 {renderFormByGroups(template.fields, formData, handleChange)}
@@ -341,6 +346,23 @@ function TemplateFillPage() {
                     )}
                   </button>
                 </div>
+              </div>
+
+              {/* Live preview — updates on every keystroke (deterministic
+                  generation). Side-by-side on lg, stacked below. */}
+              <div className="mt-6 lg:mt-0 lg:sticky lg:top-20">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                  Предпросмотр
+                </p>
+                <div className="document-page max-h-[72vh] overflow-y-auto rounded-lg">
+                  <div className="document-preview p-6 sm:p-8">
+                    <pre className="whitespace-pre-wrap break-words font-serif text-[12px] leading-6">
+                      {livePreview}
+                    </pre>
+                  </div>
+                </div>
+              </div>
               </div>
             </div>
           ) : (
