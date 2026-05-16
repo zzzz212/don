@@ -41,6 +41,8 @@ export type AuditAction =
   | "trial.extended"
   // Anti-abuse — trial activation flagged as a likely farmed account
   | "abuse.trial_flagged"
+  // Referral programme — a referred user activated, both sides rewarded
+  | "referral.rewarded"
   // Documents
   | "document.deleted"
   | "document.refined_ai"

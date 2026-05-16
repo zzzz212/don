@@ -35,6 +35,7 @@ import {
   CalendarClock,
   MessagesSquare,
   GitCompare,
+  Gift,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,14 @@ export function CommandPalette() {
         group: "Действия",
         icon: GitCompare,
         run: () => router.push("/compare-contracts"),
+      },
+      {
+        id: "act.referral",
+        label: "Пригласить друзей",
+        hint: "Бонусные анализы за каждого",
+        group: "Действия",
+        icon: Gift,
+        run: () => router.push("/referral"),
       },
       {
         id: "set.billing",

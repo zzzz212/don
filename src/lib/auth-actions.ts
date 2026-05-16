@@ -21,6 +21,7 @@ import {
   normalizeEmailForDedup,
   hashFingerprint,
 } from "@/lib/anti-abuse";
+import { generateReferralCode, resolveReferralCode } from "@/lib/referral";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -103,6 +104,12 @@ export async function registerUser(formData: FormData) {
   // score, never auto-blocks on its own.
   const fingerprintRaw = (formData.get("fingerprint") as string | null) ?? "";
 
+  // Referral: mint this user's own invite code and, if they arrived via
+  // ?ref=CODE, link them to whoever invited them.
+  const referralCode = await generateReferralCode();
+  const refParam = (formData.get("ref") as string | null)?.trim() ?? "";
+  const referredById = refParam ? await resolveReferralCode(refParam) : null;
+
   const hashedPassword = await bcrypt.hash(password, 12);
 
   const newUser = await prisma.user.create({
@@ -114,6 +121,8 @@ export async function registerUser(formData: FormData) {
       signupIp: ip,
       signupUserAgent: userAgent ? userAgent.slice(0, 500) : null,
       signupFingerprint: hashFingerprint(fingerprintRaw) || null,
+      referralCode,
+      referredById,
     },
     select: { id: true },
   });

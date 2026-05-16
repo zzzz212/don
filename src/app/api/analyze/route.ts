@@ -17,6 +17,7 @@ import { logOcrUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks } from "@/lib/document-search";
 import { ensureActiveOrg, getMembership } from "@/lib/org";
+import { consumeReferralBonus } from "@/lib/referral";
 import { captureEvent } from "@/lib/analytics/server";
 
 // Vercel function timeout. Default Hobby = 60s, Pro = 300s, Enterprise =
@@ -393,6 +394,12 @@ export async function POST(request: NextRequest) {
         savedToDb: documentId !== null,
       },
     });
+
+    // Referral bonus: when this analysis ran past the FREE monthly base,
+    // draw one credit from the workspace owner's bonus pool.
+    if (orgId) {
+      await consumeReferralBonus(orgId);
+    }
     if (usedOcr) {
       void captureEvent({
         userId: userId ?? null,

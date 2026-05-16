@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useId } from "react";
 import Link from "next/link";
-import { Scale, Mail, Lock, User, Loader2, AlertCircle } from "lucide-react";
+import { Scale, Mail, Lock, User, Loader2, AlertCircle, Gift } from "lucide-react";
 import { registerUser, loginWithGoogle, isGoogleAuthEnabled } from "@/lib/auth-actions";
 import { computeFingerprint } from "@/lib/fingerprint";
 
@@ -33,10 +33,15 @@ export default function RegisterPage() {
   // Best-effort device fingerprint — an anti-abuse signal sent with the
   // registration. Computed once after mount (needs the browser APIs).
   const [fingerprint, setFingerprint] = useState("");
+  // Referral code from ?ref= — read from the URL without useSearchParams
+  // so the page doesn't need a Suspense boundary (Next 16).
+  const [referralCode, setReferralCode] = useState("");
 
   useEffect(() => {
     isGoogleAuthEnabled().then(setGoogleEnabled);
     setFingerprint(computeFingerprint());
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) setReferralCode(ref.trim());
   }, []);
 
   const validateField = (name: string, value: string) => {
@@ -121,6 +126,7 @@ export default function RegisterPage() {
     formData.set("consent_general", "1");
     formData.set("consent_transborder", "1");
     formData.set("fingerprint", fingerprint);
+    if (referralCode) formData.set("ref", referralCode);
 
     setIsLoading(true);
 
@@ -161,6 +167,17 @@ export default function RegisterPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
+          {/* Referral note */}
+          {referralCode && (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-primary/30 bg-primary-light/50 px-4 py-3 text-sm text-primary-dark">
+              <Gift className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>
+                Вас пригласил коллега. После активации пробного периода вы
+                оба получите бонусные анализы договоров.
+              </span>
+            </div>
+          )}
+
           {/* Error */}
           {error && (
             <div

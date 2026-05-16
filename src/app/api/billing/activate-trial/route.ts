@@ -6,6 +6,7 @@ import {
   OrgAccessError,
 } from "@/lib/org";
 import { activateTrial } from "@/lib/billing/trial";
+import { grantReferralReward } from "@/lib/referral";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
 import { logAudit } from "@/lib/audit";
@@ -90,6 +91,10 @@ export async function POST() {
         },
       });
     }
+
+    // Referral payout — if this user joined via a referral, credit both
+    // sides now that they've taken the deliberate step of activating.
+    await grantReferralReward(userId);
 
     return NextResponse.json({
       ok: true,

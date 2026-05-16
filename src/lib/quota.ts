@@ -63,6 +63,8 @@ export async function getOrgUsageThisMonth(
 async function resolvePlanContextForOrg(orgId: string): Promise<{
   plan: string;
   trialEndsAt: Date | null;
+  /** Referral bonus pool of the owner — extra FREE analyses. */
+  bonusAnalyses: number;
 }> {
   // Single round-trip: fetch the org with the owner row joined in.
   const org = await prisma.organization.findUnique({
@@ -75,7 +77,7 @@ async function resolvePlanContextForOrg(orgId: string): Promise<{
         take: 1,
         select: {
           user: {
-            select: { plan: true, trialEndsAt: true },
+            select: { plan: true, trialEndsAt: true, bonusAnalyses: true },
           },
         },
       },
@@ -83,7 +85,7 @@ async function resolvePlanContextForOrg(orgId: string): Promise<{
   });
 
   if (!org) {
-    return { plan: "FREE", trialEndsAt: null };
+    return { plan: "FREE", trialEndsAt: null, bonusAnalyses: 0 };
   }
 
   const owner = org.memberships[0]?.user;
@@ -91,6 +93,7 @@ async function resolvePlanContextForOrg(orgId: string): Promise<{
     return {
       plan: owner.plan,
       trialEndsAt: owner.trialEndsAt ?? null,
+      bonusAnalyses: owner.bonusAnalyses ?? 0,
     };
   }
 
@@ -98,6 +101,7 @@ async function resolvePlanContextForOrg(orgId: string): Promise<{
   return {
     plan: org.plan,
     trialEndsAt: org.trialEndsAt ?? null,
+    bonusAnalyses: 0,
   };
 }
 
@@ -135,12 +139,26 @@ export async function checkQuota(
 
   const used = await getOrgUsageThisMonth(orgId, feature);
 
+  // Referral bonus — extra FREE analyses beyond the monthly base. The
+  // limit is held stable across the month: base + the pool still
+  // remaining + the overflow already drawn this month (by that point
+  // consumeReferralBonus has decremented the pool for each overflow
+  // analysis, so adding the overflow back keeps the month's cap fixed).
+  let effectiveLimit = limit;
+  if (
+    feature === "analyze" &&
+    effective.plan === "FREE" &&
+    ctx.bonusAnalyses > 0
+  ) {
+    effectiveLimit = limit + ctx.bonusAnalyses + Math.max(0, used - limit);
+  }
+
   return {
     ...base,
     used,
-    limit,
+    limit: effectiveLimit,
     unlimited: false,
-    allowed: used < limit,
+    allowed: used < effectiveLimit,
     resetsAt,
   };
 }

@@ -21,6 +21,7 @@ import {
   Sparkles,
   Settings,
   ChevronDown,
+  Gift,
 } from "lucide-react";
 
 interface BillingSummary {
@@ -221,6 +222,15 @@ export function AccountMenu() {
               >
                 <Settings className="h-4 w-4 text-muted" aria-hidden="true" />
                 Настройки аккаунта
+              </Link>
+              <Link
+                href="/referral"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-surface"
+                role="menuitem"
+              >
+                <Gift className="h-4 w-4 text-muted" aria-hidden="true" />
+                Пригласить друзей
               </Link>
               {isAdmin && (
                 <Link

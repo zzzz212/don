@@ -58,6 +58,16 @@ model User {
   // 0–100 multi-account risk score, set when the trial is activated.
   abuseScore        Int     @default(0)
 
+  // ── Referral programme ────────────────────────────────────────────
+  // referralCode is this user's own invite code; uniqueness is enforced
+  // in application code, not a DB constraint (foot-gun #2 — nullable
+  // unique). referredById points at the user who invited them. Both
+  // sides earn bonusAnalyses (a lifetime pool of extra FREE analyses)
+  // when the referred user activates their trial.
+  referralCode  String?
+  referredById  String?
+  bonusAnalyses Int     @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -92,9 +102,15 @@ model User {
   directMessages      DirectMessage[]
   workspaceMessages   WorkspaceMessage[]
 
+  // Referral self-relation — onDelete: SetNull so a referrer's deletion
+  // doesn't cascade into the people they invited.
+  referredBy User?  @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals  User[] @relation("UserReferrals")
+
   @@index([normalizedEmail])
   @@index([signupIp])
   @@index([signupFingerprint])
+  @@index([referralCode])
 }
 
 // Time-based One-Time Password (TOTP) credential for 2FA. One row per
