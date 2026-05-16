@@ -10,6 +10,7 @@ import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
 import { AccountMenu } from "@/components/account-menu";
+import { WorkspaceChatNavLink } from "@/components/workspace-chat-nav-link";
 import { useT } from "@/components/i18n-provider";
 import {
   Scale,
@@ -91,6 +92,7 @@ export function Header() {
                   </Link>
                 );
               })}
+              <WorkspaceChatNavLink />
             </nav>
           )}
 
@@ -189,6 +191,10 @@ export function Header() {
                 </Link>
               );
             })}
+            <WorkspaceChatNavLink
+              mobile
+              onNavigate={() => setMobileOpen(false)}
+            />
             <div className="border-t border-border pt-3 mt-2 space-y-1">
               <div className="flex items-center gap-3 px-3 mb-2">
                 <div

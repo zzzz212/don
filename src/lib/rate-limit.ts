@@ -7,6 +7,7 @@ export type RateLimitEndpoint =
   | "generate"
   | "billing.checkout"
   | "network"
+  | "workspace-chat"
   | "default";
 
 export interface RateLimitResult {
@@ -28,6 +29,8 @@ const LIMITS: Record<RateLimitEndpoint, { max: number; windowSec: number }> = {
   // Loose enough for a real back-and-forth chat, tight enough that a
   // script can't fan out hundreds of requests / messages.
   network: { max: 30, windowSec: 60 },
+  // Workspace team chat — a real conversation can be bursty.
+  "workspace-chat": { max: 30, windowSec: 60 },
   default: { max: 60, windowSec: 60 },
 };
 

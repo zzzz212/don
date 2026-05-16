@@ -88,6 +88,7 @@ model User {
   conversationsA      Conversation[]  @relation("ConvUserA")
   conversationsB      Conversation[]  @relation("ConvUserB")
   directMessages      DirectMessage[]
+  workspaceMessages   WorkspaceMessage[]
 
   @@index([normalizedEmail])
   @@index([signupIp])
@@ -205,6 +206,7 @@ model Organization {
   subscription       Subscription?
   payments           Payment[]
   auditEvents        AuditEvent[]
+  workspaceMessages  WorkspaceMessage[]
 }
 
 // Per-user paid subscription. One row per user — the plan applies to
@@ -302,10 +304,14 @@ model Membership {
   id        String   @id @default(cuid())
   userId    String
   orgId     String
-  // "OWNER" | "ADMIN" | "MEMBER". OWNER may delete the org and transfer
-  // ownership; ADMIN may invite/remove members; MEMBER may only use it.
+  // "OWNER" | "ADMIN" | "MEMBER" | "VIEWER". OWNER may delete the org and
+  // transfer ownership; ADMIN may invite/remove members; MEMBER may use
+  // it; VIEWER is read-only. See Role in src/lib/org.ts.
   role      String   @default("MEMBER")
   createdAt DateTime @default(now())
+  // Last time this member opened the workspace chat — read cursor for
+  // the unread badge.
+  chatReadAt DateTime?
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -808,4 +814,20 @@ model DirectMessage {
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
+}
+
+// Workspace-internal team chat. One implicit channel per Organization —
+// every member of the workspace sees the same thread. The per-member
+// read cursor lives on Membership.chatReadAt (unread badge).
+model WorkspaceMessage {
+  id        String   @id @default(cuid())
+  orgId     String
+  senderId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, createdAt])
 }
