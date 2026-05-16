@@ -17,6 +17,7 @@ import {
   Sparkles,
   Loader2,
   ArrowRight,
+  BadgeCheck,
 } from "lucide-react";
 
 interface AdminStats {
@@ -172,6 +173,13 @@ export default function AdminOverviewPage() {
               >
                 <CreditCard className="h-4 w-4" />
                 Платежи
+              </Link>
+              <Link
+                href="/admin/inn-claims"
+                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+              >
+                <BadgeCheck className="h-4 w-4" />
+                Заявки ИНН
               </Link>
             </nav>
           </div>

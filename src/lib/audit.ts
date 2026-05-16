@@ -42,6 +42,12 @@ export type AuditAction =
   // Documents
   | "document.deleted"
   | "document.refined_ai"
+  // ИНН linking / verification
+  | "inn.claimed"
+  | "inn.unlinked"
+  | "inn.doc_uploaded"
+  | "inn.verified"
+  | "inn.rejected"
   // Account security
   | "auth.password_reset"
   | "auth.2fa_enabled"

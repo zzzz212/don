@@ -19,6 +19,10 @@ import {
   MessageSquare,
   ChevronRight,
   AlertCircle,
+  BadgeCheck,
+  ShieldCheck,
+  Building2,
+  Upload,
 } from "lucide-react";
 
 type ConnState = "none" | "connected" | "incoming" | "outgoing" | "declined";
@@ -49,6 +53,14 @@ interface Profile {
   headline: string | null;
   bio: string | null;
   specialization: string | null;
+  // ИНН linking — see InnSection.
+  inn: string | null;
+  innStatus: string;
+  innCompanyName: string | null;
+  innClaimedAt: string | null;
+  innVerifiedAt: string | null;
+  innDocUrl: string | null;
+  innRejectionNote: string | null;
 }
 
 interface ShareSummary {
@@ -782,6 +794,219 @@ function ProfileTab({
           </span>
         )}
       </div>
+
+      <InnSection initial={profile} />
+    </div>
+  );
+}
+
+// ── ИНН linking ──────────────────────────────────────────────────────
+// Two-tier: link an ИНН ("указан") then optionally upload an extract for
+// an admin to confirm ("подтверждён"). Manages its own state — the INN
+// endpoints are separate from the profile PUT, so it never clobbers the
+// user's in-progress edits to the text fields above.
+
+function InnSection({ initial }: { initial: Profile }) {
+  const [status, setStatus] = useState(initial.innStatus);
+  const [inn, setInn] = useState(initial.inn);
+  const [companyName, setCompanyName] = useState(initial.innCompanyName);
+  const [docUrl, setDocUrl] = useState(initial.innDocUrl);
+  const [rejectionNote, setRejectionNote] = useState(initial.innRejectionNote);
+
+  const [innInput, setInnInput] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function apply(p: Profile) {
+    setStatus(p.innStatus);
+    setInn(p.inn);
+    setCompanyName(p.innCompanyName);
+    setDocUrl(p.innDocUrl);
+    setRejectionNote(p.innRejectionNote);
+  }
+
+  async function claim() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch("/api/network/profile/inn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inn: innInput }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setErr(d.error ?? "Не удалось привязать ИНН");
+        return;
+      }
+      apply(d.profile);
+      setInnInput("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function unlink() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch("/api/network/profile/inn", { method: "DELETE" });
+      const d = await r.json();
+      if (!r.ok) {
+        setErr(d.error ?? "Не удалось отвязать ИНН");
+        return;
+      }
+      apply(d.profile);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadDoc() {
+    if (!file) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/network/profile/inn/document", {
+        method: "POST",
+        body: fd,
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setErr(d.error ?? "Не удалось загрузить документ");
+        return;
+      }
+      apply(d.profile);
+      setFile(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <Building2 className="h-4 w-4 text-muted" />
+        <h3 className="text-sm font-semibold text-foreground">
+          ИНН организации
+        </h3>
+        {status === "verified" && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-success-light px-2 py-0.5 text-xs font-semibold text-success">
+            <ShieldCheck className="h-3 w-3" />
+            Подтверждён
+          </span>
+        )}
+        {status === "claimed" && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary-light px-2 py-0.5 text-xs font-semibold text-primary-dark">
+            <BadgeCheck className="h-3 w-3" />
+            Указан
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-muted">
+        Привяжите ИНН вашей компании или ИП, чтобы контрагенты могли найти
+        вас при проверке и написать напрямую.
+      </p>
+
+      {err && (
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-danger">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {err}
+        </p>
+      )}
+
+      {status === "none" ? (
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={innInput}
+            onChange={(e) => setInnInput(e.target.value)}
+            placeholder="ИНН — 10 или 12 цифр"
+            className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <button
+            type="button"
+            onClick={claim}
+            disabled={busy || innInput.trim().length === 0}
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
+          >
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <BadgeCheck className="h-4 w-4" />
+            )}
+            Привязать
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-3">
+          <div className="rounded-lg bg-surface px-3 py-2">
+            <p className="font-mono text-sm text-foreground">{inn}</p>
+            {companyName && (
+              <p className="text-xs text-muted">{companyName}</p>
+            )}
+          </div>
+
+          {rejectionNote && (
+            <p className="flex items-start gap-1.5 rounded-lg border border-warning/30 bg-warning-light px-3 py-2 text-xs text-warning">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Подтверждение отклонено: {rejectionNote}. Загрузите другую
+              выписку и отправьте заявку повторно.
+            </p>
+          )}
+
+          {status === "claimed" && docUrl && !rejectionNote && (
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              <Clock className="h-3.5 w-3.5" />
+              Выписка отправлена на проверку — обычно занимает 1–2 рабочих
+              дня.
+            </p>
+          )}
+
+          {status === "claimed" && (!docUrl || rejectionNote) && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted">
+                Чтобы получить отметку «подтверждён», загрузите выписку
+                ЕГРЮЛ/ЕГРИП (PDF или фото, до 10 МБ).
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type="file"
+                  accept=".pdf,image/jpeg,image/png"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={uploadDoc}
+                  disabled={busy || !file}
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  Отправить на подтверждение
+                </button>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={unlink}
+            disabled={busy}
+            className="text-xs font-medium text-muted underline transition-colors hover:text-danger disabled:opacity-50"
+          >
+            Отвязать ИНН
+          </button>
+        </div>
+      )}
     </div>
   );
 }

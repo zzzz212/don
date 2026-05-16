@@ -69,6 +69,16 @@ function getDaDataSecret(): string | null {
   return key.trim();
 }
 
+/**
+ * Whether a real DaData key is configured. Callers use this to tell
+ * "ИНН genuinely not found" apart from "lookup unavailable" — e.g. the
+ * ИНН-claim flow rejects an unknown ИНН only when DaData could have
+ * found it.
+ */
+export function isDaDataConfigured(): boolean {
+  return getDaDataKey() !== null;
+}
+
 export interface DaDataCompany {
   name: string;
   shortName: string;

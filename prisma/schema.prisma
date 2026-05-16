@@ -653,12 +653,42 @@ model UserProfile {
   // Free-text areas of practice, e.g. "Корпоративное право, M&A".
   specialization String?
 
+  // ── Linked taxpayer id (ИНН) ──────────────────────────────────────
+  // A user may link the ИНН of the company / ИП they represent. This is
+  // a two-tier trust signal:
+  //   innStatus "claimed"  — ИНН passed checksum validation and was
+  //                          confirmed to exist via DaData. Self-service.
+  //   innStatus "verified" — an admin reviewed an uploaded ЕГРЮЛ/ЕГРИП
+  //                          extract and confirmed the user represents it.
+  // It powers "message this counterparty directly" (find the account
+  // behind a searched ИНН) and is a strong anti-abuse identity anchor.
+  //
+  // Uniqueness (one ИНН ↔ one account) is enforced in application code,
+  // NOT as a DB constraint: `prisma db push` false-positives on a new
+  // unique over a nullable column and refuses without --accept-data-loss
+  // (foot-gun #2). The @@index keeps the reverse lookup fast.
+  inn              String?
+  // "none" | "claimed" | "verified"
+  innStatus        String    @default("none")
+  // Official name resolved from DaData at claim time.
+  innCompanyName   String?
+  innClaimedAt     DateTime?
+  innVerifiedAt    DateTime?
+  // Uploaded extract awaiting admin review — url for download, key for
+  // deletion. Present ⇒ the claim is in the verification queue.
+  innDocUrl        String?
+  innDocKey        String?
+  // Set when an admin rejects an uploaded extract, shown to the user so
+  // they know to re-upload. Cleared on a fresh upload.
+  innRejectionNote String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([discoverable])
+  @@index([inn])
 }
 
 // A connection between two users — the "form a team" primitive.
