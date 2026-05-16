@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
 import { checkQuotaSafe } from "@/lib/quota";
 import { reportError } from "@/lib/telemetry";
 import { getTemplate } from "@/lib/templates";
@@ -112,6 +112,15 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
     const orgId =
       session.user.activeOrgId ?? (await ensureActiveOrg(userId));
+
+    // Workspace VIEWERs are read-only — they can't create documents.
+    const membership = await getMembership(userId, orgId);
+    if (membership?.role === "VIEWER") {
+      return NextResponse.json(
+        { error: "Роль «Наблюдатель» не позволяет создавать документы." },
+        { status: 403 }
+      );
+    }
 
     // Plan quota — same gate as the AI-driven /api/generate route, so a
     // FREE user can't bypass the 2-doc/month limit by switching to the

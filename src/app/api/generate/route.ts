@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { checkQuotaSafe } from "@/lib/quota";
 import { reportError } from "@/lib/telemetry";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
 
 // Pro-tier max function duration. Doc generation on Sonnet for a long
 // template can take 30-60s; the Hobby 60s default is too tight when
@@ -58,6 +58,17 @@ export async function POST(request: NextRequest) {
     const orgId = userId
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
+
+    // Workspace VIEWERs are read-only — no AI quota spend.
+    if (userId && orgId) {
+      const m = await getMembership(userId, orgId);
+      if (m?.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Роль «Наблюдатель» не позволяет генерировать документы." },
+          { status: 403 }
+        );
+      }
+    }
 
     let effectivePlan: string | null = null;
     if (orgId) {

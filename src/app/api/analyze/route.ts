@@ -16,7 +16,7 @@ import {
 import { logOcrUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks } from "@/lib/document-search";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
 import { captureEvent } from "@/lib/analytics/server";
 
 // Vercel function timeout. Default Hobby = 60s, Pro = 300s, Enterprise =
@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
     const orgId = userId
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
+
+    // Workspace VIEWERs are read-only — they may see shared documents and
+    // discussions but not spend the workspace's AI quota.
+    if (userId && orgId) {
+      const m = await getMembership(userId, orgId);
+      if (m?.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Роль «Наблюдатель» не позволяет запускать анализ договоров." },
+          { status: 403 }
+        );
+      }
+    }
 
     // Plan-based quota check (anonymous users skip; rate limit already applied).
     // Also captured for the model-tier selector below — same effective plan

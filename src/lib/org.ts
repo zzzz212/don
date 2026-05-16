@@ -10,14 +10,19 @@
 
 import { prisma } from "@/lib/db";
 
-export type Role = "OWNER" | "ADMIN" | "MEMBER";
+export type Role = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
-export const ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER"];
+export const ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER", "VIEWER"];
 
+// Privilege ordering. VIEWER is read-only and sits below MEMBER, so every
+// existing `requireMembership(…, "MEMBER")` gate already rejects it — a
+// VIEWER can see shared documents and discussions but not modify them or
+// spend the workspace's AI quota.
 const ROLE_RANK: Record<Role, number> = {
   OWNER: 3,
   ADMIN: 2,
   MEMBER: 1,
+  VIEWER: 0,
 };
 
 /** True when `held` is at least as privileged as `required`. */

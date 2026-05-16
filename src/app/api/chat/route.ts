@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
 import { getEffectiveUserPlan } from "@/lib/plans";
 import { captureEvent } from "@/lib/analytics/server";
 
@@ -58,6 +58,17 @@ export async function POST(request: NextRequest) {
     const orgId = userId
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
+
+    // Workspace VIEWERs are read-only — no AI quota spend.
+    if (userId && orgId) {
+      const m = await getMembership(userId, orgId);
+      if (m?.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Роль «Наблюдатель» не позволяет пользоваться чатом-юристом." },
+          { status: 403 }
+        );
+      }
+    }
 
     // Resolve the user's effective plan so the chat tier picker can
     // pick Sonnet for paying users / Haiku for FREE. Anonymous = FREE.

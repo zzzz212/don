@@ -5,7 +5,7 @@ import { OrgAccessError, requireMembership, type Role } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
 import { logAudit, attribution } from "@/lib/audit";
 
-const VALID_ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER"];
+const VALID_ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER", "VIEWER"];
 
 // PATCH /api/organizations/[id]/members/[userId]  { role }
 //   Change a member's role. OWNER only — granting OWNER must come from an
@@ -33,7 +33,7 @@ export async function PATCH(
         : null;
     if (!newRole) {
       return NextResponse.json(
-        { error: "role must be OWNER | ADMIN | MEMBER" },
+        { error: "role must be OWNER | ADMIN | MEMBER | VIEWER" },
         { status: 400 }
       );
     }

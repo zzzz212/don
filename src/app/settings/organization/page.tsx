@@ -20,14 +20,17 @@ import {
   ShieldCheck,
   TrendingUp,
   ChevronRight,
+  Eye,
 } from "lucide-react";
+
+type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
 interface Member {
   userId: string;
   name: string | null;
   email: string;
   image: string | null;
-  role: "OWNER" | "ADMIN" | "MEMBER";
+  role: WorkspaceRole;
   isMe: boolean;
   joinedAt: string;
 }
@@ -35,7 +38,7 @@ interface Member {
 interface PendingInvite {
   id: string;
   email: string | null;
-  role: "ADMIN" | "MEMBER";
+  role: "ADMIN" | "MEMBER" | "VIEWER";
   token: string;
   expiresAt: string;
   createdAt: string;
@@ -49,14 +52,18 @@ interface OrgDetails {
     plan: string;
     createdAt: string;
   };
-  myRole: "OWNER" | "ADMIN" | "MEMBER";
+  myRole: WorkspaceRole;
   members: Member[];
 }
 
-const ROLE_META = {
+const ROLE_META: Record<
+  WorkspaceRole,
+  { label: string; icon: typeof Crown; color: string }
+> = {
   OWNER: { label: "Владелец", icon: Crown, color: "text-warning" },
   ADMIN: { label: "Админ", icon: Shield, color: "text-primary" },
   MEMBER: { label: "Участник", icon: UserIcon, color: "text-muted" },
+  VIEWER: { label: "Наблюдатель", icon: Eye, color: "text-muted" },
 };
 
 export default function OrganizationSettingsPage() {
@@ -109,7 +116,7 @@ export default function OrganizationSettingsPage() {
   const canManage = details?.myRole === "OWNER" || details?.myRole === "ADMIN";
   const isOwner = details?.myRole === "OWNER";
 
-const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
+const handleCreateInvite = async (role: "ADMIN" | "MEMBER" | "VIEWER") => {
     if (!details) return;
     setCreatingInvite(true);
     try {
@@ -160,6 +167,32 @@ const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
     );
     if (res.ok) {
       setInvites((prev) => prev?.filter((i) => i.id !== inviteId) ?? null);
+    }
+  };
+
+  const handleChangeRole = async (
+    member: Member,
+    newRole: WorkspaceRole
+  ) => {
+    if (!details || member.role === newRole) return;
+    const res = await fetch(
+      `/api/organizations/${details.organization.id}/members/${member.userId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      }
+    );
+    if (res.ok) {
+      setDetails({
+        ...details,
+        members: details.members.map((m) =>
+          m.userId === member.userId ? { ...m, role: newRole } : m
+        ),
+      });
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Не удалось изменить роль");
     }
   };
 
@@ -409,6 +442,14 @@ const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
                     )}
                     Пригласить
                   </button>
+                  <button
+                    onClick={() => handleCreateInvite("VIEWER")}
+                    disabled={creatingInvite}
+                    className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Наблюдателя
+                  </button>
                   {isOwner && (
                     <button
                       onClick={() => handleCreateInvite("ADMIN")}
@@ -447,12 +488,31 @@ const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`flex items-center gap-1 text-xs font-medium ${meta.color}`}
-                      >
-                        <Icon className="h-3 w-3" />
-                        {meta.label}
-                      </span>
+                      {isOwner ? (
+                        <select
+                          value={m.role}
+                          onChange={(e) =>
+                            handleChangeRole(
+                              m,
+                              e.target.value as WorkspaceRole
+                            )
+                          }
+                          aria-label={`Роль участника ${m.name || m.email}`}
+                          className="rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="OWNER">Владелец</option>
+                          <option value="ADMIN">Админ</option>
+                          <option value="MEMBER">Участник</option>
+                          <option value="VIEWER">Наблюдатель</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`flex items-center gap-1 text-xs font-medium ${meta.color}`}
+                        >
+                          <Icon className="h-3 w-3" />
+                          {meta.label}
+                        </span>
+                      )}
                       {(canManage || m.isMe) && (
                         <button
                           onClick={() => handleRemoveMember(m)}
@@ -490,7 +550,12 @@ const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
                         <p className="truncate text-sm text-foreground">
                           {inv.email ?? "Открытая ссылка"}
                           <span className="ml-2 text-xs uppercase tracking-wide text-muted">
-                            · {inv.role === "ADMIN" ? "Админ" : "Участник"}
+                            ·{" "}
+                            {inv.role === "ADMIN"
+                              ? "Админ"
+                              : inv.role === "VIEWER"
+                                ? "Наблюдатель"
+                                : "Участник"}
                           </span>
                         </p>
                         <p className="text-xs text-muted">
