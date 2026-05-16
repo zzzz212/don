@@ -449,7 +449,10 @@ function DirectoryTab({
               key={e.userId}
               className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
             >
-              <div className="flex items-start gap-3">
+              <Link
+                href={`/network/users/${e.userId}`}
+                className="flex items-start gap-3 transition-opacity hover:opacity-80"
+              >
                 <Avatar name={e.displayName} image={e.image} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-foreground">
@@ -459,7 +462,7 @@ function DirectoryTab({
                     <p className="truncate text-xs text-muted">{e.headline}</p>
                   )}
                 </div>
-              </div>
+              </Link>
               {e.specialization && (
                 <p className="flex items-center gap-1.5 text-xs text-muted">
                   <Briefcase className="h-3 w-3 shrink-0" />
@@ -522,20 +525,25 @@ function ConnectionRow({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5">
-      <Avatar name={entry.displayName} image={entry.image} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-foreground">
-          {entry.displayName}
-        </p>
-        {entry.headline && (
-          <p className="truncate text-xs text-muted">{entry.headline}</p>
-        )}
-        {entry.message && (
-          <p className="mt-0.5 truncate text-xs italic text-muted">
-            «{entry.message}»
+      <Link
+        href={`/network/users/${entry.userId}`}
+        className="flex min-w-0 flex-1 items-center gap-3 transition-opacity hover:opacity-80"
+      >
+        <Avatar name={entry.displayName} image={entry.image} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold text-foreground">
+            {entry.displayName}
           </p>
-        )}
-      </div>
+          {entry.headline && (
+            <p className="truncate text-xs text-muted">{entry.headline}</p>
+          )}
+          {entry.message && (
+            <p className="mt-0.5 truncate text-xs italic text-muted">
+              «{entry.message}»
+            </p>
+          )}
+        </div>
+      </Link>
       <div className="flex shrink-0 items-center gap-2">
         {busy === entry.connectionId ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted" />
