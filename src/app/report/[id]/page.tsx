@@ -8,6 +8,7 @@ import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import { SendForReview } from "@/components/send-for-review";
 import { DeadlineScanButton } from "@/components/deadline-scan-button";
+import { PublicShareButton } from "@/components/public-share-button";
 import {
   ArrowLeft,
   FileText,
@@ -350,6 +351,9 @@ export default function ReportPage({
               )}
               {analysis.documentId && (
                 <DeadlineScanButton documentId={analysis.documentId} />
+              )}
+              {analysis.documentId && (
+                <PublicShareButton documentId={analysis.documentId} />
               )}
               <button
                 onClick={handleExportPDF}

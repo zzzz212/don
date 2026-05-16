@@ -44,6 +44,9 @@ export type AuditAction =
   // Documents
   | "document.deleted"
   | "document.refined_ai"
+  // Public read-only analysis links
+  | "public_share.created"
+  | "public_share.revoked"
   // ИНН linking / verification
   | "inn.claimed"
   | "inn.unlinked"

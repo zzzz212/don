@@ -77,6 +77,7 @@ model User {
   subscriptions       Subscription[]
   auditEvents         AuditEvent[]
   contractDeadlines   ContractDeadline[]
+  publicShares        PublicShare[]
   totp                TotpCredential?
 
   // Cross-user network (see models at the end of this file).
@@ -400,6 +401,7 @@ model Document {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   deadlines    ContractDeadline[]
+  publicShares PublicShare[]
 
   @@index([userId])
   @@index([orgId])
@@ -824,6 +826,26 @@ model DirectMessage {
   attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
 
   @@index([conversationId, createdAt])
+}
+
+// A read-only public link to a contract analysis. The high-entropy
+// token IS the credential — anyone with the link sees the verdict and
+// risks (no contract excerpts, no editing). The creator can revoke it
+// or it lapses at expiresAt.
+model PublicShare {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  documentId String
+  createdBy  String
+  expiresAt  DateTime?
+  revoked    Boolean   @default(false)
+  viewCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  creator  User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }
 
 // Key dates extracted by AI from an analysed contract — end of term,
