@@ -62,6 +62,7 @@ function Avatar({ name, image }: { name: string; image: string | null }) {
 export function ContactCounterparty({ inn }: { inn: string }) {
   const router = useRouter();
   const [owner, setOwner] = useState<Owner | null>(null);
+  const [isSelf, setIsSelf] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [composing, setComposing] = useState(false);
   const [message, setMessage] = useState("");
@@ -73,6 +74,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
     let cancelled = false;
     setLoaded(false);
     setOwner(null);
+    setIsSelf(false);
     setComposing(false);
     setRequested(false);
     setErr(null);
@@ -81,6 +83,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
       .then((d) => {
         if (!cancelled) {
           setOwner(d.owner ?? null);
+          setIsSelf(Boolean(d.self));
           setLoaded(true);
         }
       })
@@ -139,11 +142,21 @@ export function ContactCounterparty({ inn }: { inn: string }) {
 
   if (!loaded) return null;
 
+  if (isSelf) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted">
+        Этот ИНН привязан к вашему профилю — это ваша организация.
+      </div>
+    );
+  }
+
   if (!owner) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted">
-        Этот контрагент пока не зарегистрирован в ЮрИИст — написать напрямую
-        нельзя. Если он привяжет свой ИНН, кнопка связи появится здесь.
+        Никто пока не привязал этот ИНН к своему профилю в ЮрИИст —
+        написать напрямую нельзя. Кнопка связи появится, когда
+        представитель компании привяжет ИНН в разделе «Сеть» → «Мой
+        профиль».
       </div>
     );
   }

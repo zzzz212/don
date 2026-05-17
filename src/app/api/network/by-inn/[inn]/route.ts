@@ -37,11 +37,17 @@ export async function GET(
       where: {
         inn,
         innStatus: { in: ["claimed", "verified"] },
-        NOT: { userId: me },
       },
       select: { userId: true, innStatus: true },
     });
     if (!link) return NextResponse.json({ owner: null });
+
+    // The ИНН is linked — but to the viewer's own profile. Report that
+    // distinctly so the UI doesn't say "not registered" about the user
+    // themselves (you can't message yourself).
+    if (link.userId === me) {
+      return NextResponse.json({ owner: null, self: true });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: link.userId },
