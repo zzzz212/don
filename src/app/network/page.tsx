@@ -22,7 +22,6 @@ import {
   BadgeCheck,
   ShieldCheck,
   Building2,
-  Upload,
 } from "lucide-react";
 
 type ConnState = "none" | "connected" | "incoming" | "outgoing" | "declined";
@@ -810,11 +809,8 @@ function InnSection({ initial }: { initial: Profile }) {
   const [status, setStatus] = useState(initial.innStatus);
   const [inn, setInn] = useState(initial.inn);
   const [companyName, setCompanyName] = useState(initial.innCompanyName);
-  const [docUrl, setDocUrl] = useState(initial.innDocUrl);
-  const [rejectionNote, setRejectionNote] = useState(initial.innRejectionNote);
 
   const [innInput, setInnInput] = useState("");
-  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -822,8 +818,6 @@ function InnSection({ initial }: { initial: Profile }) {
     setStatus(p.innStatus);
     setInn(p.inn);
     setCompanyName(p.innCompanyName);
-    setDocUrl(p.innDocUrl);
-    setRejectionNote(p.innRejectionNote);
   }
 
   async function claim() {
@@ -863,29 +857,6 @@ function InnSection({ initial }: { initial: Profile }) {
     }
   }
 
-  async function uploadDoc() {
-    if (!file) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const r = await fetch("/api/network/profile/inn/document", {
-        method: "POST",
-        body: fd,
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        setErr(d.error ?? "Не удалось загрузить документ");
-        return;
-      }
-      apply(d.profile);
-      setFile(null);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2">
@@ -907,8 +878,9 @@ function InnSection({ initial }: { initial: Profile }) {
         )}
       </div>
       <p className="mt-1 text-xs text-muted">
-        Привяжите ИНН вашей компании или ИП, чтобы контрагенты могли найти
-        вас при проверке и написать напрямую.
+        Привяжите ИНН вашей компании или ИП — он показывается в профиле.
+        Пока владение не подтверждено, это самодекларация: написать вам
+        напрямую по этому ИНН контрагенты не смогут.
       </p>
 
       {err && (
@@ -951,50 +923,14 @@ function InnSection({ initial }: { initial: Profile }) {
             )}
           </div>
 
-          {rejectionNote && (
-            <p className="flex items-start gap-1.5 rounded-lg border border-warning/30 bg-warning-light px-3 py-2 text-xs text-warning">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Подтверждение отклонено: {rejectionNote}. Загрузите другую
-              выписку и отправьте заявку повторно.
+          {status === "claimed" && (
+            <p className="flex items-start gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs text-muted">
+              <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Подтверждение владения — через символический платёж с
+              расчётного счёта компании: банк передаёт ИНН плательщика, он
+              сверяется автоматически. Появится после запуска приёма
+              платежей.
             </p>
-          )}
-
-          {status === "claimed" && docUrl && !rejectionNote && (
-            <p className="flex items-center gap-1.5 text-xs text-muted">
-              <Clock className="h-3.5 w-3.5" />
-              Выписка отправлена на проверку — обычно занимает 1–2 рабочих
-              дня.
-            </p>
-          )}
-
-          {status === "claimed" && (!docUrl || rejectionNote) && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted">
-                Чтобы получить отметку «подтверждён», загрузите выписку
-                ЕГРЮЛ/ЕГРИП (PDF или фото, до 10 МБ).
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  type="file"
-                  accept=".pdf,image/jpeg,image/png"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
-                />
-                <button
-                  type="button"
-                  onClick={uploadDoc}
-                  disabled={busy || !file}
-                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
-                >
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  Отправить на подтверждение
-                </button>
-              </div>
-            </div>
           )}
 
           <button

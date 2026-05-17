@@ -63,6 +63,8 @@ export function ContactCounterparty({ inn }: { inn: string }) {
   const router = useRouter();
   const [owner, setOwner] = useState<Owner | null>(null);
   const [isSelf, setIsSelf] = useState(false);
+  // Someone self-declared this ИНН but never verified ownership.
+  const [unverified, setUnverified] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [composing, setComposing] = useState(false);
   const [message, setMessage] = useState("");
@@ -75,6 +77,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
     setLoaded(false);
     setOwner(null);
     setIsSelf(false);
+    setUnverified(false);
     setComposing(false);
     setRequested(false);
     setErr(null);
@@ -84,6 +87,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
         if (!cancelled) {
           setOwner(d.owner ?? null);
           setIsSelf(Boolean(d.self));
+          setUnverified(Boolean(d.unverified));
           setLoaded(true);
         }
       })
@@ -150,13 +154,22 @@ export function ContactCounterparty({ inn }: { inn: string }) {
     );
   }
 
+  if (unverified) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted">
+        Кто-то указал этот ИНН в ЮрИИст, но не подтвердил владение
+        компанией. Написать напрямую можно только подтверждённым
+        компаниям — так контрагент не сможет выдать себя за чужую фирму.
+      </div>
+    );
+  }
+
   if (!owner) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted">
-        Никто пока не привязал этот ИНН к своему профилю в ЮрИИст —
-        написать напрямую нельзя. Кнопка связи появится, когда
-        представитель компании привяжет ИНН в разделе «Сеть» → «Мой
-        профиль».
+        Эта компания пока не подтвердила свой ИНН в ЮрИИст — написать
+        напрямую нельзя. Кнопка связи появится, когда представитель
+        компании подтвердит владение.
       </div>
     );
   }

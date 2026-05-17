@@ -33,36 +33,49 @@ export async function GET(
     if (!check.valid) return NextResponse.json({ owner: null });
     const inn = check.normalized;
 
-    const link = await prisma.userProfile.findFirst({
-      where: {
-        inn,
-        innStatus: { in: ["claimed", "verified"] },
-      },
-      select: { userId: true, innStatus: true },
+    // Only a *verified* owner is contactable. A self-declared "claimed"
+    // ИНН is not proof of representation — surfacing it for direct
+    // contact would let an impostor intercept a company's counterparties.
+    const verified = await prisma.userProfile.findFirst({
+      where: { inn, innStatus: "verified" },
+      select: { userId: true },
     });
-    if (!link) return NextResponse.json({ owner: null });
-
-    // The ИНН is linked — but to the viewer's own profile. Report that
-    // distinctly so the UI doesn't say "not registered" about the user
-    // themselves (you can't message yourself).
-    if (link.userId === me) {
-      return NextResponse.json({ owner: null, self: true });
+    if (verified) {
+      if (verified.userId === me) {
+        return NextResponse.json({ owner: null, self: true });
+      }
+      const user = await prisma.user.findUnique({
+        where: { id: verified.userId },
+        select: NETWORK_USER_SELECT,
+      });
+      if (user) {
+        const states = await connectionStates(me, [verified.userId]);
+        return NextResponse.json({
+          owner: {
+            ...shapeNetworkUser(user),
+            innStatus: "verified",
+            connection: states.get(verified.userId) ?? "none",
+          },
+        });
+      }
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: link.userId },
-      select: NETWORK_USER_SELECT,
+    // No verified owner. Tell the three remaining cases apart so the UI
+    // copy is accurate: it's your own ИНН / someone declared it but
+    // didn't verify / nobody touched it.
+    const mine = await prisma.userProfile.findFirst({
+      where: { inn, userId: me, innStatus: { not: "none" } },
+      select: { id: true },
     });
-    if (!user) return NextResponse.json({ owner: null });
+    if (mine) return NextResponse.json({ owner: null, self: true });
 
-    const states = await connectionStates(me, [link.userId]);
-    return NextResponse.json({
-      owner: {
-        ...shapeNetworkUser(user),
-        innStatus: link.innStatus,
-        connection: states.get(link.userId) ?? "none",
-      },
+    const claimed = await prisma.userProfile.findFirst({
+      where: { inn, innStatus: "claimed" },
+      select: { id: true },
     });
+    if (claimed) return NextResponse.json({ owner: null, unverified: true });
+
+    return NextResponse.json({ owner: null });
   } catch (error) {
     await reportError(error, { op: "network.by-inn" });
     // A lookup failure shouldn't break the counterparty page — just hide

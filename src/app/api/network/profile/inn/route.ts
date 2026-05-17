@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { ensureProfile, networkRateLimitOk } from "@/lib/network";
 import { validateInn } from "@/lib/inn";
 import { fetchFromDaData, isDaDataConfigured } from "@/lib/dadata";
-import { getStorage } from "@/lib/storage";
 import { logAudit, attribution } from "@/lib/audit";
 import { reportError } from "@/lib/telemetry";
 
@@ -46,15 +45,18 @@ export async function POST(request: NextRequest) {
     }
     const inn = check.normalized;
 
-    // One ИНН ↔ one account. A different user already holding this ИНН
-    // (claimed or verified) blocks the link.
-    const taken = await prisma.userProfile.findFirst({
-      where: { inn, innStatus: { not: "none" }, NOT: { userId: me } },
+    // Anti-squatting: "claimed" is a non-exclusive self-declaration —
+    // anyone may state an ИНН (a public extract proves nothing), so a
+    // squatter can't lock the real owner out. Only a *verified*
+    // ownership — proven by a payment from the company's bank account —
+    // is exclusive and blocks the ИНН for everyone else.
+    const verifiedElsewhere = await prisma.userProfile.findFirst({
+      where: { inn, innStatus: "verified", NOT: { userId: me } },
       select: { id: true },
     });
-    if (taken) {
+    if (verifiedElsewhere) {
       return NextResponse.json(
-        { error: "Этот ИНН уже привязан к другому аккаунту" },
+        { error: "Этот ИНН уже подтверждён другим аккаунтом" },
         { status: 409 }
       );
     }
@@ -111,8 +113,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/network/profile/inn — unlink the ИНН and drop any uploaded
-// verification document.
+// DELETE /api/network/profile/inn — unlink the ИНН from the profile.
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
@@ -123,15 +124,8 @@ export async function DELETE(request: NextRequest) {
 
     const current = await prisma.userProfile.findUnique({
       where: { userId: me },
-      select: { inn: true, innDocKey: true },
+      select: { inn: true },
     });
-
-    if (current?.innDocKey) {
-      // Best-effort — a dangling blob is harmless, a failed unlink is not.
-      await getStorage()
-        .delete(current.innDocKey)
-        .catch(() => undefined);
-    }
 
     await ensureProfile(me);
     const profile = await prisma.userProfile.update({

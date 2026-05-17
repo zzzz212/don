@@ -479,9 +479,13 @@ Add a layered defence against trial-farming with throwaway accounts
 Let users link and verify a company ИНН on their profile
 ```
 Что нового:
-- **ИНН на UserProfile** — двухуровневая привязка (`claimed` через checksum
-  + DaData, `verified` через выписку и ручную проверку в `/admin/inn-claims`).
-  Уникальность ИНН — в коде, не DB-constraint.
+- **ИНН на UserProfile** — `claimed` (самодекларация: checksum + DaData
+  на существование; **неэксклюзивно** — анти-сквоттинг) и `verified`
+  (подтверждение владения платежом с р/с компании: банк передаёт ИНН
+  плательщика → авто-сверка; **планируется**, нужен ЮKassa B2B —
+  блокер: регистрация ИП). Проверка по загруженной выписке **убрана** —
+  публичная выписка ЕГРЮЛ/ЕГРИП не доказывает представительство.
+  «Написать контрагенту» работает только с `verified`.
 - **Анти-абуз** — `normalizedEmail`/`signupIp`/`signupFingerprint` на User;
   жёсткий блок одноразовых доменов и нормализованных дублей при регистрации;
   риск-скоринг при активации триала; `/admin/abuse` для ручной проверки.
@@ -710,7 +714,7 @@ bdc0e4c Hard-reload after workspace switch
 
 37. **Роль `VIEWER` — read-only, ранг 0** (ниже MEMBER). `requireMembership(…, "MEMBER")` отсекает её автоматически. Но AI-роуты (analyze/generate/chat/generated POST) НЕ ходят через `requireMembership` — там добавлен явный `getMembership` + блок `role === "VIEWER"`. Любой новый AI-роут, тратящий квоту, тоже гейтить явно.
 
-38. **Уникальность ИНН и referralCode — в коде, не DB-constraint** (foot-gun #2: nullable unique валит `prisma db push`). Проверка коллизии перед записью + `@@index`. То же — для любого нового nullable-поля, которое «должно быть уникальным».
+38. **Уникальность referralCode — в коде, не DB-constraint** (foot-gun #2: nullable unique валит `prisma db push`). Проверка коллизии перед записью + `@@index`. То же — для любого нового nullable-поля, которое «должно быть уникальным». **ИНН**: `claimed` НЕэксклюзивен (любой может указать — анти-сквоттинг), эксклюзивен только `verified`. `verified` пока недостижим в UI — путь через платёж с р/с компании ждёт активации ЮKassa B2B.
 
 39. **Referral-бонус — пул, потребляется в `/api/analyze`.** `checkQuota` для FREE+analyze считает `limit = base + bonusAnalyses + max(0, used - base)` (держит месячный кап стабильным). `consumeReferralBonus(orgId)` декрементит пул ПОСЛЕ успешного анализа. Не дублировать декремент в других местах и не списывать в `checkQuota` (она вызывается и для отображения).
 
