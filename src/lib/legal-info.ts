@@ -29,17 +29,20 @@ export const BRAND = {
  * with "[" so they're impossible to miss in production until replaced.
  */
 export const OPERATOR = {
-  legalName: "[Исполнитель — ИП/ООО, наименование будет указано после регистрации]",
+  legalName: "Индивидуальный предприниматель Дадашева Зарета Райкомовна",
   shortName: "Исполнитель",
-  inn: "[ИНН будет указан после регистрации]",
-  ogrn: "[ОГРН/ОГРНИП будет указан после регистрации]",
+  inn: "772580231694",
+  ogrn: "310774628400191",
   registeredAddress:
-    "[Юридический адрес будет указан после регистрации]",
-  bankAccount: "[Расчётный счёт будет указан после регистрации]",
-  bankName: "[Наименование банка будет указано после регистрации]",
-  bankBic: "[БИК будет указан после регистрации]",
-  bankCorrespondentAccount:
-    "[Корр. счёт будет указан после регистрации]",
+    "г. Москва, Даниловская набережная, д. 6, корп. 3, кв. 27",
+
+  // Расчётный счёт ещё не открыт. Пока поля пусты, раздел «Реквизиты
+  // исполнителя» в /offer не выводит банковский блок — заполнить эти
+  // четыре поля и вернуть блок в offer/page.tsx при открытии счёта.
+  bankAccount: "",
+  bankName: "",
+  bankBic: "",
+  bankCorrespondentAccount: "",
 
   /**
    * Roskomnadzor PII operator registry number. Issued after registration at

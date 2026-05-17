@@ -346,12 +346,8 @@ export default function OfferPage() {
       <p>
         <strong>Наименование:</strong> {OPERATOR.legalName}<br />
         <strong>ИНН:</strong> {OPERATOR.inn}<br />
-        <strong>ОГРН/ОГРНИП:</strong> {OPERATOR.ogrn}<br />
-        <strong>Адрес (юридический):</strong> {OPERATOR.registeredAddress}<br />
-        <strong>Расчётный счёт:</strong> {OPERATOR.bankAccount}<br />
-        <strong>Банк:</strong> {OPERATOR.bankName}<br />
-        <strong>БИК:</strong> {OPERATOR.bankBic}<br />
-        <strong>Корр. счёт:</strong> {OPERATOR.bankCorrespondentAccount}<br />
+        <strong>ОГРНИП:</strong> {OPERATOR.ogrn}<br />
+        <strong>Адрес:</strong> {OPERATOR.registeredAddress}<br />
         <strong>Email для платежей и актов:</strong>{" "}
         <a href={`mailto:${CONTACTS.legal}`}>{CONTACTS.legal}</a><br />
         <strong>Email для поддержки:</strong>{" "}
