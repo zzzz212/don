@@ -87,7 +87,7 @@ invasive вариант + явная отметка что оставил под
 
 # Яксо — состояние проекта
 
-**Дата последнего обновления**: 2026-05-17 (после Sprint 11: ИНН-привязка, анти-абуз, чат компании, роли, пересылка договоров, напоминания, сравнение договоров, публичные ссылки, рефералка)
+**Дата последнего обновления**: 2026-05-18 (после Sprint 11 — социальный слой + анти-абуз; ребрендинг ЮрИИст → Яксо; регистрация ИП; CI; hotfix Anthropic `temperature`)
 **Production URL**: https://yakso.ru
 **Repo**: https://github.com/zzzz212/don
 **Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR)
@@ -465,20 +465,30 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 
 ## Полный список коммитов работы (новейшие сверху)
 
-### Sprint 11 — социальный слой + анти-абуз (этот заход)
+### Sprint 11 — социальный слой + анти-абуз + ребрендинг (этот заход)
+Коммиты, новейшие сверху (ветка `claude/sprint-8-ui-polish`, PR #7, в `main` НЕ смержено):
 ```
-Add a referral programme with bonus analyses
-Add public read-only links to a contract analysis
-Add side-by-side comparison of two contracts
-Add AI-extracted contract deadlines with email reminders
-Let users forward a generated document into chats
-Add a team chat channel inside the workspace
-Add a read-only VIEWER role and in-place role management
-Let users contact a counterparty directly from the ИНН check
-Add a layered defence against trial-farming with throwaway accounts
-Let users link and verify a company ИНН on their profile
+cd5d885 Stop sending `temperature` to Anthropic — current models reject it
+bebd67f Rebrand ЮрИИст → Яксо
+55489bd Fill operator details now that the ИП is registered
+f24526a Tighten VIEWER role on two write paths flagged by review
+8be490e Add a CI workflow — lint, types, tests, build on every PR
+b29518f Drop the document-based ИНН verification — it proved nothing
+d76620f Clarify the counterparty-contact empty states
+877eb89 Fix header overflow — move workspace chat into the OrgSwitcher
+9f234b9 Update CLAUDE.md for Sprint 11
+ec9edb1 Add a referral programme with bonus analyses
+ee9ba46 Add public read-only links to a contract analysis
+166852d Add side-by-side comparison of two contracts
+d142f60 Add AI-extracted contract deadlines with email reminders
+4eee818 Let users forward a generated document into chats
+dc8a19d Add a team chat channel inside the workspace
+da5229f Add a read-only VIEWER role and in-place role management
+a7f293a Let users contact a counterparty directly from the ИНН check
+ba476bc Add a layered defence against trial-farming with throwaway accounts
+ccfaf18 Let users link and verify a company ИНН on their profile
 ```
-Что нового:
+Десять фич Sprint 11:
 - **ИНН на UserProfile** — `claimed` (самодекларация: checksum + DaData
   на существование; **неэксклюзивно** — анти-сквоттинг) и `verified`
   (подтверждение владения платежом с р/с компании: банк передаёт ИНН
@@ -500,6 +510,36 @@ Let users link and verify a company ИНН on their profile
 - **Публичные ссылки** — `PublicShare`, `/r/[token]` без авторизации.
 - **Рефералка** — `referralCode`/`referredById`/`bonusAnalyses` на User;
   выплата при активации триала; `/referral`.
+
+Доводки и сопутствующее (коммиты после первых десяти фич):
+- **Ребрендинг ЮрИИст → Яксо** — `juriist.ru` занят похожим юр-сервисом,
+  ниша «юрист» перенасыщена (jurist.ru, urist.ru…). Имя `Яксо` (придуманное,
+  легко защищается ТЗ), домен `yakso.ru`. ~48 файлов: `BRAND`, `CONTACTS`
+  (`@yakso.ru`), i18n (RU «Яксо» / EN «Yakso»), все строки, блог, шаблоны
+  писем. Логотип: весы → буквенный знак «Я» (header, auth-страницы, шапка
+  писем, OG-картинки, favicon / apple-icon / PWA-иконки, `/r/[token]`).
+  `BRAND.publicUrl` = `https://yakso.ru`.
+- **Регистрация ИП** — OPERATOR в `legal-info.ts` заполнен: ИП Дадашева
+  Зарета Райкомовна, ИНН 772580231694, ОГРНИП 310774628400191, адрес в
+  Москве. `isOperatorPlaceholder()` → `false`; `/privacy`, `/offer`,
+  `/terms` стали валидными. Банковский блок в `/offer` скрыт до открытия
+  расчётного счёта (поля `bank*` в OPERATOR пустые).
+- **CI** — `.github/workflows/ci.yml`: `lint` + `tsc --noEmit` + `vitest`
+  + `next build` на каждый PR и пуш в `main`. Раньше CI не было.
+- **Security-ревью Sprint 11** — эксплуатируемых уязвимостей не найдено;
+  доведены 2 несостыковки роли VIEWER (public-share / deadlines POST →
+  MEMBER+).
+- **Проверка ИНН по выписке убрана** — публичная выписка ЕГРЮЛ/ЕГРИП не
+  доказывает представительство. `claimed` стал НЕэксклюзивным (анти-
+  сквоттинг), `verified` — только через будущий платёж с р/с компании
+  (ждёт активации ЮKassa B2B). `/admin/inn-claims` и роут загрузки
+  выписки удалены.
+- **Hotfix Anthropic** — текущие модели Anthropic отвергают параметр
+  `temperature` (`400 invalid_request_error`); это ломало `/api/analyze`
+  в проде. `temperature` убран из всех 4 вызовов провайдера. Foot-gun #41.
+- **Фиксы UX** — переполнение хедера (7-й пункт «Чат компании» уехал в
+  дропдаун OrgSwitcher с бейджем непрочитанных), точные формулировки
+  пустых состояний «написать контрагенту».
 
 ### Sprint 10 — сеть, PWA, доработки (предыдущий заход)
 ```
@@ -719,6 +759,8 @@ bdc0e4c Hard-reload after workspace switch
 39. **Referral-бонус — пул, потребляется в `/api/analyze`.** `checkQuota` для FREE+analyze считает `limit = base + bonusAnalyses + max(0, used - base)` (держит месячный кап стабильным). `consumeReferralBonus(orgId)` декрементит пул ПОСЛЕ успешного анализа. Не дублировать декремент в других местах и не списывать в `checkQuota` (она вызывается и для отображения).
 
 40. **`/r/[token]` — публичная страница без авторизации**, `force-dynamic` + `robots: noindex`. Токен (192 бита) — и есть доступ. Текст договора там НЕ показывается, только вердикт + риски. `/r/`, `/workspace/`, `/deadlines` добавлены в `robots.txt` Disallow.
+
+41. **Anthropic в текущих моделях НЕ принимает `temperature`.** Запрос с этим полем падает: `400 invalid_request_error: "temperature is deprecated for this model"`. В `src/lib/ai/providers/anthropic.ts` параметр НЕ передаётся ни в одном из 4 вызовов (`generate` / `generateText` / `chat` / `streamChat`) — не возвращать его обратно. Это ломало `/api/analyze` в проде (Groq-фолбэк не спас — 413 по TPM-лимиту). `GenerateOptions.temperature` всё ещё используется провайдерами Groq/Gemini — там оставить.
 
 ---
 
@@ -1012,9 +1054,12 @@ GROUP BY model;
   невидим, дашборд уезжал вбок), поиск по шаблонам, живой предпросмотр
   генерации, страница профиля коллеги. 15 коммитов в
   `claude/sprint-8-ui-polish` — **в `main` НЕ смержено**.
-- **Sprint 11 (запуск)** — следующий. См. Бизнес-roadmap. **Это
-  user-side задачи**: ИП, ЮKassa, RKN, Resend DNS, .ru домен, Search
-  Console / Яндекс.Webmaster submission, Telegram-канал.
+- **Запуск (следующий блок)** — ИП ✓ зарегистрировано. Осталось
+  user-side: ЮKassa (`YOOKASSA_SHOP_ID`/`_SECRET_KEY` + включить
+  B2B-платежи `b2b_sberbank` для проверки ИНН), уведомление в
+  Роскомнадзор (→ `OPERATOR.rknOperatorNumber`), подключить домен
+  `yakso.ru` к Vercel (A-запись `@` на IP Vercel), verify домена в
+  Resend, почтовый ящик (Яндекс 360). Затем — каналы привлечения.
 - **AI prompts** — после нескольких raunds tuning'a сейчас sweet spot: ~1.5k токенов system + 4k tool schema = ~5.5k кэшируемого префикса. Anthropic кэширует. Tone сбалансированный — "защищаю клиента, но не выдумываю риски".
 - **TRIAL_DAYS = 2.** Активация только через `/billing` (auto-trial при signup убран).
 - **Verdict UI говорит «уровень риска», не «рекомендация подписать»** (юр.ответственность).
@@ -1025,8 +1070,12 @@ GROUP BY model;
 - **Backfill после plan-on-user миграции** (если ещё не сделан): `curl -X POST -H "x-admin-key:..." https://yakso.ru/api/admin/backfill-user-plan`.
 - **AI стоит $0.15-0.30 за анализ** на Sonnet, $0.02 на Haiku. Cache hit снижает input cost в ~3 раза. Track в Neon: `SELECT model, SUM("inputTokens"), SUM("cachedTokens"), SUM("outputTokens") FROM "AiUsage" WHERE feature = 'analyze' GROUP BY model;`.
 - **План user-scoped.** OWNER membership определяет какой User.plan применяется к workspace.
-- **Sprint 11 (социальный слой + анти-абуз)** — закрыт (этот заход). 10 атомарных коммитов в `claude/sprint-8-ui-polish`, **в `main` НЕ смержено**. ИНН-привязка с двухуровневым подтверждением, слоистый анти-абуз мульти-аккаунтов, чат компании, роль VIEWER + управление ролями, пересылка договоров в чаты, AI-напоминания по срокам, сравнение двух договоров, публичные ссылки на заключение, реферальная программа. `npx tsc --noEmit` + 260 unit-тестов + `npx next build` — зелёные. Новые foot-guns #37–40.
-- **Тесты теперь 260** (было 234): +10 на `inn.ts`, +16 на `anti-abuse.ts`.
+- **Sprint 11 (социальный слой + анти-абуз + ребрендинг)** — закрыт (этот заход). ~19 коммитов в `claude/sprint-8-ui-polish`, открыт **PR #7** (база — `claude/complete-previous-tasks-rzcSp`, это и есть «main»), в `main` НЕ смержено. 10 фич (ИНН-привязка, слоистый анти-абуз, чат компании, роль VIEWER, пересылка договоров в чаты, AI-напоминания, сравнение договоров, публичные ссылки, рефералка) + ребрендинг в **Яксо** + регистрация ИП + CI + security-ревью + hotfix Anthropic. `lint` + `tsc` + 260 тестов + `build` — зелёные. Foot-guns #37–41.
+- **Ребрендинг ЮрИИст → Яксо.** Домен `yakso.ru` (куплен на SpaceWeb, DNS подключается к Vercel — A-запись `@` должна указывать на IP Vercel). Логотип — буквенный знак «Я». `BRAND.publicUrl = https://yakso.ru`: пока домен не подключён к Vercel, ссылки в письмах / OG / `/r/[token]` ведут на ещё не работающий адрес — подключить домен примерно при мерже PR.
+- **ИП зарегистрирован** — реквизиты в `legal-info.ts` (`OPERATOR`). Расчётного счёта пока нет (банковский блок оферты скрыт), RKN-номер не получен.
+- **Anthropic `temperature` убран** (foot-gun #41) — ломал `/api/analyze` в проде. Groq как фолбэк для analyze слаб (free-tier 12k TPM при запросе ~24k токенов) — при падении Anthropic подстраховки нет; стоит задать `GEMINI_API_KEY`.
+- **CI подключён** — GitHub Actions гоняет `lint`/`tsc`/`vitest`/`build` на каждый PR и пуш в main.
+- **Тесты — 260** (было 234): +10 `inn.ts`, +16 `anti-abuse.ts`.
 
 ---
 
