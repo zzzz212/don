@@ -333,7 +333,7 @@ export default function CounterpartyPage() {
               </div>
 
               {/* Reach the counterparty directly when its ИНН belongs to
-                  a ЮрИИст account. */}
+                  a Яксо account. */}
               <ContactCounterparty inn={profile.inn} />
 
               {/* Risk factors. Court / debt rows are gated until the real

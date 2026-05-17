@@ -12,7 +12,7 @@ import {
   translate,
 } from "@/lib/i18n/messages";
 
-const STORAGE_KEY = "juriist:locale";
+const STORAGE_KEY = "yakso:locale";
 
 type Ctx = {
   locale: Locale;

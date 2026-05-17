@@ -25,7 +25,7 @@ export default function Icon() {
           borderRadius: 7,
         }}
       >
-        Ю
+        Я
       </div>
     ),
     { ...size }

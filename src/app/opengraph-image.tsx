@@ -15,7 +15,7 @@ import { ImageResponse } from "next/og";
 // Inlined fonts would bloat the route — we lean on Inter via system
 // fallbacks (next/og's default).
 
-export const alt = "ЮрИИст — аудит договоров со ссылками на ГК РФ";
+export const alt = "Яксо — аудит договоров со ссылками на ГК РФ";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -57,7 +57,7 @@ export default function OpengraphImage() {
               fontWeight: 800,
             }}
           >
-            ⚖
+            Я
           </div>
           <div
             style={{
@@ -67,7 +67,7 @@ export default function OpengraphImage() {
               letterSpacing: -1,
             }}
           >
-            ЮрИИст
+            Яксо
           </div>
         </div>
 
@@ -110,7 +110,7 @@ export default function OpengraphImage() {
             color: "#64748b",
           }}
         >
-          juriist.vercel.app
+          yakso.ru
         </div>
       </div>
     ),

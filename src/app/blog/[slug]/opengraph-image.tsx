@@ -13,7 +13,7 @@ import { getPost, listPosts } from "@/lib/blog/posts";
 // pre-warms the cache at build time for SSG'd routes via the
 // generateStaticParams on the page itself.
 
-export const alt = "ЮрИИст — статья блога";
+export const alt = "Яксо — статья блога";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -32,7 +32,7 @@ export default async function BlogPostOg({
   params: { slug: string };
 }) {
   const post = getPost(params.slug);
-  const title = post?.title ?? "Блог ЮрИИст";
+  const title = post?.title ?? "Блог Яксо";
   const category = post?.category ?? "Договорное право РФ";
   const reading = post ? `${post.readingTimeMin} мин чтения` : "";
 
@@ -73,7 +73,7 @@ export default async function BlogPostOg({
               fontWeight: 800,
             }}
           >
-            ⚖
+            Я
           </div>
           <div
             style={{
@@ -83,7 +83,7 @@ export default async function BlogPostOg({
               letterSpacing: -0.5,
             }}
           >
-            ЮрИИст
+            Яксо
           </div>
           <div
             style={{
@@ -140,7 +140,7 @@ export default async function BlogPostOg({
             color: "#64748b",
           }}
         >
-          <div>juriist.vercel.app/blog</div>
+          <div>yakso.ru/blog</div>
           {reading && (
             <div
               style={{

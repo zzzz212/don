@@ -10,7 +10,7 @@ import { validateInn } from "@/lib/inn";
 import { reportError } from "@/lib/telemetry";
 
 // GET /api/network/by-inn/[inn] — resolve a counterparty ИНН to the
-// ЮрИИст account that linked it, so a user checking a counterparty can
+// Яксо account that linked it, so a user checking a counterparty can
 // reach its representative directly.
 //
 // Surfacing the account is gated by the owner having explicitly linked

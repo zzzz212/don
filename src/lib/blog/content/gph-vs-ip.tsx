@@ -36,7 +36,7 @@ export const gphVsIp: BlogPost = {
   ],
   readingTimeMin: 9,
   category: "Налоги и оформление",
-  author: "Редакция ЮрИИст",
+  author: "Редакция Яксо",
   Body: GphVsIpBody,
 };
 

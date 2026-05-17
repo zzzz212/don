@@ -39,7 +39,7 @@ export const marketplaceAgent: BlogPost = {
   ],
   readingTimeMin: 9,
   category: "E-commerce",
-  author: "Редакция ЮрИИст",
+  author: "Редакция Яксо",
   Body: MarketplaceAgentBody,
 };
 

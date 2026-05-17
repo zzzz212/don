@@ -51,7 +51,7 @@ export default function BlogIndexPage() {
               Без воды. По каждой теме — статьи ГК и ППВС, реальные суммы
               и сроки, формулировки, которые работают в суде. Каждая
               статья содержит ссылки на конкретные пункты, которые проверяет
-              автоматический аудит ЮрИИст.
+              автоматический аудит Яксо.
             </p>
           </header>
 
@@ -96,7 +96,7 @@ export default function BlogIndexPage() {
               Готовим разборы трудовых договоров, агентских, лицензионных
               и налоговых нюансов 2026. Подпишитесь на{" "}
               <Link
-                href="https://t.me/juriist"
+                href="https://t.me/yakso"
                 className="font-semibold text-primary hover:underline"
               >
                 Telegram-канал

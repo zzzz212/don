@@ -52,7 +52,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-fg">
-              ⚖
+              Я
             </div>
             <span className="text-lg font-bold text-foreground">
               {BRAND.name}

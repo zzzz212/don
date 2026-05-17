@@ -28,7 +28,7 @@ export function DocAttachmentCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{name}</p>
-        <p className="text-xs text-muted">Документ из ЮрИИст</p>
+        <p className="text-xs text-muted">Документ из Яксо</p>
       </div>
       {href ? (
         <Link

@@ -12,7 +12,7 @@ describe("buildConnectionRequestEmail", () => {
   const base = {
     to: "target@x.ru",
     requesterName: "Анна Петрова",
-    networkUrl: "https://app.juriist.ru/network",
+    networkUrl: "https://app.yakso.ru/network",
   };
 
   it("subject names the requester", () => {
@@ -30,8 +30,8 @@ describe("buildConnectionRequestEmail", () => {
 
   it("renders the network URL verbatim in HTML and text", () => {
     const msg = buildConnectionRequestEmail(base);
-    expect(msg.html).toContain("https://app.juriist.ru/network");
-    expect(msg.text).toContain("https://app.juriist.ru/network");
+    expect(msg.html).toContain("https://app.yakso.ru/network");
+    expect(msg.text).toContain("https://app.yakso.ru/network");
   });
 
   it("falls back to a generic name when requesterName is blank", () => {
@@ -49,7 +49,7 @@ describe("buildDocumentSharedEmail", () => {
     to: "reviewer@x.ru",
     fromName: "Иван",
     documentName: "Договор аренды.pdf",
-    shareUrl: "https://app.juriist.ru/network/shares/abc123",
+    shareUrl: "https://app.yakso.ru/network/shares/abc123",
   };
 
   it("subject names the sender", () => {
@@ -67,8 +67,8 @@ describe("buildDocumentSharedEmail", () => {
 
   it("renders the share URL verbatim in HTML and text", () => {
     const msg = buildDocumentSharedEmail(base);
-    expect(msg.html).toContain("https://app.juriist.ru/network/shares/abc123");
-    expect(msg.text).toContain("https://app.juriist.ru/network/shares/abc123");
+    expect(msg.html).toContain("https://app.yakso.ru/network/shares/abc123");
+    expect(msg.text).toContain("https://app.yakso.ru/network/shares/abc123");
   });
 
   it("mentions the document name so the reviewer knows what is waiting", () => {
@@ -87,7 +87,7 @@ describe("buildNetworkMessageEmail", () => {
     to: "target@x.ru",
     fromName: "Пётр",
     preview: "Здравствуйте, посмотрите договор",
-    threadUrl: "https://app.juriist.ru/network/messages/conv1",
+    threadUrl: "https://app.yakso.ru/network/messages/conv1",
   };
 
   it("subject names the sender", () => {
@@ -111,9 +111,9 @@ describe("buildNetworkMessageEmail", () => {
 
   it("renders the thread URL verbatim", () => {
     const msg = buildNetworkMessageEmail(base);
-    expect(msg.html).toContain("https://app.juriist.ru/network/messages/conv1");
+    expect(msg.html).toContain("https://app.yakso.ru/network/messages/conv1");
     expect(msg.text).toContain(
-      "https://app.juriist.ru/network/messages/conv1"
+      "https://app.yakso.ru/network/messages/conv1"
     );
   });
 

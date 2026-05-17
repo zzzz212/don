@@ -73,7 +73,7 @@ export function buildWelcomeEmail(opts: WelcomeOptions): EmailMessage {
       </p>
       <p style="margin: 0; color: #64748b; font-size: 14px;">
         Полезно почитать перед первой загрузкой:
-        <a href="${blogUrl}" style="color:#1d4ed8;">журнал ЮрИИст</a> —
+        <a href="${blogUrl}" style="color:#1d4ed8;">журнал Яксо</a> —
         разборы типовых договоров со ссылками на статьи ГК.
       </p>
     `,
@@ -90,7 +90,7 @@ export function buildWelcomeEmail(opts: WelcomeOptions): EmailMessage {
       `2. Не готовы загружать свой? Посмотрите пример отчёта: ${sampleUrl}`,
       `3. Нужен новый договор? Шаблоны: ${BRAND.publicUrl}/templates`,
       `На «Pro Solo» (1 990 ₽/мес) — безлимит. Доступен бесплатный триал на ${trialPhrase} (без карты): ${billingUrl}`,
-      `Журнал ЮрИИст: ${blogUrl}`,
+      `Журнал Яксо: ${blogUrl}`,
     ],
     { label: "Загрузить первый договор", url: analyzeUrl }
   );

@@ -38,7 +38,7 @@ export function GET(request: Request) {
           borderRadius: radius,
         }}
       >
-        Ю
+        Я
       </div>
     ),
     {

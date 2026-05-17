@@ -6,7 +6,7 @@ import { BRAND, OPERATOR, CONTACTS } from "@/lib/legal-info";
 export const metadata: Metadata = {
   title: `Пользовательское соглашение — ${BRAND.name}`,
   description:
-    "Пользовательское соглашение сервиса ЮрИИст: правила регистрации, использования сервиса, ответственности сторон.",
+    "Пользовательское соглашение сервиса Яксо: правила регистрации, использования сервиса, ответственности сторон.",
   robots: { index: true, follow: true },
 };
 
@@ -31,7 +31,7 @@ export default function TermsPage() {
   return (
     <LegalPageShell
       title="Пользовательское соглашение"
-      description="Условия использования сервиса ЮрИИст для физических и юридических лиц."
+      description="Условия использования сервиса Яксо для физических и юридических лиц."
       toc={TOC}
     >
       <h2 id="general">1. Общие положения</h2>

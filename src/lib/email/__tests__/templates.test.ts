@@ -81,7 +81,7 @@ describe("buildInviteEmail", () => {
     inviterName: "Анна",
     inviterEmail: "anna@acme.ru",
     role: "MEMBER" as const,
-    acceptUrl: "https://app.juriist.ru/invite/abc123",
+    acceptUrl: "https://app.yakso.ru/invite/abc123",
     expiresAt: "2026-06-01T12:00:00Z",
   };
 
@@ -104,8 +104,8 @@ describe("buildInviteEmail", () => {
 
   it("renders CTA url verbatim", () => {
     const msg = buildInviteEmail(base);
-    expect(msg.html).toContain("https://app.juriist.ru/invite/abc123");
-    expect(msg.text).toContain("https://app.juriist.ru/invite/abc123");
+    expect(msg.html).toContain("https://app.yakso.ru/invite/abc123");
+    expect(msg.text).toContain("https://app.yakso.ru/invite/abc123");
   });
 
   it("translates ADMIN role to 'администратора' label", () => {

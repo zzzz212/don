@@ -1,4 +1,4 @@
-/* ЮрИИст service worker — minimal, conservative caching for an
+/* Яксо service worker — minimal, conservative caching for an
  * installable PWA.
  *
  * Strategy:
@@ -11,8 +11,8 @@
  * Bump VERSION to invalidate the caches on a breaking change. */
 
 const VERSION = "v1";
-const STATIC_CACHE = `juriist-static-${VERSION}`;
-const SHELL_CACHE = `juriist-shell-${VERSION}`;
+const STATIC_CACHE = `yakso-static-${VERSION}`;
+const SHELL_CACHE = `yakso-shell-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

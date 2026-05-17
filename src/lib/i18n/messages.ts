@@ -30,7 +30,7 @@ export const LOCALE_SHORT: Record<Locale, string> = {
 type Dict = Record<string, string>;
 
 const ru: Dict = {
-  "brand.name": "ЮрИИст",
+  "brand.name": "Яксо",
   "brand.tagline": "AI-юрист для бизнеса",
 
   "nav.primary": "Основная навигация",
@@ -69,7 +69,7 @@ const ru: Dict = {
   "language.toggle": "Сменить язык",
 
   "disclaimer.notLegalAdvice":
-    "ЮрИИст — справочный сервис, не заменяет юриста. AI может ошибаться — проверяйте важные документы у профильного специалиста.",
+    "Яксо — справочный сервис, не заменяет юриста. AI может ошибаться — проверяйте важные документы у профильного специалиста.",
   "disclaimer.privacy": "Политика конфиденциальности",
   "disclaimer.terms": "Пользовательское соглашение",
   "disclaimer.offer": "Публичная оферта",
@@ -78,7 +78,7 @@ const ru: Dict = {
 };
 
 const en: Dict = {
-  "brand.name": "JurIIst",
+  "brand.name": "Yakso",
   "brand.tagline": "AI legal assistant for business",
 
   "nav.primary": "Primary navigation",
@@ -117,7 +117,7 @@ const en: Dict = {
   "language.toggle": "Switch language",
 
   "disclaimer.notLegalAdvice":
-    "JurIIst is an informational service, not a substitute for a lawyer. AI may err — verify important documents with a qualified professional.",
+    "Yakso is an informational service, not a substitute for a lawyer. AI may err — verify important documents with a qualified professional.",
   "disclaimer.privacy": "Privacy policy",
   "disclaimer.terms": "Terms of service",
   "disclaimer.offer": "Public offer",

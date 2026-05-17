@@ -12,7 +12,6 @@ import { CommandPalette } from "@/components/command-palette";
 import { AccountMenu } from "@/components/account-menu";
 import { useT } from "@/components/i18n-provider";
 import {
-  Scale,
   FileText,
   LayoutDashboard,
   FolderOpen,
@@ -57,7 +56,12 @@ export function Header() {
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/" className="flex shrink-0 items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-fg">
-                <Scale className="h-5 w-5" aria-hidden="true" />
+                <span
+                  className="text-lg font-bold"
+                  aria-hidden="true"
+                >
+                  Я
+                </span>
               </div>
               <span className="text-xl font-bold tracking-tight text-foreground">
                 {t("brand.name")}

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       font: regularFont,
       info: {
         Title: `Аудит: ${data.fileName}`,
-        Author: "ЮрИИст",
+        Author: "Яксо",
       },
     });
 

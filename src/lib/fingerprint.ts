@@ -51,7 +51,7 @@ function canvasSignature(): string {
     ctx.textBaseline = "top";
     ctx.font = "14px 'Arial'";
     ctx.fillStyle = "#069";
-    ctx.fillText("ЮрИИст fingerprint ⚖", 2, 2);
+    ctx.fillText("Яксо fingerprint ⚖", 2, 2);
     ctx.strokeStyle = "rgba(120,180,90,0.7)";
     ctx.strokeRect(4, 4, 120, 20);
     return canvas.toDataURL().slice(-48);

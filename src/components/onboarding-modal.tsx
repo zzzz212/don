@@ -15,7 +15,7 @@ import { useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, FileSearch, FolderOpen, MessageCircle, X } from "lucide-react";
 
-const STORAGE_KEY = "juriist:onboarding-seen";
+const STORAGE_KEY = "yakso:onboarding-seen";
 
 const STEPS = [
   {
@@ -117,7 +117,7 @@ export function OnboardingModal() {
                 id="onboarding-heading"
                 className="mt-2 text-2xl font-extrabold tracking-tight text-foreground"
               >
-                Что в ЮрИИст можно сделать
+                Что в Яксо можно сделать
               </h2>
               <p className="mt-2 text-sm text-muted">
                 Три типичных сценария — выберите, с чего начать.

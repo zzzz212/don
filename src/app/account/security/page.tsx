@@ -172,7 +172,7 @@ export default function AccountSecurityPage() {
 
   const handleDownloadRecovery = () => {
     const text = [
-      "Резервные коды для восстановления доступа к ЮрИИст",
+      "Резервные коды для восстановления доступа к Яксо",
       "===================================================",
       "",
       "Каждый код можно использовать ОДИН раз вместо",
@@ -190,7 +190,7 @@ export default function AccountSecurityPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `juriist-recovery-codes.txt`;
+    a.download = `yakso-recovery-codes.txt`;
     document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(url);

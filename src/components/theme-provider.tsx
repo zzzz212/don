@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 export type ThemeChoice = "light" | "dark" | "system";
 
-const STORAGE_KEY = "juriist:theme";
+const STORAGE_KEY = "yakso:theme";
 
 type Ctx = {
   theme: ThemeChoice;

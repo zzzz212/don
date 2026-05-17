@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { Scale, Mail, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Mail, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { requestPasswordReset } from "@/lib/auth-actions";
 
 export default function ForgotPasswordPage() {
@@ -37,10 +37,10 @@ export default function ForgotPasswordPage() {
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-6 w-6" />
+              <span className="text-2xl font-bold">Я</span>
             </div>
             <span className="text-2xl font-bold tracking-tight text-foreground">
-              ЮрИИст
+              Яксо
             </span>
           </Link>
           <h1 className="mt-6 text-2xl font-bold text-foreground">

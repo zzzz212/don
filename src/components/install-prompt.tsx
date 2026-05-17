@@ -14,7 +14,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "juriist:pwa-install-dismissed";
+const DISMISS_KEY = "yakso:pwa-install-dismissed";
 
 export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(

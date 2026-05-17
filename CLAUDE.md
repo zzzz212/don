@@ -6,13 +6,13 @@
 > CLAUDE.md, читай его подряд.
 
 ```
-Привет! Я работаю над ЮрИИст — Russian legal-tech SaaS на Next.js 16 +
+Привет! Я работаю над Яксо — Russian legal-tech SaaS на Next.js 16 +
 Prisma + Neon Postgres. Проект большой (~120 коммитов): AI-анализ
 договоров с verdict + apply-fix, генерация из 20 шаблонов с AI-доработкой,
 чат-юрист, проверка контрагентов, workspaces, биллинг через ЮKassa, 2FA,
 audit log, admin-панель, PostHog, dark mode + i18n provider + ⌘K, AccountMenu,
 onboarding, кастомные 404/500/OG, user-level план + триал. Production:
-https://juriist.vercel.app. Все детали в CLAUDE.md в корне репозитория.
+https://yakso.ru. Все детали в CLAUDE.md в корне репозитория.
 
 ПЕРВЫМ ДЕЛОМ:
 
@@ -85,10 +85,10 @@ invasive вариант + явная отметка что оставил под
 
 ---
 
-# ЮрИИст — состояние проекта
+# Яксо — состояние проекта
 
 **Дата последнего обновления**: 2026-05-17 (после Sprint 11: ИНН-привязка, анти-абуз, чат компании, роли, пересылка договоров, напоминания, сравнение договоров, публичные ссылки, рефералка)
-**Production URL**: https://juriist.vercel.app
+**Production URL**: https://yakso.ru
 **Repo**: https://github.com/zzzz212/don
 **Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR)
 
@@ -624,7 +624,7 @@ bdc0e4c Hard-reload after workspace switch
 | `DADATA_API_KEY` + `DADATA_SECRET_KEY` | Контрагенты ЕГРЮЛ | Только моки |
 | `FSSP_AUTH_KEY` | ФССП — банк исп. производств (api-ip.fssp.gov.ru, бесплатно) | Долги через заглушку |
 | `RESEND_API_KEY` | Транзакционные письма | Noop-логгер |
-| `RESEND_FROM_ADDRESS` | (опц.) sandbox-from | Default `no-reply@juriist.ru` |
+| `RESEND_FROM_ADDRESS` | (опц.) sandbox-from | Default `no-reply@yakso.ru` |
 | `YOOKASSA_SHOP_ID` + `YOOKASSA_SECRET_KEY` | Платежи | /billing/checkout вернёт 503 |
 | `POSTHOG_API_KEY` + `POSTHOG_HOST` | Server-side аналитика | События не уходят |
 | `NEXT_PUBLIC_POSTHOG_KEY` + `NEXT_PUBLIC_POSTHOG_HOST` | Client-side аналитика | Pageviews не уходят |
@@ -786,7 +786,7 @@ GROUP BY model;
 - OPERATOR placeholders → 152-ФЗ нарушение, /privacy несоблюдено
 - Не подано уведомление в Роскомнадзор о обработке ПДн
 - Resend domain не подтверждён → welcome/password-reset не уходят на реальных юзеров
-- Нет .ru домена (только juriist.vercel.app — НЕ профессионально для b2b)
+- Нет .ru домена (только yakso.ru — НЕ профессионально для b2b)
 - 0 каналов привлечения (SEO/PPC/партнёрки/комьюнити)
 
 ### 🚀 Расширения продукта
@@ -818,7 +818,7 @@ GROUP BY model;
 - Tooltips на 5 ключевых UI элементах (driver.js)
 - Help-страница 15 FAQ
 - Crisp/Tawk бесплатный чат на сайт
-- Customer support: Telegram-канал @juriist_support
+- Customer support: Telegram-канал @yakso_support
 
 ### ⚙️ DX
 - GitHub Actions CI (npm test + tsc + build на PR)
@@ -885,8 +885,8 @@ GROUP BY model;
 | Задача | Effort | Откуда юзеры |
 |---|---|---|
 | 5-10 SEO-статей на блоге (договор-оферта, ГПХ, NDA для ИТ, аренда для онлайн-школ, и т.д.) | 1 неделя content-маркетолога | Long-tail Google |
-| Telegram-канал @juriist (1-2 поста/день, обновления + полезные тексты) | 2ч/день | Direct sharing |
-| Telegram-канал @juriist_support | 30 мин/день | Customer retention |
+| Telegram-канал @yakso (1-2 поста/день, обновления + полезные тексты) | 2ч/день | Direct sharing |
+| Telegram-канал @yakso_support | 30 мин/день | Customer retention |
 | vc.ru / Habr / Skillbox — статья "Как мы построили AI-юриста" | 1 день | One-time spike |
 | LinkedIn / cold DM 100 ИП-предпринимателей с "хочу подарить тебе подписку" | 2 дня | First 5-10 testimonial users |
 
@@ -984,12 +984,12 @@ GROUP BY model;
 ## Контакты infrastructure
 
 - **GitHub**: https://github.com/zzzz212/don
-- **Production**: https://juriist.vercel.app
+- **Production**: https://yakso.ru
 - **Production branch**: `main`
 - **Active feature branch**: `claude/sprint-8-ui-polish`
 - **Vercel project**: zzzz212-projects/don
-- **Neon project**: console.neon.tech → don / juriist
-- **Sentry org**: juriist
+- **Neon project**: console.neon.tech → don / yakso
+- **Sentry org**: yakso
 - **Voyage AI**: voyageai.com
 - **Anthropic Console**: console.anthropic.com (баланс, ключи, usage)
 - **Yandex Cloud**: console.cloud.yandex.ru (OCR service account)
@@ -1022,7 +1022,7 @@ GROUP BY model;
 - **Vercel maxDuration = 300** на AI routes. Работает только на Pro plan ($20/мес). Hobby clamps to 60s.
 - **Neon cold-start** ловится retry-обёрткой в build script.
 - **Себе PRO выдать**: SQL в Neon → `UPDATE "User" SET plan = 'PRO', "trialEndsAt" = NULL WHERE email = 'твой@email';` → выход/вход для перевыпуска JWT.
-- **Backfill после plan-on-user миграции** (если ещё не сделан): `curl -X POST -H "x-admin-key:..." https://juriist.vercel.app/api/admin/backfill-user-plan`.
+- **Backfill после plan-on-user миграции** (если ещё не сделан): `curl -X POST -H "x-admin-key:..." https://yakso.ru/api/admin/backfill-user-plan`.
 - **AI стоит $0.15-0.30 за анализ** на Sonnet, $0.02 на Haiku. Cache hit снижает input cost в ~3 раза. Track в Neon: `SELECT model, SUM("inputTokens"), SUM("cachedTokens"), SUM("outputTokens") FROM "AiUsage" WHERE feature = 'analyze' GROUP BY model;`.
 - **План user-scoped.** OWNER membership определяет какой User.plan применяется к workspace.
 - **Sprint 11 (социальный слой + анти-абуз)** — закрыт (этот заход). 10 атомарных коммитов в `claude/sprint-8-ui-polish`, **в `main` НЕ смержено**. ИНН-привязка с двухуровневым подтверждением, слоистый анти-абуз мульти-аккаунтов, чат компании, роль VIEWER + управление ролями, пересылка договоров в чаты, AI-напоминания по срокам, сравнение двух договоров, публичные ссылки на заключение, реферальная программа. `npx tsc --noEmit` + 260 unit-тестов + `npx next build` — зелёные. Новые foot-guns #37–40.

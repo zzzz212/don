@@ -37,7 +37,7 @@ export const servicesContract: BlogPost = {
   ],
   readingTimeMin: 9,
   category: "B2B и услуги",
-  author: "Редакция ЮрИИст",
+  author: "Редакция Яксо",
   Body: ServicesContractBody,
 };
 

@@ -79,7 +79,7 @@ const ORGANIZATION_JSONLD = {
 const NO_FOIT_BOOT_SCRIPT = `
 (function() {
   try {
-    var stored = localStorage.getItem('juriist:theme');
+    var stored = localStorage.getItem('yakso:theme');
     var pref = stored === 'light' || stored === 'dark' ? stored
       : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     var root = document.documentElement;
@@ -87,7 +87,7 @@ const NO_FOIT_BOOT_SCRIPT = `
     root.style.colorScheme = pref;
   } catch (e) { /* localStorage blocked — fall through to default light */ }
   try {
-    var locStored = localStorage.getItem('juriist:locale');
+    var locStored = localStorage.getItem('yakso:locale');
     var loc = locStored === 'ru' || locStored === 'en' ? locStored
       : ((navigator.language || 'ru').toLowerCase().split('-')[0] === 'en' ? 'en' : 'ru');
     document.documentElement.lang = loc;

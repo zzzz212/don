@@ -78,7 +78,7 @@ export function renderEmailHtml(opts: LayoutOptions): string {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td style="vertical-align: middle;">
-                      <span style="display:inline-block; vertical-align:middle; width:36px; height:36px; line-height:36px; text-align:center; background:${COLOR_PRIMARY}; color:#ffffff; border-radius:10px; font-weight:700; font-size:18px;">⚖</span>
+                      <span style="display:inline-block; vertical-align:middle; width:36px; height:36px; line-height:36px; text-align:center; background:${COLOR_PRIMARY}; color:#ffffff; border-radius:10px; font-weight:700; font-size:18px;">Я</span>
                       <span style="display:inline-block; vertical-align:middle; margin-left:10px; font-size:18px; font-weight:700; color:${COLOR_FG}; letter-spacing:-0.01em;">
                         ${escapeHtml(BRAND.name)}
                       </span>

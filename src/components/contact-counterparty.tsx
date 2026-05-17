@@ -1,7 +1,7 @@
 "use client";
 
 // Rendered on the counterparty-check page. When the searched ИНН belongs
-// to a ЮрИИст account, this lets the user reach that account's
+// to a Яксо account, this lets the user reach that account's
 // representative — either opening an existing conversation or sending a
 // connection request with an intro message. When no account owns the
 // ИНН it shows a quiet hint instead.
@@ -157,7 +157,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
   if (unverified) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted">
-        Кто-то указал этот ИНН в ЮрИИст, но не подтвердил владение
+        Кто-то указал этот ИНН в Яксо, но не подтвердил владение
         компанией. Написать напрямую можно только подтверждённым
         компаниям — так контрагент не сможет выдать себя за чужую фирму.
       </div>
@@ -167,7 +167,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
   if (!owner) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted">
-        Эта компания пока не подтвердила свой ИНН в ЮрИИст — написать
+        Эта компания пока не подтвердила свой ИНН в Яксо — написать
         напрямую нельзя. Кнопка связи появится, когда представитель
         компании подтвердит владение.
       </div>
@@ -180,7 +180,7 @@ export function ContactCounterparty({ inn }: { inn: string }) {
     <div className="rounded-lg border border-border bg-card p-6">
       <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
         <MessageSquare className="h-5 w-5" />
-        Контрагент в ЮрИИст
+        Контрагент в Яксо
       </h3>
 
       <div className="flex items-start gap-3">

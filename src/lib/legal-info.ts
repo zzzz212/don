@@ -18,10 +18,10 @@ export const LEGAL_EFFECTIVE_DATE = "2026-05-10";
 
 /** Brand identity (consumer-facing). Distinct from the operator legal entity. */
 export const BRAND = {
-  name: "ЮрИИст",
+  name: "Яксо",
   tagline: "AI-юрист для бизнеса",
-  domain: "juriist.vercel.app",
-  publicUrl: "https://juriist.vercel.app",
+  domain: "yakso.ru",
+  publicUrl: "https://yakso.ru",
 } as const;
 
 /**
@@ -54,11 +54,11 @@ export const OPERATOR = {
 
 /** Email contacts shown in legal pages and used as `From:` for transactional mail. */
 export const CONTACTS = {
-  support: "support@juriist.ru",
-  privacy: "privacy@juriist.ru",
-  legal: "legal@juriist.ru",
+  support: "support@yakso.ru",
+  privacy: "privacy@yakso.ru",
+  legal: "legal@yakso.ru",
   /** Reply-to / From address shown in transactional email headers. */
-  noReply: "no-reply@juriist.ru",
+  noReply: "no-reply@yakso.ru",
 } as const;
 
 /**
