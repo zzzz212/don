@@ -3,7 +3,6 @@
 
 import type { EmailMessage } from "../provider";
 import { renderEmailHtml, renderEmailText } from "./layout";
-import { BRAND } from "@/lib/legal-info";
 
 function escape(s: string): string {
   return s

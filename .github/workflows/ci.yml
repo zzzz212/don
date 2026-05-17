@@ -1,0 +1,50 @@
+name: CI
+
+# Runs on every pull request and on pushes to the main branch. Keeps the
+# four checks that were previously run by hand before each commit/push:
+# lint, type-check, unit tests, production build.
+on:
+  pull_request:
+  push:
+    branches:
+      - claude/complete-previous-tasks-rzcSp
+
+# A newer commit on the same ref supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint · types · tests · build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` runs the `postinstall` script (`prisma generate`), so the
+      # generated Prisma client types exist before the type-check / build.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test
+
+      # `npm run build` also runs `prisma db push` against a live database
+      # — CI has none. Build Next.js directly instead. The env vars below
+      # only need to be present, not valid: nothing connects at build time.
+      - name: Build
+        run: npx next build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          AUTH_SECRET: ci-build-only-secret

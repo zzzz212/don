@@ -17,6 +17,9 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false);
 
   // Avoid hydration mismatch — server can't know the user's choice.
+  // The one-shot "mounted" flag is the canonical pattern for this; the
+  // setState-in-effect lint rule is a false positive here.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
