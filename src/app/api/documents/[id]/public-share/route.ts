@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
 import { logAudit, attribution } from "@/lib/audit";
 import { BRAND } from "@/lib/legal-info";
 import { reportError } from "@/lib/telemetry";
@@ -20,13 +20,20 @@ function shareUrl(token: string): string {
   return `${BRAND.publicUrl}/r/${token}`;
 }
 
-/** Resolve the document if it belongs to the caller's workspace. */
-async function ownedDocument(userId: string, documentId: string) {
+/** Resolve the document (if it belongs to the caller's workspace) plus
+ *  the caller's role there. Null when the document isn't in their org. */
+async function ownedDocument(
+  userId: string,
+  documentId: string
+): Promise<{ role: string } | null> {
   const orgId = await ensureActiveOrg(userId);
-  return prisma.document.findFirst({
+  const doc = await prisma.document.findFirst({
     where: { id: documentId, orgId },
     select: { id: true },
   });
+  if (!doc) return null;
+  const membership = await getMembership(userId, orgId);
+  return { role: membership?.role ?? "MEMBER" };
 }
 
 // GET — the document's currently active public link, if any.
@@ -84,8 +91,17 @@ export async function POST(
     }
     const me = session.user.id;
     const { id } = await params;
-    if (!(await ownedDocument(me, id))) {
+    const owned = await ownedDocument(me, id);
+    if (!owned) {
       return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
+    }
+    // Publishing a link is an outward-facing write — not for read-only
+    // VIEWERs.
+    if (owned.role === "VIEWER") {
+      return NextResponse.json(
+        { error: "Роль «Наблюдатель» не позволяет публиковать ссылки." },
+        { status: 403 }
+      );
     }
 
     const existing = await prisma.publicShare.findFirst({
@@ -152,8 +168,15 @@ export async function DELETE(
     }
     const me = session.user.id;
     const { id } = await params;
-    if (!(await ownedDocument(me, id))) {
+    const owned = await ownedDocument(me, id);
+    if (!owned) {
       return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
+    }
+    if (owned.role === "VIEWER") {
+      return NextResponse.json(
+        { error: "Роль «Наблюдатель» не позволяет управлять ссылками." },
+        { status: 403 }
+      );
     }
 
     await prisma.publicShare.updateMany({

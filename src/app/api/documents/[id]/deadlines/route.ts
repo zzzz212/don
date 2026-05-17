@@ -32,13 +32,19 @@ export async function POST(
       return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
     }
     // Owner, or a member of the workspace the document belongs to.
-    if (document.userId !== me) {
-      const member = document.orgId
-        ? await getMembership(me, document.orgId)
-        : null;
-      if (!member) {
-        return NextResponse.json({ error: "Нет доступа" }, { status: 403 });
-      }
+    const member = document.orgId
+      ? await getMembership(me, document.orgId)
+      : null;
+    if (document.userId !== me && !member) {
+      return NextResponse.json({ error: "Нет доступа" }, { status: 403 });
+    }
+    // Extraction is an AI call — read-only VIEWERs don't spend AI quota,
+    // same gate as analyze / generate.
+    if (member?.role === "VIEWER") {
+      return NextResponse.json(
+        { error: "Роль «Наблюдатель» не позволяет запускать анализ дат." },
+        { status: 403 }
+      );
     }
     if (!document.rawText || document.rawText.trim().length < 100) {
       return NextResponse.json(
