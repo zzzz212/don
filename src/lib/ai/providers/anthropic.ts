@@ -77,7 +77,8 @@ export async function generate<T extends z.ZodTypeAny>(
     const response = await client.messages.create({
       model,
       max_tokens: opts.maxTokens ?? 4096,
-      temperature: opts.temperature ?? 0.1,
+      // Anthropic's current models reject an explicit `temperature`
+      // (400 invalid_request_error) — omit it; the model default applies.
       system: systemBlocks,
       tools: [tool],
       tool_choice: { type: "tool", name: TOOL_NAME },
@@ -120,7 +121,7 @@ export async function generateText(
     const response = await client.messages.create({
       model,
       max_tokens: opts.maxTokens ?? 4096,
-      temperature: opts.temperature ?? 0.1,
+      // temperature omitted — rejected by Anthropic's current models.
       system: systemBlocks,
       messages: [{ role: "user", content: opts.prompt }],
     });
@@ -196,7 +197,7 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
     const response = await client.messages.create({
       model,
       max_tokens: opts.maxTokens ?? 2048,
-      temperature: opts.temperature ?? 0.3,
+      // temperature omitted — rejected by Anthropic's current models.
       system: systemBlocks,
       messages: buildCachedMessages(opts.messages),
     });
@@ -232,7 +233,7 @@ export async function* streamChat(
       {
         model,
         max_tokens: opts.maxTokens ?? 2048,
-        temperature: opts.temperature ?? 0.3,
+        // temperature omitted — rejected by Anthropic's current models.
         system: systemBlocks,
         messages: buildCachedMessages(opts.messages),
       },
