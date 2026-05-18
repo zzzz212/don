@@ -108,7 +108,7 @@ Geist font / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus)
 с prompt caching. **Read `node_modules/next/dist/docs/`** перед изменением
 Next.js паттернов — это Next 16, не та Next.js что помнит твоё обучение.
 
-**Тесты**: 234 unit-теста через vitest. `npm test`.
+**Тесты**: 267 unit-тестов через vitest. `npm test`.
 
 ---
 
@@ -762,6 +762,19 @@ bdc0e4c Hard-reload after workspace switch
 
 41. **Anthropic в текущих моделях НЕ принимает `temperature`.** Запрос с этим полем падает: `400 invalid_request_error: "temperature is deprecated for this model"`. В `src/lib/ai/providers/anthropic.ts` параметр НЕ передаётся ни в одном из 4 вызовов (`generate` / `generateText` / `chat` / `streamChat`) — не возвращать его обратно. Это ломало `/api/analyze` в проде (Groq-фолбэк не спас — 413 по TPM-лимиту). `GenerateOptions.temperature` всё ещё используется провайдерами Groq/Gemini — там оставить.
 
+42. **`toGeminiSchema` (`schema-helpers.ts`) конвертирует, а не молча режет.**
+    Раньше функция выбрасывала ЛЮБОЙ нераспознанный ключ JSON-схемы — это тихо
+    ломало дискриминированные union'ы: `oneOf` исчезал → `items: {}` («массив чего
+    угодно»), Gemini-фолбэк возвращал мусор, не проходящий zod. Теперь `oneOf`/
+    `anyOf` → Gemini-`anyOf`, `const` → одноэлементный `enum`, бессмысленные ключи
+    (`$schema`, `additionalProperties`…) дропаются, а любой ДРУГОЙ неизвестный ключ →
+    `throw` (ловится fallback-цепочкой AI-клиента → переход к следующему провайдеру с
+    явной причиной). Следствие: добавишь в схему, идущую через `generate(zod)`,
+    конструкцию `.regex()` / `z.tuple()` / прочее, что эмитит ключ вне allowlist —
+    Gemini-путь упадёт громко. Через Gemini реально идут 3 схемы: analyze, chunk-
+    risks, synthesis. `refine-patch` идёт через `generateText` (без схемы) — там
+    discriminated union безопасен. `toAnthropicSchema` ключи НЕ фильтрует.
+
 ---
 
 ## Как дебажить когда что-то не работает
@@ -914,8 +927,8 @@ GROUP BY model;
 | Удалить fake reviews / cleanup landing | ✅ В коммите [этот файл] |
 | Verdict → "оценка рисков" (легальная ответственность) | ✅ В коммите [этот файл] |
 | Скрыть КАД/ФССП до интеграции | ✅ В коммите [этот файл] |
-| Hard cap анализов на PRO: 100/мес | ⬜ TODO (в `quota.ts`) |
-| FREE на Haiku вместо Sonnet (cost control) | ⬜ TODO (в `tier-policy.ts` — analyze FREE: smart → fast) |
+| Hard cap анализов на PRO: 100/мес | ✅ Done (`plans.ts` PLAN_LIMITS — PRO_SOLO 100 / PRO_TEAM 500) |
+| FREE на Haiku вместо Sonnet (cost control) | ✅ Done (`tier-policy.ts` — analyze FREE → fast) |
 | Dual-consent на /register (хранение в РФ + трансграничная передача) | ⬜ TODO |
 | Pricing 5-tier с годовой скидкой | ⬜ TODO (см. ниже) |
 | Подключить api-fns.ru для КАД (или Контур.Фокус) | ⬜ TODO ($30-50/мес) |
@@ -1075,7 +1088,15 @@ GROUP BY model;
 - **ИП зарегистрирован** — реквизиты в `legal-info.ts` (`OPERATOR`). Расчётного счёта пока нет (банковский блок оферты скрыт), RKN-номер не получен.
 - **Anthropic `temperature` убран** (foot-gun #41) — ломал `/api/analyze` в проде. Groq как фолбэк для analyze слаб (free-tier 12k TPM при запросе ~24k токенов) — при падении Anthropic подстраховки нет; стоит задать `GEMINI_API_KEY`.
 - **CI подключён** — GitHub Actions гоняет `lint`/`tsc`/`vitest`/`build` на каждый PR и пуш в main.
-- **Тесты — 260** (было 234): +10 `inn.ts`, +16 `anti-abuse.ts`.
+- **Тесты — 267** (было 260): +7 `schema-helpers.ts`.
+- **Trek A (код-долги, этот заход)** — аудит трёх пунктов. (1) Hard cap PRO
+  100/мес — уже стоял в `plans.ts` (roadmap-чекбокс был устаревший, поправлен).
+  (2) Plan-lookup аудит (foot-gun #33) — чисто: каждый `MAP[plan]` либо с
+  `?? fallback`, либо exhaustive `Record<Plan,…>` по типобезопасному ключу.
+  (3) Gemini-фолбэк: `cleanForGemini` молча резал `oneOf` → почини́л (foot-gun
+  #42 + регресс-тест `schema-helpers.test.ts`). Установка `GEMINI_API_KEY` —
+  по-прежнему user-side: без неё при падении Anthropic фолбэк только на слабый
+  Groq.
 
 ---
 
