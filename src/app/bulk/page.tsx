@@ -18,6 +18,7 @@ import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { cn } from "@/lib/utils";
 import { bulkFileError, BULK_ACCEPT, MAX_BULK_FILES } from "@/lib/bulk";
+import { Button, buttonClass } from "@/components/button";
 import {
   Layers,
   Upload,
@@ -218,7 +219,7 @@ export default function BulkPage() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
               <Layers className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-semibold text-foreground">
               Массовая проверка договоров
             </h1>
             <p className="mt-2 text-muted">
@@ -340,14 +341,10 @@ export default function BulkPage() {
                   </ul>
 
                   <div className="mt-6 flex flex-col items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={runQueue}
-                      className="inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl"
-                    >
+                    <Button size="lg" onClick={runQueue}>
                       <Layers className="h-5 w-5" aria-hidden="true" />
                       Начать проверку
-                    </button>
+                    </Button>
                     <p className="text-xs text-muted">
                       В очереди: {items.length}. Договоры проверяются по
                       одному — не закрывайте вкладку.
@@ -466,26 +463,21 @@ export default function BulkPage() {
               {/* Controls */}
               <div className="mt-6 flex flex-col items-center gap-3">
                 {running && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     onClick={() => {
                       cancelRef.current = true;
                     }}
-                    className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                   >
                     Остановить после текущего файла
-                  </button>
+                  </Button>
                 )}
 
                 {!running && pendingCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={runQueue}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-                  >
+                  <Button onClick={runQueue}>
                     <Layers className="h-4 w-4" aria-hidden="true" />
                     Продолжить ({pendingCount} в очереди)
-                  </button>
+                  </Button>
                 )}
 
                 {allSettled && (
@@ -500,26 +492,19 @@ export default function BulkPage() {
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
                       <Link
                         href="/dashboard"
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                        className={buttonClass({ size: "sm" })}
                       >
                         Открыть дашборд
                       </Link>
-                      <button
-                        type="button"
-                        onClick={resetAll}
-                        className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-                      >
+                      <Button variant="secondary" size="sm" onClick={resetAll}>
                         Проверить ещё
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
 
                 {quotaHit && (
-                  <Link
-                    href="/billing"
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-                  >
+                  <Link href="/billing" className={buttonClass({ size: "sm" })}>
                     <Crown className="h-4 w-4" aria-hidden="true" />
                     Лимит тарифа исчерпан — перейти на «Про»
                   </Link>

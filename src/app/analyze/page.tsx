@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { UploadZone } from "@/components/upload-zone";
+import { Button, buttonClass } from "@/components/button";
 import {
   FileSearch,
   Upload,
@@ -153,7 +154,7 @@ export default function AnalyzePage() {
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
                   <FileSearch className="h-7 w-7 text-primary" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="text-2xl font-semibold text-foreground">
                   Анализ договора
                 </h1>
                 <p className="mt-2 text-muted">
@@ -183,7 +184,7 @@ export default function AnalyzePage() {
                     aria-pressed={mode === "file"}
                     className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                       mode === "file"
-                        ? "bg-primary text-white"
+                        ? "bg-primary text-primary-fg"
                         : "text-muted hover:text-foreground"
                     }`}
                   >
@@ -199,7 +200,7 @@ export default function AnalyzePage() {
                     aria-pressed={mode === "text"}
                     className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                       mode === "text"
-                        ? "bg-primary text-white"
+                        ? "bg-primary text-primary-fg"
                         : "text-muted hover:text-foreground"
                     }`}
                   >
@@ -225,15 +226,15 @@ export default function AnalyzePage() {
 
                   {selectedFile && (
                     <div className="mt-6 animate-scale-in text-center">
-                      <button
+                      <Button
+                        size="lg"
                         onClick={() =>
                           selectedFile && handleAnalyze(selectedFile)
                         }
-                        className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl"
                       >
-                        <Scale className="h-5 w-5" />
+                        <Scale className="h-5 w-5" aria-hidden="true" />
                         Начать анализ
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -265,14 +266,14 @@ export default function AnalyzePage() {
                   </p>
 
                   <div className="mt-5 text-center">
-                    <button
+                    <Button
+                      size="lg"
                       onClick={handleAnalyzeText}
                       disabled={pasteLength < MIN_PASTE_LENGTH}
-                      className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                     >
-                      <Scale className="h-5 w-5" />
+                      <Scale className="h-5 w-5" aria-hidden="true" />
                       Начать анализ
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -288,7 +289,7 @@ export default function AnalyzePage() {
                   {error.upgradeNeeded && (
                     <Link
                       href="/billing"
-                      className="ml-8 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                      className={buttonClass({ size: "sm", className: "ml-8" })}
                     >
                       <Crown className="h-4 w-4" />
                       Перейти на «Про» — безлимит
@@ -298,7 +299,7 @@ export default function AnalyzePage() {
                   {error.authNeeded && (
                     <Link
                       href="/login"
-                      className="ml-8 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                      className={buttonClass({ size: "sm", className: "ml-8" })}
                     >
                       <LogIn className="h-4 w-4" />
                       Войти в аккаунт
@@ -330,7 +331,7 @@ export default function AnalyzePage() {
                     key={item.label}
                     className="rounded-xl border border-border bg-card p-4 text-center"
                   >
-                    <p className="text-sm font-bold text-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       {item.value}
                     </p>
                     <p className="mt-0.5 text-xs text-muted">{item.label}</p>
@@ -348,7 +349,7 @@ export default function AnalyzePage() {
                   <Scale className="h-10 w-10 text-primary animate-pulse-ring" />
                 </div>
               </div>
-              <h2 className="text-xl font-bold text-foreground">
+              <h2 className="text-xl font-semibold text-foreground">
                 Проверяем ваш договор
               </h2>
               <p className="mt-2 text-sm text-muted">
