@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 // Generated PWA icons. The manifest references /pwa/icon?size=192,
 // ?size=512 and ?size=512&maskable=1 — one route covers every variant,
 // so there are no binary PNGs to commit and keep in sync with the
-// brand colour.
+// brand. The mark mirrors the in-app <Logo>: an ink tile, serif "Я".
 //
 // nodejs runtime (not edge): matches the other ImageResponse routes in
 // this app — edge was dropped because it disabled static generation.
@@ -30,11 +30,11 @@ export function GET(request: Request) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#4f46e5",
-          color: "#ffffff",
+          background: "#16202e",
+          color: "#fbfaf8",
           fontSize: glyph,
-          fontWeight: 800,
-          fontFamily: "Inter, system-ui, sans-serif",
+          fontWeight: 600,
+          fontFamily: 'Georgia, "Times New Roman", serif',
           borderRadius: radius,
         }}
       >

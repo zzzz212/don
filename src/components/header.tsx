@@ -7,6 +7,7 @@ import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
 import { AccountMenu } from "@/components/account-menu";
@@ -54,18 +55,8 @@ export function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/" className="flex shrink-0 items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-fg">
-                <span
-                  className="text-lg font-bold"
-                  aria-hidden="true"
-                >
-                  Я
-                </span>
-              </div>
-              <span className="text-xl font-bold tracking-tight text-foreground">
-                {t("brand.name")}
-              </span>
+            <Link href="/" className="flex shrink-0 items-center">
+              <Logo size={34} wordmark={t("brand.name")} />
             </Link>
             {!isLanding && user && <OrgSwitcher />}
           </div>

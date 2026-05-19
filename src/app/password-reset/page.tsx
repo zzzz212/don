@@ -2,6 +2,7 @@
 
 import { Suspense, useId, useState } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Lock,
@@ -189,12 +190,7 @@ export default function PasswordResetPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white">
-              <span className="text-2xl font-bold">Я</span>
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-foreground">
-              Яксо
-            </span>
+            <Logo size={44} wordmark="Яксо" />
           </Link>
           <h1 className="mt-6 text-2xl font-bold text-foreground">
             Новый пароль

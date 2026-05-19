@@ -7,17 +7,16 @@ import { ImageResponse } from "next/og";
 //
 // We deliberately do NOT export `runtime = "edge"`. In Next 16,
 // ImageResponse works fine in the default Node.js runtime, and
-// declaring edge-runtime on a page disables static generation for it
-// (the build emits a warning). The Node path also lets us reuse any
-// future env-bound dependencies (Sentry, etc.) without per-route
-// edge polyfills.
+// declaring edge-runtime on a page disables static generation for it.
 //
-// Inlined fonts would bloat the route — we lean on Inter via system
-// fallbacks (next/og's default).
+// Display type is set in a serif (Georgia — a safe Cyrillic-capable
+// fallback for the app's Source Serif) to match the redesigned brand.
 
 export const alt = "Яксо — аудит договоров со ссылками на ГК РФ";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+const SERIF = 'Georgia, "Times New Roman", serif';
 
 export default function OpengraphImage() {
   return new ImageResponse(
@@ -29,17 +28,17 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           background:
-            "linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #ffffff 100%)",
+            "linear-gradient(135deg, #f1efe9 0%, #eceffa 55%, #fbfaf8 100%)",
           padding: 80,
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        {/* Brand chip */}
+        {/* Brand mark — ink tile, serif "Я" */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 16,
+            gap: 18,
             marginBottom: 60,
           }}
         >
@@ -47,24 +46,26 @@ export default function OpengraphImage() {
             style={{
               width: 64,
               height: 64,
-              borderRadius: 16,
-              background: "#4f46e5",
+              borderRadius: 14,
+              background: "#16202e",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#fff",
-              fontSize: 38,
-              fontWeight: 800,
+              color: "#fbfaf8",
+              fontSize: 36,
+              fontWeight: 600,
+              fontFamily: SERIF,
             }}
           >
             Я
           </div>
           <div
             style={{
-              fontSize: 48,
-              fontWeight: 800,
-              color: "#0f172a",
-              letterSpacing: -1,
+              fontSize: 46,
+              fontWeight: 600,
+              color: "#16202e",
+              fontFamily: SERIF,
+              letterSpacing: -0.5,
             }}
           >
             Яксо
@@ -74,11 +75,12 @@ export default function OpengraphImage() {
         {/* Headline */}
         <div
           style={{
-            fontSize: 92,
-            fontWeight: 800,
-            color: "#0f172a",
-            lineHeight: 1.05,
-            letterSpacing: -3,
+            fontSize: 88,
+            fontWeight: 600,
+            color: "#16202e",
+            fontFamily: SERIF,
+            lineHeight: 1.08,
+            letterSpacing: -2,
             maxWidth: 1000,
           }}
         >
@@ -89,8 +91,8 @@ export default function OpengraphImage() {
         <div
           style={{
             marginTop: 28,
-            fontSize: 32,
-            color: "#475569",
+            fontSize: 31,
+            color: "#5b6573",
             maxWidth: 880,
             lineHeight: 1.35,
           }}
@@ -107,7 +109,7 @@ export default function OpengraphImage() {
             alignItems: "center",
             gap: 12,
             fontSize: 24,
-            color: "#64748b",
+            color: "#5b6573",
           }}
         >
           yakso.ru

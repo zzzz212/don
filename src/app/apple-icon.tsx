@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
 
-// 180×180 apple-touch-icon. Used by iOS / iPadOS when the user adds
-// the site to their Home Screen — same brand-mark as the regular
-// favicon but at the higher resolution iOS expects.
+// 180×180 apple-touch-icon. Used by iOS / iPadOS when the user adds the
+// site to their Home Screen — the same ink-tile serif mark as the
+// favicon, at the resolution iOS expects.
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -17,12 +17,12 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#4f46e5",
-          color: "#fff",
-          fontSize: 120,
-          fontWeight: 800,
-          fontFamily: "Inter, system-ui, sans-serif",
-          borderRadius: 36,
+          background: "#16202e",
+          color: "#fbfaf8",
+          fontSize: 104,
+          fontWeight: 600,
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          borderRadius: 40,
         }}
       >
         Я

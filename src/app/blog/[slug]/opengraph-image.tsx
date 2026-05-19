@@ -9,13 +9,13 @@ import { getPost, listPosts } from "@/lib/blog/posts";
 // page" — kills click-through on social.
 //
 // generateImageMetadata maps every published slug to a single image
-// variant (we don't have light/dark or per-language variants). It also
-// pre-warms the cache at build time for SSG'd routes via the
-// generateStaticParams on the page itself.
+// variant (we don't have light/dark or per-language variants).
 
 export const alt = "Яксо — статья блога";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+const SERIF = 'Georgia, "Times New Roman", serif';
 
 export async function generateImageMetadata() {
   return listPosts().map((post) => ({
@@ -45,17 +45,17 @@ export default async function BlogPostOg({
           display: "flex",
           flexDirection: "column",
           background:
-            "linear-gradient(135deg, #f8fafc 0%, #eff6ff 50%, #ffffff 100%)",
+            "linear-gradient(135deg, #f1efe9 0%, #eceffa 55%, #fbfaf8 100%)",
           padding: 72,
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        {/* Brand strip */}
+        {/* Brand strip — ink tile, serif "Я" */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 14,
+            gap: 16,
             marginBottom: 32,
           }}
         >
@@ -63,23 +63,25 @@ export default async function BlogPostOg({
             style={{
               width: 52,
               height: 52,
-              borderRadius: 14,
-              background: "#4f46e5",
+              borderRadius: 12,
+              background: "#16202e",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#fff",
-              fontSize: 30,
-              fontWeight: 800,
+              color: "#fbfaf8",
+              fontSize: 29,
+              fontWeight: 600,
+              fontFamily: SERIF,
             }}
           >
             Я
           </div>
           <div
             style={{
-              fontSize: 36,
-              fontWeight: 800,
-              color: "#0f172a",
+              fontSize: 35,
+              fontWeight: 600,
+              color: "#16202e",
+              fontFamily: SERIF,
               letterSpacing: -0.5,
             }}
           >
@@ -89,7 +91,7 @@ export default async function BlogPostOg({
             style={{
               marginLeft: 8,
               fontSize: 22,
-              color: "#64748b",
+              color: "#5b6573",
             }}
           >
             · Журнал
@@ -103,8 +105,8 @@ export default async function BlogPostOg({
             alignSelf: "flex-start",
             padding: "8px 16px",
             borderRadius: 999,
-            background: "#eef2ff",
-            color: "#3730a3",
+            background: "#e9edfb",
+            color: "#1c399e",
             fontSize: 22,
             fontWeight: 700,
             letterSpacing: 0.3,
@@ -118,11 +120,12 @@ export default async function BlogPostOg({
         {/* Title */}
         <div
           style={{
-            fontSize: title.length > 80 ? 56 : 68,
-            fontWeight: 800,
-            color: "#0f172a",
-            lineHeight: 1.1,
-            letterSpacing: -1.5,
+            fontSize: title.length > 80 ? 54 : 66,
+            fontWeight: 600,
+            color: "#16202e",
+            fontFamily: SERIF,
+            lineHeight: 1.12,
+            letterSpacing: -1,
             maxWidth: 1020,
           }}
         >
@@ -137,7 +140,7 @@ export default async function BlogPostOg({
             alignItems: "center",
             justifyContent: "space-between",
             fontSize: 22,
-            color: "#64748b",
+            color: "#5b6573",
           }}
         >
           <div>yakso.ru/blog</div>
