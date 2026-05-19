@@ -19,12 +19,13 @@ interface LayoutOptions {
   ctaFallbackNote?: string;
 }
 
-const COLOR_FG = "#0f172a";
-const COLOR_MUTED = "#64748b";
-const COLOR_BORDER = "#e2e8f0";
-const COLOR_PRIMARY = "#2563eb";
-const COLOR_PRIMARY_DARK = "#1d4ed8";
-const COLOR_SURFACE = "#f8fafc";
+// Mirrors the app's "деловой модерн" palette (src/app/globals.css).
+const COLOR_FG = "#16202e";
+const COLOR_MUTED = "#5b6573";
+const COLOR_BORDER = "#e7e4de";
+const COLOR_PRIMARY = "#2348c8";
+const COLOR_PRIMARY_DARK = "#1c399e";
+const COLOR_SURFACE = "#fbfaf8";
 
 function escapeHtml(s: string): string {
   return s
@@ -41,7 +42,7 @@ export function renderEmailHtml(opts: LayoutOptions): string {
         <tr>
           <td style="padding: 8px 0 24px 0;">
             <a href="${escapeHtml(opts.cta.url)}"
-               style="display: inline-block; background: ${COLOR_PRIMARY}; color: #ffffff; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 10px; font-size: 15px;">
+               style="display: inline-block; background: ${COLOR_PRIMARY}; color: #ffffff; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 8px; font-size: 15px;">
               ${escapeHtml(opts.cta.label)}
             </a>
           </td>
@@ -72,14 +73,14 @@ export function renderEmailHtml(opts: LayoutOptions): string {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${COLOR_SURFACE};">
       <tr>
         <td align="center" style="padding: 32px 16px;">
-          <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; width:100%; background:#ffffff; border:1px solid ${COLOR_BORDER}; border-radius:16px; overflow:hidden;">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px; width:100%; background:#ffffff; border:1px solid ${COLOR_BORDER}; border-radius:12px; overflow:hidden;">
             <tr>
               <td style="padding: 24px 32px 0 32px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td style="vertical-align: middle;">
-                      <span style="display:inline-block; vertical-align:middle; width:36px; height:36px; line-height:36px; text-align:center; background:${COLOR_PRIMARY}; color:#ffffff; border-radius:10px; font-weight:700; font-size:18px;">Я</span>
-                      <span style="display:inline-block; vertical-align:middle; margin-left:10px; font-size:18px; font-weight:700; color:${COLOR_FG}; letter-spacing:-0.01em;">
+                      <span style="display:inline-block; vertical-align:middle; width:36px; height:36px; line-height:36px; text-align:center; background:${COLOR_FG}; color:#fbfaf8; border-radius:8px; font-family:Georgia,'Times New Roman',serif; font-weight:600; font-size:19px;">Я</span>
+                      <span style="display:inline-block; vertical-align:middle; margin-left:10px; font-family:Georgia,'Times New Roman',serif; font-size:19px; font-weight:600; color:${COLOR_FG}; letter-spacing:-0.01em;">
                         ${escapeHtml(BRAND.name)}
                       </span>
                     </td>

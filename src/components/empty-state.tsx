@@ -38,7 +38,7 @@ export function EmptyState({
       <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center text-primary">
         {illustration}
       </div>
-      <h3 className="text-lg font-bold tracking-tight text-foreground">
+      <h3 className="text-lg font-semibold tracking-tight text-foreground">
         {title}
       </h3>
       {description && (

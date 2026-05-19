@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Search } from "lucide-react";
+import { buttonClass } from "@/components/button";
 
 // Custom 404 — branded chrome with an inline SVG that picks up the
 // theme palette via currentColor + fill-card. We don't render Header /
@@ -49,7 +50,7 @@ export default function NotFoundPage() {
           />
         </svg>
 
-        <h1 className="mt-8 text-3xl font-extrabold tracking-tight text-foreground">
+        <h1 className="mt-8 text-3xl font-semibold tracking-tight text-foreground">
           Страница не найдена
         </h1>
         <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
@@ -58,17 +59,11 @@ export default function NotFoundPage() {
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-          >
+          <Link href="/" className={buttonClass({ variant: "secondary" })}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             На главную
           </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
-          >
+          <Link href="/dashboard" className={buttonClass()}>
             <Search className="h-4 w-4" aria-hidden="true" />
             Открыть дашборд
           </Link>

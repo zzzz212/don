@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { Home, RotateCw } from "lucide-react";
 import { reportError } from "@/lib/telemetry";
+import { Button, buttonClass } from "@/components/button";
 
 // Top-level error boundary for the App Router. Branded chrome with
 // a "try again" + "home" pair. We also forward the error to Sentry
@@ -65,7 +66,7 @@ export default function ErrorPage({
           <circle cx="47" cy="52.5" r="1.5" className="fill-current" />
         </svg>
 
-        <h1 className="mt-8 text-3xl font-extrabold tracking-tight text-foreground">
+        <h1 className="mt-8 text-3xl font-semibold tracking-tight text-foreground">
           Что-то пошло не так
         </h1>
         <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
@@ -82,17 +83,13 @@ export default function ErrorPage({
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
-          >
+          <Button onClick={reset}>
             <RotateCw className="h-4 w-4" aria-hidden="true" />
             Попробовать снова
-          </button>
+          </Button>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+            className={buttonClass({ variant: "secondary" })}
           >
             <Home className="h-4 w-4" aria-hidden="true" />
             На дашборд
