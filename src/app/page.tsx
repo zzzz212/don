@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
+import { buttonClass } from "@/components/button";
 import {
   FileSearch,
   CheckCircle,
@@ -136,11 +137,11 @@ export default function LandingPage() {
       <section className="relative overflow-hidden bg-hero-gradient py-20 lg:py-28">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+            <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-md border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted">
               <Scale className="h-3.5 w-3.5" aria-hidden="true" />
               Договорное право РФ · ГК · ППВС
             </div>
-            <h1 className="animate-fade-in stagger-1 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+            <h1 className="animate-fade-in stagger-1 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Аудит договоров.{" "}
               <span className="text-primary">
                 Со ссылками на закон.
@@ -155,16 +156,23 @@ export default function LandingPage() {
             <div className="animate-fade-in stagger-3 mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <Link
                 href="/analyze"
-                className="group flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/30"
+                className={buttonClass({
+                  variant: "primary",
+                  size: "lg",
+                  className: "group",
+                })}
               >
                 Проверить договор бесплатно
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight
+                  className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                  aria-hidden="true"
+                />
               </Link>
               <Link
                 href="/templates"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-8 py-3.5 text-base font-semibold text-foreground transition-colors hover:bg-surface"
+                className={buttonClass({ variant: "secondary", size: "lg" })}
               >
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4" aria-hidden="true" />
                 Создать документ
               </Link>
             </div>
@@ -199,7 +207,7 @@ export default function LandingPage() {
       <section className="py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Всё, что нужно для юридической безопасности
             </h2>
             <p className="mt-4 text-lg text-muted">
@@ -216,7 +224,7 @@ export default function LandingPage() {
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-light text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                   <feature.icon className="h-6 w-6" aria-hidden="true" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">
+                <h3 className="text-lg font-semibold text-foreground">
                   {feature.title}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -234,7 +242,7 @@ export default function LandingPage() {
       <section className="bg-surface/50 py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Как это работает
             </h2>
             <p className="mt-4 text-lg text-muted">
@@ -266,7 +274,7 @@ export default function LandingPage() {
                 <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-white">
                   {item.step}
                 </div>
-                <h3 className="text-lg font-bold text-foreground">
+                <h3 className="text-lg font-semibold text-foreground">
                   {item.title}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -284,7 +292,7 @@ export default function LandingPage() {
       <section className="py-20 lg:py-28">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Как мы это делаем
             </h2>
             <p className="mt-4 text-lg text-muted">
@@ -347,7 +355,7 @@ export default function LandingPage() {
       <section className="bg-surface/50 py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Простые тарифы
             </h2>
             <p className="mt-4 text-lg text-muted">
@@ -360,18 +368,16 @@ export default function LandingPage() {
               <div
                 key={plan.name}
                 className={`relative rounded-2xl border bg-card p-8 ${
-                  plan.popular
-                    ? "border-primary shadow-xl shadow-primary/10 ring-1 ring-primary"
-                    : "border-border"
+                  plan.popular ? "border-primary shadow-md" : "border-border"
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-fg">
                     Популярный
                   </div>
                 )}
                 <div className="text-center">
-                  <h3 className="text-lg font-bold text-foreground">
+                  <h3 className="text-lg font-semibold text-foreground">
                     {plan.name}
                   </h3>
                   <p className="mt-1 text-sm text-muted">{plan.description}</p>
@@ -394,11 +400,10 @@ export default function LandingPage() {
                 </ul>
                 <Link
                   href={plan.href}
-                  className={`mt-8 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
-                    plan.popular
-                      ? "bg-primary text-white hover:bg-primary-dark"
-                      : "border border-border bg-card text-foreground hover:bg-surface"
-                  }`}
+                  className={buttonClass({
+                    variant: plan.popular ? "primary" : "secondary",
+                    className: "mt-8 w-full",
+                  })}
                 >
                   {plan.cta}
                 </Link>
@@ -415,7 +420,7 @@ export default function LandingPage() {
       <section id="faq" className="py-20 lg:py-28">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Частые вопросы
             </h2>
             <p className="mt-4 text-lg text-muted">
@@ -476,21 +481,24 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-gradient-to-br from-primary to-blue-700 px-8 py-16 text-center text-white shadow-2xl shadow-primary/20 sm:px-16">
-            <Scale className="mx-auto mb-4 h-10 w-10 opacity-80" />
-            <h2 className="text-3xl font-bold sm:text-4xl">
+          <div className="rounded-2xl border border-border bg-foreground px-8 py-16 text-center text-background sm:px-16">
+            <Scale
+              className="mx-auto mb-4 h-9 w-9 text-background/55"
+              aria-hidden="true"
+            />
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Загрузите договор — узнайте, что в нём не так
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-blue-100">
+            <p className="mx-auto mt-4 max-w-xl text-lg text-background/70">
               PDF или DOCX. Отчёт со ссылками на ГК и готовыми правками.
               10 анализов в месяц бесплатно, без карты.
             </p>
             <Link
               href="/analyze"
-              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-3.5 font-semibold text-blue-700 transition-colors hover:bg-blue-50"
+              className="mt-8 inline-flex h-12 items-center gap-2 rounded-lg bg-background px-6 text-base font-semibold text-foreground transition-colors hover:bg-surface"
             >
               Загрузить договор
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </div>
