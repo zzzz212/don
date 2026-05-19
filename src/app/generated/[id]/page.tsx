@@ -8,6 +8,8 @@ import { useToast } from "@/components/toast";
 import { RefinePanel } from "@/components/refine-panel";
 import { InlineEdit } from "@/components/inline-edit";
 import { SendToChat } from "@/components/send-to-chat";
+import { buttonClass } from "@/components/button";
+import { MenuButton, type MenuItem } from "@/components/menu-button";
 import { getTemplate } from "@/lib/templates";
 import {
   Download,
@@ -18,6 +20,7 @@ import {
   CheckCircle,
   GitBranch,
   Pencil,
+  MoreHorizontal,
 } from "lucide-react";
 
 interface GeneratedDocument {
@@ -267,50 +270,21 @@ export default function ViewGeneratedPage() {
                 </span>
               )}
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                {copied ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    Скопировано
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Копировать
-                  </>
-                )}
-              </button>
+            <div className="flex flex-wrap gap-2">
+              {/* Primary — the patched .docx is the artefact the user
+                  walks away with. Brand-coloured to signal "this is
+                  what you came here for". */}
               <button
                 onClick={handleDownload}
-                className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+                className={buttonClass({ variant: "primary", size: "sm" })}
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4" aria-hidden />
                 Скачать DOCX
               </button>
-              <SendToChat documentId={doc.id} documentName={doc.name} />
-              <Link
-                href={`/generated/${doc.id}/versions`}
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <GitBranch className="h-4 w-4" />
-                Версии
-                {versionCount !== null && versionCount > 0 && (
-                  <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-muted">
-                    {versionCount}
-                  </span>
-                )}
-              </Link>
-              <Link
-                href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <Pencil className="h-4 w-4" />
-                Изменить
-              </Link>
+
+              {/* AI refine + edit form re-fill stay visible — these
+                  are the two ways to change the document, so they
+                  earn their slot in the header row. */}
               <RefinePanel
                 documentId={doc.id}
                 currentContent={doc.content}
@@ -321,14 +295,55 @@ export default function ViewGeneratedPage() {
                   window.location.reload();
                 }}
               />
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-light disabled:opacity-50"
+              <Link
+                href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
+                className={buttonClass({ variant: "secondary", size: "sm" })}
               >
-                <Trash2 className="h-4 w-4" />
-                Удалить
-              </button>
+                <Pencil className="h-4 w-4" aria-hidden />
+                Изменить
+              </Link>
+
+              {/* Versions link carries the count chip as a badge — useful
+                  signal at a glance. */}
+              <Link
+                href={`/generated/${doc.id}/versions`}
+                className={buttonClass({ variant: "secondary", size: "sm" })}
+              >
+                <GitBranch className="h-4 w-4" aria-hidden />
+                Версии
+                {versionCount !== null && versionCount > 0 && (
+                  <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-muted">
+                    {versionCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Forward-to-chat keeps its own button — Sprint 11 social
+                  flow, modal-bearing component. */}
+              <SendToChat documentId={doc.id} documentName={doc.name} />
+
+              {/* Overflow — copy-to-clipboard and the destructive delete
+                  live behind a single trigger so the header row stays
+                  legible and мис-кликов на «Удалить» становится меньше. */}
+              <MenuButton
+                label="Ещё"
+                icon={MoreHorizontal}
+                ariaLabel="Дополнительные действия с документом"
+                items={[
+                  {
+                    label: copied ? "Скопировано" : "Копировать текст",
+                    icon: copied ? CheckCircle : Copy,
+                    onClick: handleCopy,
+                  },
+                  {
+                    label: deleting ? "Удаляем…" : "Удалить документ",
+                    icon: Trash2,
+                    onClick: handleDelete,
+                    disabled: deleting,
+                    danger: true,
+                  } satisfies MenuItem,
+                ]}
+              />
             </div>
           </div>
 

@@ -10,8 +10,8 @@ import { SendForReview } from "@/components/send-for-review";
 import { DeadlineScanButton } from "@/components/deadline-scan-button";
 import { PublicShareButton } from "@/components/public-share-button";
 import { buttonClass } from "@/components/button";
+import { MenuButton, type MenuItem } from "@/components/menu-button";
 import {
-  ArrowLeft,
   FileText,
   AlertTriangle,
   AlertCircle,
@@ -29,6 +29,7 @@ import {
   ClipboardCheck,
   Users,
   RefreshCw,
+  MoreHorizontal,
 } from "lucide-react";
 
 interface NotarizationInfo {
@@ -313,32 +314,28 @@ export default function ReportPage({
         }
         actions={
           <>
-            {analysis.hasOriginal && (
-              <button
-                type="button"
-                onClick={handleDownloadOriginal}
-                className={buttonClass({ variant: "secondary", size: "sm" })}
-                title="Скачать оригинальный загруженный файл"
-              >
-                <FileImage className="h-4 w-4" aria-hidden="true" />
-                Оригинал
-              </button>
-            )}
+            {/* Primary action — DOCX export. After applying per-risk
+                fixes the patched .docx is what the user actually walks
+                away with, so it earns the brand-coloured slot. */}
+            <button
+              type="button"
+              onClick={handleExportDOCX}
+              disabled={exporting === "docx"}
+              className={buttonClass({ variant: "primary", size: "sm" })}
+            >
+              {exporting === "docx" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FileDown className="h-4 w-4" aria-hidden="true" />
+              )}
+              Скачать DOCX
+            </button>
+
+            {/* Collaboration triplet — sharing surfaces stay visible
+                because they're the entry points for the Sprint 11
+                social layer. */}
             {analysis.documentId && (
-              <button
-                type="button"
-                onClick={handleReanalyze}
-                disabled={reanalyzing}
-                className={buttonClass({ variant: "secondary", size: "sm" })}
-                title="Запустить анализ заново"
-              >
-                {reanalyzing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                )}
-                Перепроанализировать
-              </button>
+              <PublicShareButton documentId={analysis.documentId} />
             )}
             {analysis.documentId && (
               <SendForReview documentId={analysis.documentId} />
@@ -346,35 +343,48 @@ export default function ReportPage({
             {analysis.documentId && (
               <DeadlineScanButton documentId={analysis.documentId} />
             )}
-            {analysis.documentId && (
-              <PublicShareButton documentId={analysis.documentId} />
-            )}
-            <button
-              type="button"
-              onClick={handleExportPDF}
-              disabled={exporting === "pdf"}
-              className={buttonClass({ variant: "secondary", size: "sm" })}
-            >
-              {exporting === "pdf" ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="h-4 w-4" aria-hidden="true" />
-              )}
-              PDF
-            </button>
-            <button
-              type="button"
-              onClick={handleExportDOCX}
-              disabled={exporting === "docx"}
-              className={buttonClass({ variant: "secondary", size: "sm" })}
-            >
-              {exporting === "docx" ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <FileDown className="h-4 w-4" aria-hidden="true" />
-              )}
-              DOCX
-            </button>
+
+            {/* Overflow — secondary exports and the rerun-the-analysis
+                escape hatch. Hidden behind a single trigger to keep the
+                header band readable on narrow screens. */}
+            {(() => {
+              const overflow: MenuItem[] = [
+                {
+                  label:
+                    exporting === "pdf"
+                      ? "Готовим PDF…"
+                      : "Скачать PDF",
+                  icon: Download,
+                  onClick: handleExportPDF,
+                  disabled: exporting === "pdf",
+                },
+              ];
+              if (analysis.hasOriginal) {
+                overflow.push({
+                  label: "Скачать оригинал",
+                  icon: FileImage,
+                  onClick: handleDownloadOriginal,
+                });
+              }
+              if (analysis.documentId) {
+                overflow.push({
+                  label: reanalyzing
+                    ? "Анализируем заново…"
+                    : "Перепроанализировать",
+                  icon: RefreshCw,
+                  onClick: handleReanalyze,
+                  disabled: reanalyzing,
+                });
+              }
+              return (
+                <MenuButton
+                  label="Ещё"
+                  icon={MoreHorizontal}
+                  items={overflow}
+                  ariaLabel="Дополнительные действия с отчётом"
+                />
+              );
+            })()}
           </>
         }
       />
