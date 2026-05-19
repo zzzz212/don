@@ -361,9 +361,12 @@ Next.js паттернов — это Next 16, не та Next.js что помн
   variables в `:root` / `.dark`. Tailwind 4 `@custom-variant dark`.
 - **i18n infra** (RU/EN): I18nProvider, `messages.ts`, `useT()` хук.
   LanguageToggle убран из header (вернуть когда дозреем до EN-аудитории).
-- **Цвета**: oklch palette, indigo primary (~270°), color-mix borders
-  (`--border-soft`, `--border-strong`).
-- **Geist font** (next/font). Theme-aware shadow scale.
+- **Цвета** («деловой модерн», см. редизайн ниже): hex-токены —
+  глубокий синий `#2348C8` на тёплом off-white `#FBFAF8`, чернила
+  `#16202E`, волосяная граница `#E7E4DE`; тёмная тема — тёплые чернила
+  `#14161B`. color-mix borders (`--border-soft`, `--border-strong`).
+- **Шрифты**: Geist (body) + Source Serif 4 (дисплейные `h1`/`h2`,
+  переменный, кириллица) — оба через next/font. Theme-aware shadow scale.
 - **Motion** (motion/react v12): spring анимации на toast, OrgSwitcher
   dropdown, mobile menu, refine modal, onboarding modal.
 - **⌘K command palette** (`<CommandPalette>`): nav + actions + theme
@@ -1121,6 +1124,19 @@ GROUP BY model;
   `class-variance-authority`, `dotenv`, `@types/diff`, `@types/bcryptjs`
   (`bcryptjs`/`diff` поставляют собственные типы). `tsc` / 377 тестов /
   `lint` / `build` — зелёные.
+- **Полный редизайн «деловой модерн» (этот заход).** 7 фаз, по коммиту
+  на фазу в `claude/sprint-8-ui-polish`. 1A — дизайн-система: палитра
+  переписана с дефолтного indigo/oklch на hex-токены (синий `#2348C8`,
+  тёплый off-white `#FBFAF8`, чернила `#16202E`), радиусы поджаты, Source
+  Serif 4 на `h1`/`h2`. 1B — айдентика: знак «буква в ярком боксе» →
+  чернильная плашка с serif-«Я» (компонент `<Logo>`, авто-инверсия в
+  тёмной теме); favicon/apple-icon/PWA/OG перерисованы. 1C — примитивы
+  `<Button>`/`buttonClass` и `<Badge>` (`risk-badge` стал обёрткой над
+  `<Badge>`). 1D — лендинг. 1E — 6 экранов приложения (analyze, bulk,
+  dashboard, report, templates, counterparty) на систему кнопок. 1F/1G —
+  единый email-layout под палитру + 404/500/empty-state. Везде: веса
+  заголовков `extrabold/bold` → `semibold` под serif, «таблетки» →
+  `rounded-md`-чипы, уход от захардкоженных tailwind-цветов к токенам.
 - **Trek A (код-долги, этот заход)** — аудит трёх пунктов. (1) Hard cap PRO
   100/мес — уже стоял в `plans.ts` (roadmap-чекбокс был устаревший, поправлен).
   (2) Plan-lookup аудит (foot-gun #33) — чисто: каждый `MAP[plan]` либо с
