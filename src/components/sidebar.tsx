@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   LayoutDashboard,
@@ -36,6 +36,14 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const t = useT();
   const user = session?.user;
 
+  // Mobile drawer focus management. Three refs cooperate:
+  //   - drawerRef    — the panel; we query its focusables for Tab-cycling
+  //   - closeBtnRef  — the X button; gets focus when the drawer opens
+  //   - restoreToRef — whoever had focus before open, so we restore on close
+  const drawerRef = useRef<HTMLElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const restoreToRef = useRef<HTMLElement | null>(null);
+
   // Close the mobile drawer whenever the user navigates — otherwise
   // tapping a nav item leaves the drawer hanging open over the new page.
   useEffect(() => {
@@ -53,6 +61,59 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen, onMobileClose]);
+
+  // Focus management for the mobile drawer. WCAG dialog pattern: when the
+  // drawer opens, focus moves into it (the close button) so the next Tab
+  // lands somewhere meaningful instead of skipping back to the page
+  // beneath. When it closes, focus returns to wherever the user was
+  // (usually the hamburger that opened it).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    restoreToRef.current = document.activeElement as HTMLElement | null;
+    // Defer one frame so the drawer is actually in the DOM. AnimatePresence
+    // would race a synchronous focus() with the mount.
+    const id = window.requestAnimationFrame(() => {
+      closeBtnRef.current?.focus();
+    });
+    return () => {
+      window.cancelAnimationFrame(id);
+      // Restore focus only if the previously-focused element is still in
+      // the document — pathname-change closes can have unmounted it.
+      const prev = restoreToRef.current;
+      if (prev && document.contains(prev)) {
+        prev.focus();
+      }
+      restoreToRef.current = null;
+    };
+  }, [mobileOpen]);
+
+  // Tab-cycle inside the drawer so keyboard users can't accidentally
+  // tab out into the page behind. Standard "first ↔ last focusable"
+  // boundary check; nothing fancier needed for a single-pane dialog.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const panel = drawerRef.current;
+    if (!panel) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const focusables = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    panel.addEventListener("keydown", onKeyDown);
+    return () => panel.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen]);
 
   const nav = [
     { name: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
@@ -72,6 +133,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <Logo size={30} wordmark={t("brand.name")} />
         </Link>
         <button
+          ref={closeBtnRef}
           type="button"
           onClick={onMobileClose}
           aria-label="Закрыть меню"
@@ -150,7 +212,10 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             onClick={onMobileClose}
             className="absolute inset-0 bg-black/60"
           />
-          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[80vw] flex-col border-r border-border bg-card shadow-xl">
+          <aside
+            ref={drawerRef}
+            className="absolute left-0 top-0 flex h-full w-72 max-w-[80vw] flex-col border-r border-border bg-card shadow-xl"
+          >
             {body}
           </aside>
         </div>
