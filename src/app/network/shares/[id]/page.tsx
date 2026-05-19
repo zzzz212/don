@@ -7,7 +7,6 @@ import { AppShell } from "@/components/app-shell";
 import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
   Check,
@@ -184,13 +183,6 @@ export default function SharePage({
   return (
     <AppShell>
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/network"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К сети
-          </Link>
-
           {/* Header card */}
           <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
             <div className="mb-3 flex flex-wrap items-center gap-2">

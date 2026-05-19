@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Loader2 } from "lucide-react";
 
@@ -128,6 +129,10 @@ export default function CompareVersionsPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Сравнение версий"
+        description={`${comparison.v1.title} → ${comparison.v2.title}`}
+      />
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <Breadcrumbs
             items={[
@@ -137,14 +142,7 @@ export default function CompareVersionsPage() {
             ]}
           />
 
-          <h1 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">
-            Сравнение версий
-          </h1>
-
           <div className="mb-6 rounded-xl border border-primary/30 bg-primary-light p-4">
-            <p className="mb-3 text-sm font-semibold text-primary-dark">
-              {comparison.v1.title} → {comparison.v2.title}
-            </p>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
               <span className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded bg-green-600" />

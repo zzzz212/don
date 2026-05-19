@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
   UserPlus,
@@ -173,13 +172,6 @@ export default function UserProfilePage({
   return (
     <AppShell>
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/network"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К сети
-          </Link>
-
           <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
             <div className="flex items-start gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-fg">

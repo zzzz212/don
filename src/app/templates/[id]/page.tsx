@@ -4,12 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { CounterpartyFieldInput } from "@/components/counterparty-field-input";
 import { useToast } from "@/components/toast";
 import { getTemplate, type TemplateField } from "@/lib/templates";
 import { generateContract } from "@/lib/contracts/templates";
 import {
-  ArrowLeft,
   Sparkles,
   Loader2,
   CheckCircle,
@@ -269,16 +269,11 @@ function TemplateFillPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title={template.name}
+        description={template.description}
+      />
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:max-w-6xl lg:px-8">
-          {/* Back link */}
-          <Link
-            href="/templates"
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Все шаблоны
-          </Link>
-
           {!editDocLoaded ? (
             <div className="animate-fade-in flex flex-col items-center justify-center py-24">
               <Loader2 className="h-8 w-8 animate-spin text-muted" />
@@ -288,14 +283,6 @@ function TemplateFillPage() {
             </div>
           ) : !generatedDoc ? (
             <div className="animate-in fade-in duration-300">
-              {/* Template header */}
-              <div className="mb-8">
-                <h1 className="text-2xl font-bold text-foreground">
-                  {template.name}
-                </h1>
-                <p className="mt-2 text-muted">{template.description}</p>
-              </div>
-
               {editDocId && (
                 <div className="mb-6 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary-light/30 px-4 py-3 text-sm text-primary-dark">
                   <GitBranch className="h-4 w-4 shrink-0" />

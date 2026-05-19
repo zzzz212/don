@@ -10,7 +10,6 @@ import { InlineEdit } from "@/components/inline-edit";
 import { SendToChat } from "@/components/send-to-chat";
 import { getTemplate } from "@/lib/templates";
 import {
-  ArrowLeft,
   Download,
   Copy,
   FileText,
@@ -218,15 +217,6 @@ export default function ViewGeneratedPage() {
   return (
     <AppShell>
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
-          <Link
-            href="/dashboard"
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            На дашборд
-          </Link>
-
           {/* Document info */}
           <div className="mb-6 flex items-center gap-3 rounded-xl bg-primary-light border border-primary/30 p-4">
             <CheckCircle className="h-5 w-5 text-primary shrink-0" />

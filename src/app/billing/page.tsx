@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { BillingCardSkeleton } from "@/components/skeleton";
 import { TRIAL_DAYS, CONTACTS } from "@/lib/legal-info";
 
@@ -256,16 +257,11 @@ export default function BillingPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Биллинг и тарифы"
+        description="Тариф привязан к вашему аккаунту — одна подписка действует во всех ваших workspace. Ниже история платежей и смена тарифа."
+      />
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              Биллинг и тарифы
-            </h1>
-            <p className="mt-2 text-base text-muted">
-              Тариф привязан к вашему аккаунту — одна подписка действует во
-              всех ваших workspace. Ниже история платежей и смена тарифа.
-            </p>
-          </div>
 
           {loading && (
             <div className="space-y-6">

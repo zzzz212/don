@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   Loader2,
@@ -125,6 +126,10 @@ export default function DocumentVersionsPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="История версий"
+        description={`${pluralVersions(versions.length)}. Отметьте две, чтобы сравнить изменения.`}
+      />
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <Breadcrumbs
             items={[
@@ -133,15 +138,6 @@ export default function DocumentVersionsPage() {
               { label: "История версий" },
             ]}
           />
-
-          <h1 className="mb-2 flex items-center gap-3 text-2xl font-bold text-foreground sm:text-3xl">
-            <GitBranch className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
-            История версий
-          </h1>
-          <p className="mb-8 text-muted">
-            {pluralVersions(versions.length)}. Отметьте две, чтобы сравнить
-            изменения.
-          </p>
 
           {error && (
             <div role="alert" className="mb-6 rounded-lg border border-danger/30 bg-danger-light p-4 text-danger">
