@@ -8,6 +8,8 @@ import { Disclaimer } from "@/components/disclaimer";
 import { UploadZone } from "@/components/upload-zone";
 import {
   FileSearch,
+  Upload,
+  ClipboardPaste,
   Loader2,
   CheckCircle,
   Scale,
@@ -37,21 +39,26 @@ const stages = [
   "Готовим отчёт...",
 ];
 
+// Below this, a paste is almost certainly a fragment, not a contract —
+// guard the button so the user doesn't spend an analysis on a snippet.
+const MIN_PASTE_LENGTH = 200;
+
 export default function AnalyzePage() {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<AnalyzeError | null>(null);
+  const [mode, setMode] = useState<"file" | "text">("file");
+  const [pastedText, setPastedText] = useState("");
+  const pasteLength = pastedText.trim().length;
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
     setError(null);
   };
 
-  const handleAnalyze = async () => {
-    if (!selectedFile) return;
-
+  const handleAnalyze = async (file: File) => {
     setIsAnalyzing(true);
     setCurrentStage(0);
     setError(null);
@@ -67,7 +74,7 @@ export default function AnalyzePage() {
 
     try {
       const formData = new FormData();
-      formData.append("file", selectedFile);
+      formData.append("file", file);
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -122,6 +129,17 @@ export default function AnalyzePage() {
     }
   };
 
+  const handleAnalyzeText = () => {
+    const text = pastedText.trim();
+    if (text.length < MIN_PASTE_LENGTH) return;
+    // Wrap the pasted text as a .txt file and reuse the exact upload
+    // path — /api/analyze parses .txt natively, so no backend change.
+    const file = new File([text], "Вставленный договор.txt", {
+      type: "text/plain",
+    });
+    void handleAnalyze(file);
+  };
+
   return (
     <div className="flex min-h-full flex-col">
       <Header />
@@ -153,18 +171,111 @@ export default function AnalyzePage() {
                 </p>
               </div>
 
-              {/* Upload zone */}
-              <UploadZone onFileSelect={handleFileSelect} />
+              {/* Source toggle — upload a file or paste text directly */}
+              <div className="mb-5 flex justify-center">
+                <div className="inline-flex rounded-xl border border-border bg-card p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("file");
+                      setError(null);
+                    }}
+                    aria-pressed={mode === "file"}
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                      mode === "file"
+                        ? "bg-primary text-white"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Upload className="h-4 w-4" aria-hidden="true" />
+                    Загрузить файл
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("text");
+                      setError(null);
+                    }}
+                    aria-pressed={mode === "text"}
+                    className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                      mode === "text"
+                        ? "bg-primary text-white"
+                        : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    <ClipboardPaste className="h-4 w-4" aria-hidden="true" />
+                    Вставить текст
+                  </button>
+                </div>
+              </div>
 
-              <p className="mt-3 text-center text-xs text-muted">
-                Нужно проверить несколько договоров сразу?{" "}
-                <Link
-                  href="/bulk"
-                  className="font-semibold text-primary hover:underline"
-                >
-                  Массовая проверка →
-                </Link>
-              </p>
+              {mode === "file" ? (
+                <div className="animate-fade-in">
+                  <UploadZone onFileSelect={handleFileSelect} />
+
+                  <p className="mt-3 text-center text-xs text-muted">
+                    Нужно проверить несколько договоров сразу?{" "}
+                    <Link
+                      href="/bulk"
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Массовая проверка →
+                    </Link>
+                  </p>
+
+                  {selectedFile && (
+                    <div className="mt-6 animate-scale-in text-center">
+                      <button
+                        onClick={() =>
+                          selectedFile && handleAnalyze(selectedFile)
+                        }
+                        className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl"
+                      >
+                        <Scale className="h-5 w-5" />
+                        Начать анализ
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="animate-fade-in">
+                  <label
+                    htmlFor="paste-area"
+                    className="mb-1.5 block text-sm font-medium text-foreground"
+                  >
+                    Текст договора
+                  </label>
+                  <textarea
+                    id="paste-area"
+                    value={pastedText}
+                    onChange={(e) => {
+                      setPastedText(e.target.value);
+                      setError(null);
+                    }}
+                    rows={14}
+                    placeholder="Вставьте сюда полный текст договора — например, скопированный из письма или мессенджера."
+                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="mt-1.5 text-xs text-muted">
+                    {pasteLength === 0
+                      ? `Вставьте не меньше ${MIN_PASTE_LENGTH} символов.`
+                      : pasteLength < MIN_PASTE_LENGTH
+                        ? `Ещё ${MIN_PASTE_LENGTH - pasteLength} символов до минимума.`
+                        : `${pasteLength.toLocaleString("ru-RU")} символов — можно анализировать.`}
+                  </p>
+
+                  <div className="mt-5 text-center">
+                    <button
+                      onClick={handleAnalyzeText}
+                      disabled={pasteLength < MIN_PASTE_LENGTH}
+                      className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                    >
+                      <Scale className="h-5 w-5" />
+                      Начать анализ
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Error message */}
               {error && (
@@ -205,19 +316,6 @@ export default function AnalyzePage() {
                       Сжать PDF на ilovepdf.com
                     </a>
                   )}
-                </div>
-              )}
-
-              {/* Analyze button */}
-              {selectedFile && (
-                <div className="mt-6 animate-scale-in text-center">
-                  <button
-                    onClick={handleAnalyze}
-                    className="group inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary-dark hover:shadow-xl"
-                  >
-                    <Scale className="h-5 w-5" />
-                    Начать анализ
-                  </button>
                 </div>
               )}
 
