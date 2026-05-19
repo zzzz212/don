@@ -74,8 +74,10 @@ export function OrgSwitcher() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  // Close on outside click.
+  // Close on outside click or Escape — same affordances every other
+  // dropdown in the app honours (MenuButton, sidebar drawer, AccountMenu).
   useEffect(() => {
+    if (!open) return;
     const onClick = (e: MouseEvent) => {
       if (
         containerRef.current &&
@@ -84,9 +86,16 @@ export function OrgSwitcher() {
         setOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   // Workspace-chat unread count — re-checked on every route change so
   // the badge clears right after the chat is opened. Best-effort.

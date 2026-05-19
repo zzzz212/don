@@ -98,8 +98,10 @@ export function AccountMenu() {
     };
   }, [user]);
 
-  // Close on outside click.
+  // Close on outside click or Escape — same affordances every other
+  // dropdown in the app honours (MenuButton, sidebar drawer).
   useEffect(() => {
+    if (!open) return;
     const onClick = (e: MouseEvent) => {
       if (
         containerRef.current &&
@@ -108,9 +110,16 @@ export function AccountMenu() {
         setOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   if (!user) return null;
 
