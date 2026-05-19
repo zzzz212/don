@@ -282,12 +282,5 @@ function fallbackSynthesis(
   };
 }
 
-// Re-export the calibration helper so callers don't need to know it
-// lives in a sibling file.
-export { scoreAndVerdictFromCounts } from "./score-calibration";
-
-// Re-export for tests / callers that want to inspect chunks separately.
-export { chunkContract } from "./chunking";
-
 // Internal usage type re-export to keep symbol surface stable.
 export type { Usage };

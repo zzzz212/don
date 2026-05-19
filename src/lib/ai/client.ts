@@ -3,7 +3,6 @@ import {
   AIError,
   type AIProvider,
   type ChatOptions,
-  type ChatResult,
   type GenerateOptions,
   type GenerateResult,
   type StreamEvent,
@@ -118,32 +117,6 @@ export async function generateText(
   );
 }
 
-export async function chat(opts: ChatOptions): Promise<ChatResult> {
-  const providers = getAvailableProviders();
-  if (providers.length === 0) {
-    throw new AIError("No AI provider configured", "demo");
-  }
-
-  const failures: Array<{ provider: string; message: string }> = [];
-  let lastError: unknown;
-  for (const p of providers) {
-    try {
-      return await PROVIDERS[p].chat(opts);
-    } catch (e) {
-      lastError = e;
-      const message = (e as Error).message ?? "unknown";
-      failures.push({ provider: p, message });
-      console.error(`[ai] Provider ${p} failed, trying next:`, message);
-    }
-  }
-
-  throw new AIError(
-    `All providers failed: ${summariseFailures(failures)}`,
-    providers[providers.length - 1],
-    lastError
-  );
-}
-
 /**
  * Streaming chat — yields delta / usage / done / error events from the
  * highest-priority available provider. There is no mid-stream fallback:
@@ -170,55 +143,4 @@ export type {
   GenerateOptions,
   GenerateResult,
   StreamEvent,
-  Usage,
 } from "./types";
-export { AIError } from "./types";
-
-// ── Backward-compatibility shims ────────────────────────────────────
-// Old code calls generateAI / chatAI with positional args. Keep both working
-// until consumers are migrated; they simply delegate to the new API.
-
-export interface LegacyAIMessage {
-  role: "user" | "assistant" | "model" | "system";
-  content: string;
-}
-
-export interface LegacyAIResponse {
-  text: string;
-  provider: AIProvider;
-}
-
-export async function generateAI(
-  systemPrompt: string,
-  userMessage: string,
-  maxTokens = 4096,
-  temperature = 0.1
-): Promise<LegacyAIResponse> {
-  const result = await generateText({
-    system: systemPrompt,
-    prompt: userMessage,
-    maxTokens,
-    temperature,
-  });
-  return { text: result.data, provider: result.usage.provider };
-}
-
-export async function chatAI(
-  systemPrompt: string,
-  messages: LegacyAIMessage[],
-  maxTokens = 2048
-): Promise<LegacyAIResponse> {
-  const normalized = messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({
-      role: m.role === "model" ? ("assistant" as const) : (m.role as "user" | "assistant"),
-      content: m.content,
-    }));
-
-  const result = await chat({
-    system: systemPrompt,
-    messages: normalized,
-    maxTokens,
-  });
-  return { text: result.text, provider: result.usage.provider };
-}

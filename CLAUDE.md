@@ -379,8 +379,6 @@ Next.js паттернов — это Next 16, не та Next.js что помн
   per browser, localStorage flag).
 - **Breadcrumbs**: home → ... → current. На /generated/[id]/versions
   и /compare.
-- **CountUp**: rAF-tween для чисел, respects prefers-reduced-motion.
-- **StatusPill**: live (pulsing dot) / success / warning / danger / neutral.
 - **Empty states**: bespoke inline SVG (Docs / Chat / Counterparty /
   Search). `<EmptyState illustration title description actions />`.
 - **Toast actions**: `toast.success("...", { action: { label, onClick } })`.
@@ -1109,12 +1107,20 @@ GROUP BY model;
   файл / Вставить текст». В режиме текста вставленное оборачивается в
   `.txt`-`File` на клиенте и идёт через тот же `/api/analyze` — бэкенд
   не менялся вообще. Гард `MIN_PASTE_LENGTH = 200`.
-- **`/api/generate` — мёртвый код.** AI-роут генерации (`generateText` +
-  `GENERATE_DOCUMENT_SYSTEM`) ничем не вызывается: генерация документов
-  идёт детерминированно через `generateContract()` (чистая интерполяция,
-  мгновенно) + сохранение в `/api/generated`. Поэтому roadmap-пункт
-  «стриминг `/api/generate`» снят — стримить нечего. Сам роут не удалён
-  (возможный задел под будущую AI-генерацию).
+- **Зачистка мёртвого кода (этот заход).** knip-аудит + ручная вычитка
+  (knip даёт и ложные срабатывания: `public/sw.js` грузится рантаймом —
+  оставлен; `language-toggle.tsx` помечен в CLAUDE.md как задел под
+  EN-аудиторию — оставлен). Удалено: роут `/api/generate` (AI-генерация
+  ничем не вызывалась — документы идут детерминированно через
+  `generateContract()` + `/api/generated`); промпты `GENERATE_TEXT` /
+  `GENERATE_DOCUMENT_SYSTEM` и два мёртвых алиаса в `prompts.ts`;
+  компоненты `count-up.tsx`, `status-pill.tsx` (нигде не рендерились);
+  email-шаблон `inn-verification.ts` (флоу проверки ИНН по выписке убран
+  в Sprint 11); блок backward-compat-шимов в `ai/client.ts` (`generateAI` /
+  `chatAI` / `Legacy*` + осиротевший `chat()`); зависимости
+  `class-variance-authority`, `dotenv`, `@types/diff`, `@types/bcryptjs`
+  (`bcryptjs`/`diff` поставляют собственные типы). `tsc` / 377 тестов /
+  `lint` / `build` — зелёные.
 - **Trek A (код-долги, этот заход)** — аудит трёх пунктов. (1) Hard cap PRO
   100/мес — уже стоял в `plans.ts` (roadmap-чекбокс был устаревший, поправлен).
   (2) Plan-lookup аудит (foot-gun #33) — чисто: каждый `MAP[plan]` либо с
