@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { Logo } from "@/components/logo";
+import { buttonClass } from "@/components/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette } from "@/components/command-palette";
 import { AccountMenu } from "@/components/account-menu";
@@ -95,13 +96,13 @@ export function Header() {
                 <ThemeToggle />
                 <Link
                   href="/login"
-                  className="rounded-lg px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface sm:px-4"
+                  className={buttonClass({ variant: "ghost", size: "sm" })}
                 >
                   {t("auth.login")}
                 </Link>
                 <Link
                   href="/register"
-                  className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark sm:px-4"
+                  className={buttonClass({ variant: "primary", size: "sm" })}
                 >
                   {t("auth.register")}
                 </Link>
@@ -120,7 +121,7 @@ export function Header() {
                 </div>
                 <Link
                   href="/dashboard"
-                  className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark sm:px-4"
+                  className={buttonClass({ variant: "primary", size: "sm" })}
                 >
                   {t("nav.openApp")}
                 </Link>
