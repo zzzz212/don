@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { DocAttachmentCard } from "@/components/doc-attachment-card";
 import {
   MessagesSquare,
@@ -135,22 +136,15 @@ export default function WorkspaceChatPage() {
 
   return (
     <AppShell>
-        <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-3xl flex-col px-4 py-6 sm:px-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <MessagesSquare className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">
-                Чат компании
-              </h1>
-              <p className="text-sm text-muted">
-                {orgName
-                  ? `Внутренний чат рабочего пространства «${orgName}»`
-                  : "Внутренний чат рабочего пространства"}
-              </p>
-            </div>
-          </div>
+      <PageHeader
+        title="Чат компании"
+        description={
+          orgName
+            ? `Внутренний чат рабочего пространства «${orgName}»`
+            : "Внутренний чат рабочего пространства."
+        }
+      />
+        <div className="mx-auto flex h-[calc(100vh-9rem)] max-w-3xl flex-col px-4 py-6 sm:px-6">
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto rounded-2xl border border-border bg-card p-4">

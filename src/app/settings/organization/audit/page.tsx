@@ -1,14 +1,12 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
-  ShieldCheck,
   Filter,
 } from "lucide-react";
 
@@ -159,27 +157,11 @@ export default function AuditLogPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Журнал событий"
+        description="Все значимые действия в этом workspace — кто, когда, что изменил."
+      />
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/settings/organization"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К настройкам workspace
-          </Link>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <ShieldCheck className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Журнал событий
-              </h1>
-              <p className="text-sm text-muted">
-                Все значимые действия в этом workspace — кто, когда, что
-                изменил.
-              </p>
-            </div>
-          </div>
 
           {/* Filter chips */}
           <div className="mb-6 flex flex-wrap items-center gap-2">

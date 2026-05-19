@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/components/toast";
 import { AlertCircle, Loader2, Lock, Mail, User as UserIcon } from "lucide-react";
 
@@ -58,16 +59,11 @@ export default function AccountPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Настройки аккаунта"
+        description="Имя и email — для всех ваших workspace. Тариф, биллинг и безопасность вынесены в отдельные разделы ниже."
+      />
         <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-          <header className="mb-8">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              Настройки аккаунта
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              Имя и email — для всех ваших workspace. Тариф, биллинг и
-              безопасность вынесены в отдельные разделы ниже.
-            </p>
-          </header>
 
           {/* Profile */}
           <section className="mb-6 rounded-2xl border border-border bg-card p-6 shadow-sm">

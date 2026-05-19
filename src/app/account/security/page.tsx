@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/components/toast";
 import {
   ShieldCheck,
@@ -12,7 +12,6 @@ import {
   Copy,
   Check,
   Download,
-  ArrowLeft,
 } from "lucide-react";
 
 interface StatusResponse {
@@ -234,27 +233,11 @@ export default function AccountSecurityPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Безопасность аккаунта"
+        description="Двухфакторная авторизация (2FA) защищает аккаунт даже если ваш пароль украден."
+      />
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/dashboard"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К дашборду
-          </Link>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <ShieldCheck className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Безопасность аккаунта
-              </h1>
-              <p className="text-sm text-muted">
-                Двухфакторная авторизация (2FA) защищает аккаунт даже
-                если ваш пароль украден.
-              </p>
-            </div>
-          </div>
 
           {error && (
             <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">

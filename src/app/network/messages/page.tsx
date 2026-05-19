@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { Loader2, MessageSquare } from "lucide-react";
 
 interface Conversation {
   id: string;
@@ -49,14 +50,11 @@ export default function MessagesPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Сообщения"
+        description="Личные диалоги с коллегами из вашей сети."
+      />
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/network"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К сети
-          </Link>
-          <h1 className="mb-5 text-2xl font-bold text-foreground">Сообщения</h1>
 
           {conversations === null ? (
             <div className="flex justify-center py-16">

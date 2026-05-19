@@ -4,8 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
-  Gift,
   Copy,
   Check,
   Loader2,
@@ -77,22 +77,11 @@ export default function ReferralPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Пригласите коллег"
+        description="За каждого, кто зарегистрируется по вашей ссылке и активирует пробный период, вы оба получаете бонусные анализы договоров."
+      />
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <Gift className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Пригласите коллег
-              </h1>
-              <p className="text-sm text-muted">
-                За каждого, кто зарегистрируется по вашей ссылке и
-                активирует пробный период, вы оба получаете бонусные
-                анализы договоров.
-              </p>
-            </div>
-          </div>
 
           {error && (
             <div
