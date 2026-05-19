@@ -3,6 +3,7 @@
 import { useEffect, useState, use, useRef } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import { SendForReview } from "@/components/send-for-review";
@@ -302,83 +303,82 @@ export default function ReportPage({
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Top bar */}
-          <div className="mb-8 flex items-center justify-between print:hidden">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              К дашборду
-            </Link>
-            <div className="flex flex-wrap gap-2">
-              {analysis.hasOriginal && (
-                <button
-                  onClick={handleDownloadOriginal}
-                  className={buttonClass({ variant: "secondary", size: "sm" })}
-                  title="Скачать оригинальный загруженный файл"
-                >
-                  <FileImage className="h-4 w-4" />
-                  Оригинал
-                </button>
-              )}
-              {analysis.documentId && (
-                <button
-                  onClick={handleReanalyze}
-                  disabled={reanalyzing}
-                  className={buttonClass({ variant: "secondary", size: "sm" })}
-                  title="Запустить анализ заново — например, после обновления AI-модели"
-                >
-                  {reanalyzing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  Перепроанализировать
-                </button>
-              )}
-              {analysis.documentId && (
-                <SendForReview documentId={analysis.documentId} />
-              )}
-              {analysis.documentId && (
-                <DeadlineScanButton documentId={analysis.documentId} />
-              )}
-              {analysis.documentId && (
-                <PublicShareButton documentId={analysis.documentId} />
-              )}
+      <PageHeader
+        eyebrow="Анализ договора"
+        title={analysis.fileName}
+        description={
+          [analysis.contractType, analysis.parties]
+            .filter(Boolean)
+            .join(" · ") || undefined
+        }
+        actions={
+          <>
+            {analysis.hasOriginal && (
               <button
-                onClick={handleExportPDF}
-                disabled={exporting === "pdf"}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-              >
-                {exporting === "pdf" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Скачать PDF
-              </button>
-              <button
-                onClick={handleExportDOCX}
-                disabled={exporting === "docx"}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-              >
-                {exporting === "docx" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FileDown className="h-4 w-4" />
-                )}
-                Скачать DOCX
-              </button>
-              <Link
-                href="/analyze"
+                type="button"
+                onClick={handleDownloadOriginal}
                 className={buttonClass({ variant: "secondary", size: "sm" })}
+                title="Скачать оригинальный загруженный файл"
               >
-                Анализировать ещё
-              </Link>
-            </div>
-          </div>
+                <FileImage className="h-4 w-4" aria-hidden="true" />
+                Оригинал
+              </button>
+            )}
+            {analysis.documentId && (
+              <button
+                type="button"
+                onClick={handleReanalyze}
+                disabled={reanalyzing}
+                className={buttonClass({ variant: "secondary", size: "sm" })}
+                title="Запустить анализ заново"
+              >
+                {reanalyzing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                )}
+                Перепроанализировать
+              </button>
+            )}
+            {analysis.documentId && (
+              <SendForReview documentId={analysis.documentId} />
+            )}
+            {analysis.documentId && (
+              <DeadlineScanButton documentId={analysis.documentId} />
+            )}
+            {analysis.documentId && (
+              <PublicShareButton documentId={analysis.documentId} />
+            )}
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={exporting === "pdf"}
+              className={buttonClass({ variant: "secondary", size: "sm" })}
+            >
+              {exporting === "pdf" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="h-4 w-4" aria-hidden="true" />
+              )}
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleExportDOCX}
+              disabled={exporting === "docx"}
+              className={buttonClass({ variant: "secondary", size: "sm" })}
+            >
+              {exporting === "docx" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FileDown className="h-4 w-4" aria-hidden="true" />
+              )}
+              DOCX
+            </button>
+          </>
+        }
+      />
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 
           {/* Demo banner */}
           {analysis.isDemo && (
@@ -401,13 +401,6 @@ export default function ReportPage({
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
               <ScoreRing score={analysis.score} />
               <div className="flex-1 text-center sm:text-left">
-                <div className="mb-2 flex items-center justify-center gap-2 sm:justify-start">
-                  <FileText className="h-5 w-5 text-muted" />
-                  <h1 className="text-lg font-semibold text-foreground">
-                    {analysis.fileName}
-                  </h1>
-                </div>
-
                 {/* Contract type + parties + OCR badge */}
                 {(analysis.contractType || analysis.usedOcr) && (
                   <div className="mb-3 flex flex-wrap justify-center gap-2 sm:justify-start">
