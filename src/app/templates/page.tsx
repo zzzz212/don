@@ -94,7 +94,7 @@ export default function TemplatesPage() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
               <FolderOpen className="h-7 w-7 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+            <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
               Шаблоны документов
             </h1>
             <p className="mt-2 text-muted max-w-lg mx-auto">
@@ -172,12 +172,12 @@ export default function TemplatesPage() {
                       <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${colors.bg}`}>
                         <Icon className={`h-6 w-6 ${colors.text}`} />
                       </div>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
+                      <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${colors.bg} ${colors.text} ${colors.border}`}>
                         {template.category}
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
                       {template.name}
                     </h3>
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">

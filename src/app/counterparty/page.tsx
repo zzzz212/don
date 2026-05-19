@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { ContactCounterparty } from "@/components/contact-counterparty";
+import { buttonClass } from "@/components/button";
+import { Badge } from "@/components/badge";
 import {
   Search,
   Loader2,
@@ -128,10 +130,9 @@ export default function CounterpartyPage() {
   };
 
   const getRiskPercentageColor = (score: number) => {
-    if (score >= 76) return "bg-red-600";
-    if (score >= 51) return "bg-orange-600";
-    if (score >= 26) return "bg-yellow-600";
-    return "bg-green-600";
+    if (score >= 51) return "bg-danger";
+    if (score >= 26) return "bg-warning";
+    return "bg-success";
   };
 
   return (
@@ -141,7 +142,7 @@ export default function CounterpartyPage() {
       <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-3xl font-semibold text-foreground mb-2">
               Проверка контрагентов
             </h1>
             <p className="text-muted">
@@ -164,7 +165,7 @@ export default function CounterpartyPage() {
               <button
                 onClick={handleCheck}
                 disabled={loading}
-                className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50 flex items-center gap-2"
+                className={buttonClass()}
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -194,7 +195,7 @@ export default function CounterpartyPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground mb-1">
+                    <h2 className="text-2xl font-semibold text-foreground mb-1">
                       {profile.name}
                     </h2>
                     <p className="text-sm text-muted">ИНН: {profile.inn}</p>
@@ -248,24 +249,16 @@ export default function CounterpartyPage() {
                 {/* Risk level badge */}
                 <div className="inline-block">
                   {profile.riskLevel === "critical" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-red-600 text-white text-xs font-semibold">
-                      🔴 КРИТИЧЕСКИЙ РИСК
-                    </span>
+                    <Badge tone="danger">Критический риск</Badge>
                   )}
                   {profile.riskLevel === "high" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-orange-600 text-white text-xs font-semibold">
-                      🟠 ВЫСОКИЙ РИСК
-                    </span>
+                    <Badge tone="danger">Высокий риск</Badge>
                   )}
                   {profile.riskLevel === "medium" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-yellow-600 text-white text-xs font-semibold">
-                      🟡 СРЕДНИЙ РИСК
-                    </span>
+                    <Badge tone="warning">Средний риск</Badge>
                   )}
                   {profile.riskLevel === "low" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-green-600 text-white text-xs font-semibold">
-                      🟢 НИЗКИЙ РИСК
-                    </span>
+                    <Badge tone="success">Низкий риск</Badge>
                   )}
                 </div>
               </div>
@@ -364,9 +357,10 @@ export default function CounterpartyPage() {
                         {profile.riskFactors.map((factor) => (
                           <span
                             key={factor}
-                            className="inline-block px-2 py-1 rounded-full bg-danger-light text-danger text-xs"
+                            className="inline-flex items-center gap-1 rounded-md border border-danger/25 bg-danger-light px-2 py-1 text-xs text-danger"
                           >
-                            ⚠️ {factor}
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            {factor}
                           </span>
                         ))}
                       </div>
@@ -393,7 +387,7 @@ export default function CounterpartyPage() {
                 <button
                   onClick={handleSaveNotes}
                   disabled={savingNotes}
-                  className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                  className={buttonClass({ size: "sm", className: "mt-3" })}
                 >
                   {savingNotes ? "Сохранение..." : "Сохранить комментарий"}
                 </button>
