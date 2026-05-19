@@ -1,8 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { ContactCounterparty } from "@/components/contact-counterparty";
 import { buttonClass } from "@/components/button";
 import { Badge } from "@/components/badge";
@@ -136,11 +135,8 @@ export default function CounterpartyPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-semibold text-foreground mb-2">
               Проверка контрагентов
@@ -407,10 +403,7 @@ export default function CounterpartyPage() {
               </p>
             </div>
           )}
-        </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }

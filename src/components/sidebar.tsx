@@ -148,7 +148,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             type="button"
             aria-label="Закрыть меню"
             onClick={onMobileClose}
-            className="absolute inset-0 bg-foreground/40"
+            className="absolute inset-0 bg-black/60"
           />
           <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[80vw] flex-col border-r border-border bg-card shadow-xl">
             {body}

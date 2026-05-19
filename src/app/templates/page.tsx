@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { templates } from "@/lib/templates";
 import {
   FolderOpen,
@@ -84,11 +83,8 @@ export default function TemplatesPage() {
   });
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
@@ -216,10 +212,7 @@ export default function TemplatesPage() {
               соглашение о задатке и другие
             </p>
           </div>
-        </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -78,7 +78,7 @@ export function SendForReview({ documentId }: { documentId: string }) {
 
       {open && (
         <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-foreground/40 backdrop-blur-sm px-4 py-6 sm:items-center"
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 backdrop-blur-md px-4 py-6 sm:items-center"
           onClick={() => setOpen(false)}
         >
           <div

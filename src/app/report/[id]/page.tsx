@@ -2,8 +2,7 @@
 
 import { useEffect, useState, use, useRef } from "react";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { ScoreRing } from "@/components/score-ring";
 import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import { SendForReview } from "@/components/send-for-review";
@@ -261,23 +260,21 @@ export default function ReportPage({
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main id="main-content" className="flex-1 flex items-center justify-center">
+      <AppShell>
+        <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted">Загружаем отчёт...</p>
           </div>
-        </main>
-      </div>
+        </div>
+      </AppShell>
     );
   }
 
   if (error || !analysis) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+      <AppShell>
+        <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -290,8 +287,8 @@ export default function ReportPage({
               Загрузить документ
             </Link>
           </div>
-        </main>
-      </div>
+        </div>
+      </AppShell>
     );
   }
 
@@ -304,11 +301,8 @@ export default function ReportPage({
   const lowCount = analysis.risks.filter((r) => r.level === "low").length;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Top bar */}
           <div className="mb-8 flex items-center justify-between print:hidden">
             <Link
@@ -775,10 +769,7 @@ export default function ReportPage({
               Загрузить новый договор
             </Link>
           </div>
-        </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -86,7 +86,7 @@ export function OnboardingModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[105] flex items-center justify-center bg-foreground/40 backdrop-blur-sm px-4 py-6"
+          className="fixed inset-0 z-[105] flex items-center justify-center bg-black/60 backdrop-blur-md px-4 py-6"
           onClick={dismiss}
         >
           <motion.div

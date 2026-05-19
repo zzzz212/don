@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { UploadZone } from "@/components/upload-zone";
 import { Button, buttonClass } from "@/components/button";
 import {
@@ -142,11 +141,8 @@ export default function AnalyzePage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
           {!isAnalyzing ? (
             <div className="animate-fade-in">
               {/* Header */}
@@ -383,10 +379,7 @@ export default function AnalyzePage() {
               </div>
             </div>
           )}
-        </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }

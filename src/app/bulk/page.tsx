@@ -14,8 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
 import { bulkFileError, BULK_ACCEPT, MAX_BULK_FILES } from "@/lib/bulk";
 import { Button, buttonClass } from "@/components/button";
@@ -209,11 +208,8 @@ export default function BulkPage() {
   const allSettled = started && !running && pendingCount === 0;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
           {/* Title */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
@@ -526,10 +522,7 @@ export default function BulkPage() {
               </Link>
             </p>
           )}
-        </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }
