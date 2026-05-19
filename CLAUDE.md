@@ -108,7 +108,7 @@ Geist font / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus)
 с prompt caching. **Read `node_modules/next/dist/docs/`** перед изменением
 Next.js паттернов — это Next 16, не та Next.js что помнит твоё обучение.
 
-**Тесты**: 369 unit-тестов через vitest. `npm test`.
+**Тесты**: 377 unit-тестов через vitest. `npm test`.
 
 ---
 
@@ -848,7 +848,6 @@ GROUP BY model;
 - REST API + API keys (Sprint 5)
 - Webhooks (Sprint 5)
 - Slack/Telegram bot
-- Bulk upload (drop 50 файлов)
 - Compare 2 contracts (между разными)
 - Streaming для `/api/generate`
 - Email-уведомления о готовности длинного анализа
@@ -1088,13 +1087,25 @@ GROUP BY model;
 - **ИП зарегистрирован** — реквизиты в `legal-info.ts` (`OPERATOR`). Расчётного счёта пока нет (банковский блок оферты скрыт), RKN-номер не получен.
 - **Anthropic `temperature` убран** (foot-gun #41) — ломал `/api/analyze` в проде. Groq как фолбэк для analyze слаб (free-tier 12k TPM при запросе ~24k токенов) — при падении Anthropic подстраховки нет; стоит задать `GEMINI_API_KEY`.
 - **CI подключён** — GitHub Actions гоняет `lint`/`tsc`/`vitest`/`build` на каждый PR и пуш в main.
-- **Тесты — 369** (было 267). Полировочный заход добавил 8 тест-файлов на
+- **Тесты — 377** (было 267). Полировочный заход добавил 8 тест-файлов на
   непокрытые чистые модули: `score-calibration`, `tier-policy`,
   `contracts/numbers`, `contracts/clauses`, `ai/sse`, `network`,
   `legal-info` (launch-guard на foot-gun #20 — падает, если `OPERATOR`
   откатится в плейсхолдеры), `parsers`. Плюс зачистка оставшихся
   debug-`console.log` (dadata + counterparty-роут) и `aria-describedby`
-  в inline-edit. Production-логику не трогали.
+  в inline-edit. Затем a11y-фиксы (`upload-zone`, `refine-panel`,
+  `public-share-button` — `aria-label`, `role="dialog"`, Escape) и
+  фича массовой проверки (`bulk.test.ts`, +8). Production-логику не
+  ломали.
+- **Массовая проверка договоров (`/bulk`)** — клиентская оркестрация:
+  страница держит очередь файлов и шлёт их по одному в существующий
+  `/api/analyze` (последовательно — само укладывается в rate-limit
+  10/мин и квоту; параллельно — упрётся). Без нового API-роута и модели
+  БД. Кап `MAX_BULK_FILES = 20` (50 последовательных = 30+ мин с
+  открытой вкладкой). Чистый хелпер `src/lib/bulk.ts` (`bulkFileError`)
+  + тест. Результаты сохраняются как обычные `Document` → видны в
+  дашборде. Обнаружение — ссылка с `/analyze` и пункт ⌘K (в хедер-навигацию
+  7-й пункт не добавляли — foot-gun overflow).
 - **Trek A (код-долги, этот заход)** — аудит трёх пунктов. (1) Hard cap PRO
   100/мес — уже стоял в `plans.ts` (roadmap-чекбокс был устаревший, поправлен).
   (2) Plan-lookup аудит (foot-gun #33) — чисто: каждый `MAP[plan]` либо с

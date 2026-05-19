@@ -156,6 +156,16 @@ export default function AnalyzePage() {
               {/* Upload zone */}
               <UploadZone onFileSelect={handleFileSelect} />
 
+              <p className="mt-3 text-center text-xs text-muted">
+                Нужно проверить несколько договоров сразу?{" "}
+                <Link
+                  href="/bulk"
+                  className="font-semibold text-primary hover:underline"
+                >
+                  Массовая проверка →
+                </Link>
+              </p>
+
               {/* Error message */}
               {error && (
                 <div className="mt-4 animate-fade-in space-y-3 rounded-xl border border-danger/30 bg-danger-light p-4">

@@ -36,6 +36,7 @@ import {
   MessagesSquare,
   GitCompare,
   Gift,
+  Layers,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -138,6 +139,14 @@ export function CommandPalette() {
         group: "Действия",
         icon: Plus,
         run: () => router.push("/analyze"),
+      },
+      {
+        id: "act.bulk",
+        label: "Массовая проверка договоров",
+        hint: "Загрузить пачку файлов сразу",
+        group: "Действия",
+        icon: Layers,
+        run: () => router.push("/bulk"),
       },
       {
         id: "act.new-document",
