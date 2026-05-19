@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
   Loader2,
@@ -113,12 +112,9 @@ export default function DocumentVersionsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main id="main-content" className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
@@ -128,10 +124,7 @@ export default function DocumentVersionsPage() {
     .sort((a, b) => a.versionNumber - b.versionNumber);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 bg-surface/30 pb-24">
+    <AppShell>
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <Breadcrumbs
             items={[
@@ -236,8 +229,6 @@ export default function DocumentVersionsPage() {
             </div>
           )}
         </div>
-      </main>
-
       {/* Sticky compare bar — appears when 1+ version selected. */}
       {selected.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md">
@@ -281,7 +272,6 @@ export default function DocumentVersionsPage() {
         </div>
       )}
 
-      <Disclaimer />
-    </div>
+    </AppShell>
   );
 }

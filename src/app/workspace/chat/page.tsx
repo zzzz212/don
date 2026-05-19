@@ -5,8 +5,7 @@
 // network direct-message thread).
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { DocAttachmentCard } from "@/components/doc-attachment-card";
 import {
   MessagesSquare,
@@ -135,9 +134,7 @@ export default function WorkspaceChatPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-3xl flex-col px-4 py-6 sm:px-6">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
@@ -282,8 +279,6 @@ export default function WorkspaceChatPage() {
             </p>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

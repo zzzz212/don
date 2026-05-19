@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import {
   ArrowLeft,
   Loader2,
@@ -128,9 +127,7 @@ export default function OrgUsagePage() {
   }, [orgId]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/settings/organization"
@@ -358,8 +355,6 @@ export default function OrgUsagePage() {
             </div>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

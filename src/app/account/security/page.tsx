@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import {
   ShieldCheck,
@@ -234,9 +233,7 @@ export default function AccountSecurityPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/dashboard"
@@ -572,8 +569,6 @@ export default function AccountSecurityPage() {
             </section>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

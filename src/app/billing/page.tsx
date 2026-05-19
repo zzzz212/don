@@ -11,8 +11,7 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { BillingCardSkeleton } from "@/components/skeleton";
 import { TRIAL_DAYS, CONTACTS } from "@/lib/legal-info";
 
@@ -256,10 +255,8 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col bg-card">
-      <Header />
-      <main id="main-content" className="flex-1">
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
               Биллинг и тарифы
@@ -573,8 +570,6 @@ export default function BillingPage() {
             </>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import {
   ArrowLeft,
@@ -209,9 +208,7 @@ export default function AdminUserDetailPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/admin/users"
@@ -383,9 +380,7 @@ export default function AdminUserDetailPage() {
             </div>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
 

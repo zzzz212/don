@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import {
   Users,
   Building2,
@@ -135,9 +134,7 @@ export default function AdminOverviewPage() {
   }, []);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
@@ -314,8 +311,6 @@ export default function AdminOverviewPage() {
             </div>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

@@ -1,8 +1,7 @@
 ﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import {
   Send,
   Scale,
@@ -444,10 +443,7 @@ export default function ChatPage() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex flex-1 flex-col bg-surface/30">
+    <AppShell>
         {isEmpty ? (
           /* Empty state — welcome + suggested questions */
           <div className="flex flex-1 flex-col">
@@ -688,9 +684,6 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-      </main>
-
-      {isEmpty && <Disclaimer />}
-    </div>
+    </AppShell>
   );
 }

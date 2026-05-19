@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/header";
+import { AppShell } from "@/components/app-shell";
 import { DocAttachmentCard } from "@/components/doc-attachment-card";
 import { ArrowLeft, Loader2, Send, AlertCircle } from "lucide-react";
 
@@ -111,20 +111,15 @@ export default function ThreadPage({
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-muted" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (error || !thread) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center px-4">
+      <AppShell>
           <div className="text-center">
             <AlertCircle className="mx-auto mb-3 h-10 w-10 text-warning" />
             <p className="mb-4 text-muted">
@@ -137,15 +132,12 @@ export default function ThreadPage({
               К сообщениям
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex flex-1 flex-col bg-surface/30">
+    <AppShell>
         <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-6 sm:px-6">
           <div className="mb-3 flex items-center gap-3">
             <Link
@@ -252,7 +244,6 @@ export default function ThreadPage({
             </button>
           </div>
         </div>
-      </main>
-    </div>
+      </AppShell>
   );
 }

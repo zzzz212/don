@@ -3,8 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import {
   Search,
   Loader2,
@@ -128,9 +127,7 @@ function OrgsPageInner() {
   }, [q, planFilter, page]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/admin"
@@ -312,9 +309,7 @@ function OrgsPageInner() {
             </>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
 
@@ -322,12 +317,9 @@ export default function AdminOrgsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full flex-col">
-          <Header />
-          <main className="flex flex-1 items-center justify-center">
+        <AppShell>
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
-          </main>
-        </div>
+          </AppShell>
       }
     >
       <OrgsPageInner />

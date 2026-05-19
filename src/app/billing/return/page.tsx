@@ -6,15 +6,12 @@
 
 import Link from "next/link";
 import { CheckCircle2, ArrowRight } from "lucide-react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 
 export default function BillingReturnPage() {
   return (
-    <div className="flex min-h-full flex-col bg-card">
-      <Header />
-      <main id="main-content" className="flex flex-1 items-center justify-center px-4 py-12">
-        <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-10 shadow-sm text-center">
+    <AppShell>
+      <div className="mx-auto mt-12 w-full max-w-lg rounded-2xl border border-border bg-card p-10 shadow-sm text-center">
           <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
             <CheckCircle2 className="h-7 w-7" />
           </div>
@@ -37,8 +34,6 @@ export default function BillingReturnPage() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

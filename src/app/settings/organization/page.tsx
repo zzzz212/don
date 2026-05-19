@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Header } from "@/components/header";
+import { AppShell } from "@/components/app-shell";
 import { InlineEdit } from "@/components/inline-edit";
 import Link from "next/link";
 import {
@@ -266,31 +266,22 @@ const handleCreateInvite = async (role: "ADMIN" | "MEMBER" | "VIEWER") => {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main id="main-content" className="flex-1 flex items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (!details || !orgs) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+      <AppShell>
           <p className="text-muted">Не удалось загрузить настройки workspace.</p>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-light">
@@ -620,7 +611,6 @@ const handleCreateInvite = async (role: "ADMIN" | "MEMBER" | "VIEWER") => {
             </section>
           )}
         </div>
-      </main>
-    </div>
+      </AppShell>
   );
 }

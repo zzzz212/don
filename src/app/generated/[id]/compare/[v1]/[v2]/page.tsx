@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Loader2 } from "lucide-react";
 
@@ -103,20 +102,15 @@ export default function CompareVersionsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main id="main-content" className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (error || !comparison) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <div className="text-center">
             <h1 className="mb-4 text-xl font-bold text-foreground">
               {error || "Сравнение не найдено"}
@@ -128,16 +122,12 @@ export default function CompareVersionsPage() {
               Вернуться к версиям
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <Breadcrumbs
             items={[
@@ -272,9 +262,6 @@ export default function CompareVersionsPage() {
             </Link>
           </div>
         </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

@@ -3,8 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import { AlertCircle, Loader2, Lock, Mail, User as UserIcon } from "lucide-react";
 
@@ -58,9 +57,7 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main id="main-content" className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
           <header className="mb-8">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
@@ -198,8 +195,6 @@ export default function AccountPage() {
             </Link>
           </section>
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

@@ -3,8 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { CounterpartyFieldInput } from "@/components/counterparty-field-input";
 import { useToast } from "@/components/toast";
 import { getTemplate, type TemplateField } from "@/lib/templates";
@@ -26,12 +25,9 @@ export default function TemplateFillPageWrapper() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full flex-col">
-          <Header />
-          <main id="main-content" className="flex flex-1 items-center justify-center">
+        <AppShell>
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
-          </main>
-        </div>
+          </AppShell>
       }
     >
       <TemplateFillPage />
@@ -127,9 +123,7 @@ function TemplateFillPage() {
 
   if (!template) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground">
               Шаблон не найден
@@ -141,8 +135,7 @@ function TemplateFillPage() {
               Вернуться к шаблонам
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
@@ -275,10 +268,7 @@ function TemplateFillPage() {
   const livePreview = generateContract(template.id, formData);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:max-w-6xl lg:px-8">
           {/* Back link */}
           <Link
@@ -447,10 +437,7 @@ function TemplateFillPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
 

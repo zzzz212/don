@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import { RefinePanel } from "@/components/refine-panel";
 import { InlineEdit } from "@/components/inline-edit";
@@ -192,20 +191,15 @@ export default function ViewGeneratedPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main id="main-content" className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (!doc) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground">
               Документ не найден
@@ -217,16 +211,12 @@ export default function ViewGeneratedPage() {
               Вернуться на дашборд
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Back link */}
           <Link
@@ -379,9 +369,6 @@ export default function ViewGeneratedPage() {
             </Link>
           </div>
         </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

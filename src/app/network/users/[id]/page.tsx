@@ -3,8 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import {
   ArrowLeft,
   Loader2,
@@ -141,20 +140,15 @@ export default function UserProfilePage({
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-muted" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (error || !profile) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center px-4">
+      <AppShell>
           <div className="text-center">
             <AlertCircle className="mx-auto mb-3 h-10 w-10 text-warning" />
             <p className="mb-4 text-muted">{error ?? "Профиль не найден"}</p>
@@ -165,8 +159,7 @@ export default function UserProfilePage({
               К сети
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
@@ -178,9 +171,7 @@ export default function UserProfilePage({
     .slice(0, 2);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
             href="/network"
@@ -322,8 +313,6 @@ export default function UserProfilePage({
             )}
           </div>
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
