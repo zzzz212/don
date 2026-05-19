@@ -4,12 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
   Search,
   Loader2,
   AlertCircle,
   ArrowRight,
-  ArrowLeft,
   Sparkles,
   Crown,
   Zap,
@@ -139,19 +139,11 @@ function UsersPageInner() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Пользователи"
+        description={data ? `${data.total.toLocaleString("ru-RU")} аккаунтов` : "Загрузка…"}
+      />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/admin"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К админ-панели
-          </Link>
-          <h1 className="mb-1 text-2xl font-bold text-foreground">
-            Пользователи
-          </h1>
-          <p className="mb-6 text-sm text-muted">
-            {data ? `${data.total.toLocaleString("ru-RU")} аккаунтов` : "Загрузка…"}
-          </p>
 
           {/* Filters */}
           <div className="mb-6 flex flex-wrap items-center gap-3">

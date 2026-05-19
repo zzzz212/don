@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
   Sparkles,
@@ -210,13 +208,6 @@ export default function AdminUserDetailPage() {
   return (
     <AppShell>
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/admin/users"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К списку пользователей
-          </Link>
-
           {loading && (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted" />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
   Users,
   Building2,
@@ -135,51 +136,44 @@ export default function AdminOverviewPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        eyebrow="Внутренний инструмент"
+        title="Админ-панель"
+        description="Общая статистика по проекту. Данные обновляются при перезагрузке."
+        actions={
+          <nav className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/users"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+            >
+              <Users className="h-4 w-4" />
+              Пользователи
+            </Link>
+            <Link
+              href="/admin/orgs"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+            >
+              <Building2 className="h-4 w-4" />
+              Workspaces
+            </Link>
+            <Link
+              href="/admin/payments"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+            >
+              <CreditCard className="h-4 w-4" />
+              Платежи
+            </Link>
+            <Link
+              href="/admin/abuse"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Анти-абуз
+            </Link>
+          </nav>
+        }
+      />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Внутренний инструмент
-              </p>
-              <h1 className="mt-1 text-2xl font-bold text-foreground">
-                Админ-панель
-              </h1>
-              <p className="mt-1 text-sm text-muted">
-                Общая статистика по проекту. Данные обновляются при
-                перезагрузке.
-              </p>
-            </div>
-            <nav className="flex flex-wrap gap-2">
-              <Link
-                href="/admin/users"
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <Users className="h-4 w-4" />
-                Пользователи
-              </Link>
-              <Link
-                href="/admin/orgs"
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <Building2 className="h-4 w-4" />
-                Workspaces
-              </Link>
-              <Link
-                href="/admin/payments"
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <CreditCard className="h-4 w-4" />
-                Платежи
-              </Link>
-              <Link
-                href="/admin/abuse"
-                className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <ShieldAlert className="h-4 w-4" />
-                Анти-абуз
-              </Link>
-            </nav>
-          </div>
 
           {loading && (
             <div className="flex items-center justify-center py-16">

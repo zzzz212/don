@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
-  ShieldAlert,
   Fingerprint,
   Globe,
 } from "lucide-react";
@@ -72,22 +71,11 @@ export default function AdminAbusePage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Анти-абуз"
+        description="Аккаунты с подозрением на фарм бесплатного периода и кластеры по IP / отпечатку устройства. Ничего не блокируется автоматически — это очередь для ручной проверки."
+      />
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/admin"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К админ-панели
-          </Link>
-          <h1 className="mb-1 flex items-center gap-2 text-2xl font-bold text-foreground">
-            <ShieldAlert className="h-6 w-6 text-warning" />
-            Анти-абуз
-          </h1>
-          <p className="mb-6 text-sm text-muted">
-            Аккаунты с подозрением на фарм бесплатного периода и кластеры по
-            IP / отпечатку устройства. Ничего не блокируется автоматически —
-            это очередь для ручной проверки.
-          </p>
 
           {error && (
             <div
