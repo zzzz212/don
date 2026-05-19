@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { templates } from "@/lib/templates";
 import {
   FolderOpen,
@@ -84,21 +85,11 @@ export default function TemplatesPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Шаблоны документов"
+        description="Выберите тип документа, заполните форму — AI сгенерирует готовый юридический документ за пару минут."
+      />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
-              <FolderOpen className="h-7 w-7 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
-              Шаблоны документов
-            </h1>
-            <p className="mt-2 text-muted max-w-lg mx-auto">
-              Выберите тип документа, заполните форму — AI сгенерирует готовый
-              юридический документ за пару минут
-            </p>
-          </div>
-
           {/* Search + category filter */}
           <div className="mb-8">
             <div className="relative mx-auto max-w-xl">

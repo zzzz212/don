@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
 import { bulkFileError, BULK_ACCEPT, MAX_BULK_FILES } from "@/lib/bulk";
 import { Button, buttonClass } from "@/components/button";
@@ -209,21 +210,11 @@ export default function BulkPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Массовая проверка договоров"
+        description={`Загрузите до ${MAX_BULK_FILES} файлов сразу — мы проверим их по очереди и сложим отчёты в дашборд.`}
+      />
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-          {/* Title */}
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
-              <Layers className="h-7 w-7 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold text-foreground">
-              Массовая проверка договоров
-            </h1>
-            <p className="mt-2 text-muted">
-              Загрузите до {MAX_BULK_FILES} файлов сразу — мы проверим их
-              по очереди и сложим отчёты в дашборд.
-            </p>
-          </div>
-
           {!started ? (
             <>
               {/* Drop zone */}

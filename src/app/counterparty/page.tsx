@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { ContactCounterparty } from "@/components/contact-counterparty";
 import { buttonClass } from "@/components/button";
 import { Badge } from "@/components/badge";
@@ -136,16 +137,11 @@ export default function CounterpartyPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Проверка контрагентов"
+        description="Узнайте риск-скор компании по ИНН на основе открытых данных."
+      />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-semibold text-foreground mb-2">
-              Проверка контрагентов
-            </h1>
-            <p className="text-muted">
-              Узнайте риск-скор компании по ИНН на основе открытых данных
-            </p>
-          </div>
-
           {/* Search form */}
           <div className="mb-8">
             <div className="flex gap-2">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { UploadZone } from "@/components/upload-zone";
 import { Button, buttonClass } from "@/components/button";
 import {
@@ -142,32 +143,22 @@ export default function AnalyzePage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Анализ договора"
+        description="Загрузите PDF или DOCX. Модель пройдёт по тексту со справочником ГК РФ и вернёт структурированный отчёт."
+        actions={
+          <Link
+            href="/sample-report"
+            className={buttonClass({ variant: "secondary", size: "sm" })}
+          >
+            <FileSearch className="h-4 w-4" aria-hidden="true" />
+            Открыть пример отчёта
+          </Link>
+        }
+      />
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
           {!isAnalyzing ? (
             <div className="animate-fade-in">
-              {/* Header */}
-              <div className="mb-8 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-light">
-                  <FileSearch className="h-7 w-7 text-primary" />
-                </div>
-                <h1 className="text-2xl font-semibold text-foreground">
-                  Анализ договора
-                </h1>
-                <p className="mt-2 text-muted">
-                  Загрузите PDF или DOCX. Модель пройдёт по тексту со
-                  справочником ГК РФ и вернёт структурированный отчёт.
-                </p>
-                <p className="mt-2 text-xs text-muted">
-                  Хотите сначала посмотреть формат?{" "}
-                  <Link
-                    href="/sample-report"
-                    className="font-semibold text-primary hover:underline"
-                  >
-                    Открыть пример отчёта →
-                  </Link>
-                </p>
-              </div>
-
               {/* Source toggle — upload a file or paste text directly */}
               <div className="mb-5 flex justify-center">
                 <div className="inline-flex rounded-xl border border-border bg-card p-1">
