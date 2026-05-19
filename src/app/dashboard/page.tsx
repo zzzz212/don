@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { RiskBadge, type RiskLevel } from "@/components/risk-badge";
 import { UsageWidget } from "@/components/usage-widget";
 import { DocumentSearchBar } from "@/components/document-search-bar";
@@ -20,14 +20,11 @@ import {
   Clock,
   ArrowRight,
   FolderOpen,
-  FileSearch,
-  TrendingUp,
-  Shield,
   Trash2,
   Download,
   MessageCircle,
-  Building2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DocumentItem {
   id: string;
@@ -102,8 +99,6 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [tab, documents, generatedDocs, cursor]);
 
-  // Reset cursor when the user switches tabs — the indices don't carry
-  // semantic meaning across lists.
   useEffect(() => {
     setCursor(-1);
   }, [tab]);
@@ -115,16 +110,8 @@ export default function DashboardPage() {
           fetch("/api/documents"),
           fetch("/api/generated"),
         ]);
-
-        if (analysesRes.ok) {
-          const data = await analysesRes.json();
-          setDocuments(data);
-        }
-
-        if (generatedRes.ok) {
-          const data = await generatedRes.json();
-          setGeneratedDocs(data);
-        }
+        if (analysesRes.ok) setDocuments(await analysesRes.json());
+        if (generatedRes.ok) setGeneratedDocs(await generatedRes.json());
       } catch {
         // silently fail — show empty state
       }
@@ -133,11 +120,8 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
-  // Optimistic delete with a 5-second undo window. The row vanishes
-  // immediately; the actual DELETE call only fires once the undo toast
-  // expires. Clicking "Отменить" restores the row and the request never
-  // hits the server. Same pattern Gmail / Linear use — feels like
-  // sub-second response and protects against fat-finger deletions.
+  // Optimistic delete with a 5-second undo window — see notes in the
+  // previous implementation; pattern unchanged.
   function deleteDocument(id: string, type: "analysis" | "generated") {
     const endpoint =
       type === "analysis" ? `/api/documents/${id}` : `/api/generated/${id}`;
@@ -146,7 +130,6 @@ export default function DashboardPage() {
     if (!removed) return;
     const removedIndex = list.findIndex((d) => d.id === id);
 
-    // Hide locally.
     if (type === "analysis") {
       setDocuments((prev) => prev.filter((d) => d.id !== id));
     } else {
@@ -203,18 +186,12 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`/api/generated/${id}`);
       if (!response.ok) throw new Error("Document not found");
-
       const doc = await response.json();
-
       const docxResponse = await fetch("/api/export/docx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: name,
-          content: doc.content,
-        }),
+        body: JSON.stringify({ title: name, content: doc.content }),
       });
-
       if (docxResponse.ok) {
         const blob = await docxResponse.blob();
         const url = window.URL.createObjectURL(blob);
@@ -239,298 +216,256 @@ export default function DashboardPage() {
       : "—";
   const criticalCount = documents.filter((d) => d.topRisk === "critical").length;
 
-  const quickStats = [
-    {
-      label: "Проанализировано",
-      value: String(totalDocs),
-      icon: FileSearch,
-      color: "text-primary",
-      bg: "bg-primary-light",
-    },
-    {
-      label: "Средний скоринг",
-      value: avgScore,
-      icon: TrendingUp,
-      color: "text-warning",
-      bg: "bg-warning-light",
-    },
-    {
-      label: "С критичными рисками",
-      value: String(criticalCount),
-      icon: Shield,
-      color: "text-danger",
-      bg: "bg-danger-light",
-    },
+  const stats = [
+    { label: "Проанализировано", value: String(totalDocs) },
+    { label: "Средний скоринг", value: avgScore },
+    { label: "С критичными рисками", value: String(criticalCount) },
   ];
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
+    <AppShell>
+      <PageHeader
+        title="Дашборд"
+        description="Анализы и документы рабочего пространства"
+        actions={
+          <>
+            <Link
+              href="/templates"
+              className={buttonClass({ variant: "secondary" })}
+            >
+              <FolderOpen className="h-4 w-4" aria-hidden="true" />
+              Шаблоны
+            </Link>
+            <Link href="/analyze" className={buttonClass()}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Новый анализ
+            </Link>
+          </>
+        }
+      />
 
-      <main id="main-content" className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">Дашборд</h1>
-              <p className="mt-1 text-sm text-muted">
-                Обзор ваших документов и анализов
+      <div className="space-y-6 px-6 py-6 sm:px-8">
+        {/* KPI strip — borderless divided row instead of three floating
+            cards. The numbers carry the display serif so they read as
+            editorial, not "AI-template card". */}
+        <div className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {stats.map((s) => (
+            <div key={s.label} className="px-6 py-5">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted">
+                {s.label}
+              </p>
+              <p className="mt-1 font-serif text-3xl font-semibold leading-none text-foreground">
+                {s.value}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              <Link
-                href="/templates"
-                className={buttonClass({
-                  variant: "secondary",
-                  className: "flex-1 sm:flex-none",
-                })}
-              >
-                <FolderOpen className="h-4 w-4" aria-hidden="true" />
-                Шаблоны
-              </Link>
-              <Link
-                href="/analyze"
-                className={buttonClass({ className: "flex-1 sm:flex-none" })}
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                Новый анализ
-              </Link>
+          ))}
+        </div>
+
+        {/* Search + plan usage */}
+        <DocumentSearchBar />
+        <UsageWidget />
+
+        {/* Tabs — underline-only, ink-coloured active line (the brand-
+            blue underline was too "marketing" for an app screen). */}
+        <div className="flex items-end gap-6 border-b border-border">
+          <button
+            type="button"
+            onClick={() => setTab("analyses")}
+            aria-current={tab === "analyses" ? "page" : undefined}
+            className={cn(
+              "-mb-px border-b-2 px-1 py-3 text-sm font-semibold transition-colors",
+              tab === "analyses"
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted hover:text-foreground"
+            )}
+          >
+            Анализы договоров
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("generated")}
+            aria-current={tab === "generated" ? "page" : undefined}
+            className={cn(
+              "-mb-px border-b-2 px-1 py-3 text-sm font-semibold transition-colors",
+              tab === "generated"
+                ? "border-foreground text-foreground"
+                : "border-transparent text-muted hover:text-foreground"
+            )}
+          >
+            Созданные документы
+          </button>
+        </div>
+
+        {/* Documents list */}
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          {loading ? (
+            <div className="divide-y divide-border">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <DocumentRowSkeleton key={i} />
+              ))}
             </div>
-          </div>
-
-          {/* Search across user's archive */}
-          <div className="mb-6">
-            <DocumentSearchBar />
-          </div>
-
-          {/* Usage widget */}
-          <div className="mb-6">
-            <UsageWidget />
-          </div>
-
-          {/* Quick stats */}
-          <div className="mb-8 grid gap-4 sm:grid-cols-3">
-            {quickStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-xl border border-border bg-card p-5"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.bg}`}
-                  >
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-semibold text-foreground">
-                      {stat.value}
-                    </p>
-                    <p className="text-xs text-muted">{stat.label}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Tabs */}
-          <div className="mb-8 flex gap-4 border-b border-border">
-            <button
-              onClick={() => setTab("analyses")}
-              className={`px-4 py-3 font-semibold transition-colors ${
-                tab === "analyses"
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              Анализы договоров
-            </button>
-            <button
-              onClick={() => setTab("generated")}
-              className={`px-4 py-3 font-semibold transition-colors ${
-                tab === "generated"
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              Созданные документы
-            </button>
-          </div>
-
-          {/* Documents list */}
-          <div className="rounded-xl border border-border bg-card">
-            <div className="border-b border-border px-6 py-4">
-              <h2 className="font-semibold text-foreground">
-                {tab === "analyses"
-                  ? "Проанализированные договоры"
-                  : "Сгенерированные документы"}
-              </h2>
-            </div>
-
-            {loading ? (
-              <div className="divide-y divide-border">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <DocumentRowSkeleton key={i} />
-                ))}
-              </div>
-            ) : tab === "analyses" ? (
-              documents.length === 0 ? (
-                <EmptyState
-                  illustration={<DocsEmptyIllustration />}
-                  title="Загрузите первый договор"
-                  description="Модель пройдёт по тексту со справочником ГК РФ — найдёт несоразмерные штрафы, кабальные условия и пропущенные существенные пункты. Поддерживаются PDF и DOCX, а на «Про» — даже сканы. Не готовы загружать свой? Откройте пример отчёта."
-                  actions={
-                    <>
-                      <Link
-                        href="/analyze"
-                        className={buttonClass()}
-                      >
-                        <Plus className="h-4 w-4" aria-hidden="true" />
-                        Анализировать договор
-                      </Link>
-                      <Link
-                        href="/sample-report"
-                        className={buttonClass({ variant: "secondary" })}
-                      >
-                        <FileText className="h-4 w-4" aria-hidden="true" />
-                        Посмотреть пример отчёта
-                      </Link>
-                      <Link
-                        href="/chat"
-                        className={buttonClass({ variant: "secondary" })}
-                      >
-                        <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                        Спросить AI-юриста
-                      </Link>
-                    </>
-                  }
-                />
-              ) : (
-                <div className="divide-y divide-border">
-                  {documents.map((doc, idx) => (
-                    <div
-                      key={doc.id}
-                      data-active={cursor === idx}
-                      className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-primary/20 sm:gap-4 sm:px-6"
-                    >
-                      <Link
-                        href={`/report/${doc.id}`}
-                        className="flex min-w-0 flex-1 items-center gap-4"
-                      >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground">
-                            {doc.fileName}
-                          </p>
-                          <div className="mt-1 flex items-center gap-3">
-                            <span className="flex items-center gap-1 text-xs text-muted">
-                              <Clock className="h-3 w-3" />
-                              {timeAgo(doc.createdAt)}
-                            </span>
-                            <span className="text-xs text-muted">
-                              {doc.risksCount} рисков
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <RiskBadge level={doc.topRisk} />
-                          <div className="text-right">
-                            <span
-                              className={`text-lg font-bold ${
-                                doc.score >= 7
-                                  ? "text-success"
-                                  : doc.score >= 4
-                                    ? "text-warning"
-                                    : "text-danger"
-                              }`}
-                            >
-                              {doc.score}/10
-                            </span>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted" />
-                        </div>
-                      </Link>
-                      <button
-                        onClick={() => deleteDocument(doc.id, "analysis")}
-                        disabled={deleting === doc.id}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-danger disabled:opacity-50"
-                        aria-label="Удалить анализ"
-                        title="Удалить анализ"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : generatedDocs.length === 0 ? (
+          ) : tab === "analyses" ? (
+            documents.length === 0 ? (
               <EmptyState
                 illustration={<DocsEmptyIllustration />}
-                title="Создайте первый документ из шаблона"
-                description="20 готовых шаблонов: NDA, аренда, услуги, поставка, заём, трудовой и другие. Заполните форму — получите DOCX, юридически грамотный и готовый к подписанию."
+                title="Загрузите первый договор"
+                description="Модель пройдёт по тексту со справочником ГК РФ — найдёт несоразмерные штрафы, кабальные условия и пропущенные существенные пункты. Поддерживаются PDF и DOCX, а на «Про» — даже сканы. Не готовы загружать свой? Откройте пример отчёта."
                 actions={
-                  <Link
-                    href="/templates"
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    Открыть шаблоны
-                  </Link>
+                  <>
+                    <Link href="/analyze" className={buttonClass()}>
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      Анализировать договор
+                    </Link>
+                    <Link
+                      href="/sample-report"
+                      className={buttonClass({ variant: "secondary" })}
+                    >
+                      <FileText className="h-4 w-4" aria-hidden="true" />
+                      Посмотреть пример отчёта
+                    </Link>
+                    <Link
+                      href="/chat"
+                      className={buttonClass({ variant: "secondary" })}
+                    >
+                      <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                      Спросить AI-юриста
+                    </Link>
+                  </>
                 }
               />
             ) : (
               <div className="divide-y divide-border">
-                {generatedDocs.map((doc, idx) => (
+                {documents.map((doc, idx) => (
                   <div
                     key={doc.id}
                     data-active={cursor === idx}
-                    className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-primary/20 sm:gap-4 sm:px-6 group"
+                    className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-foreground/10 sm:gap-4 sm:px-6"
                   >
                     <Link
-                      href={`/generated/${doc.id}`}
+                      href={`/report/${doc.id}`}
                       className="flex min-w-0 flex-1 items-center gap-4"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-light">
-                        <FileText className="h-5 w-5 text-primary" />
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface text-muted"
+                        aria-hidden="true"
+                      >
+                        <FileText className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-foreground">
-                          {doc.name}
+                          {doc.fileName}
                         </p>
-                        <div className="mt-1 flex items-center gap-3">
-                          <span className="flex items-center gap-1 text-xs text-muted">
-                            <Clock className="h-3 w-3" />
+                        <div className="mt-0.5 flex items-center gap-3 text-xs text-muted">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" aria-hidden="true" />
                             {timeAgo(doc.createdAt)}
                           </span>
+                          <span>{doc.risksCount} рисков</span>
                         </div>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted" />
+                      <div className="flex items-center gap-4">
+                        <RiskBadge level={doc.topRisk} />
+                        <span
+                          className={cn(
+                            "font-serif text-lg font-semibold tabular-nums",
+                            doc.score >= 7
+                              ? "text-success"
+                              : doc.score >= 4
+                                ? "text-warning"
+                                : "text-danger"
+                          )}
+                        >
+                          {doc.score}
+                          <span className="text-sm text-muted">/10</span>
+                        </span>
+                        <ArrowRight
+                          className="h-4 w-4 text-muted"
+                          aria-hidden="true"
+                        />
+                      </div>
                     </Link>
                     <button
-                      onClick={() => downloadDocument(doc.id, doc.name)}
-                      className="shrink-0 p-2 text-muted transition-colors hover:text-primary"
-                      title="Скачать DOCX"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteDocument(doc.id, "generated")}
+                      onClick={() => deleteDocument(doc.id, "analysis")}
                       disabled={deleting === doc.id}
-                      className="shrink-0 p-2 text-muted transition-colors hover:text-danger disabled:opacity-50"
-                      title="Удалить документ"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-danger disabled:opacity-50"
+                      aria-label="Удалить анализ"
+                      title="Удалить анализ"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            )
+          ) : generatedDocs.length === 0 ? (
+            <EmptyState
+              illustration={<DocsEmptyIllustration />}
+              title="Создайте первый документ из шаблона"
+              description="20 готовых шаблонов: NDA, аренда, услуги, поставка, заём, трудовой и другие. Заполните форму — получите DOCX, юридически грамотный и готовый к подписанию."
+              actions={
+                <Link href="/templates" className={buttonClass()}>
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Открыть шаблоны
+                </Link>
+              }
+            />
+          ) : (
+            <div className="divide-y divide-border">
+              {generatedDocs.map((doc, idx) => (
+                <div
+                  key={doc.id}
+                  data-active={cursor === idx}
+                  className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-foreground/10 sm:gap-4 sm:px-6"
+                >
+                  <Link
+                    href={`/generated/${doc.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-4"
+                  >
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface text-muted"
+                      aria-hidden="true"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-foreground">
+                        {doc.name}
+                      </p>
+                      <div className="mt-0.5 flex items-center gap-3 text-xs text-muted">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" aria-hidden="true" />
+                          {timeAgo(doc.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowRight
+                      className="h-4 w-4 text-muted"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                  <button
+                    onClick={() => downloadDocument(doc.id, doc.name)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-foreground"
+                    aria-label="Скачать DOCX"
+                    title="Скачать DOCX"
+                  >
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    onClick={() => deleteDocument(doc.id, "generated")}
+                    disabled={deleting === doc.id}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-danger disabled:opacity-50"
+                    aria-label="Удалить документ"
+                    title="Удалить документ"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }
