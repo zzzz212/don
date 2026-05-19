@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
   CalendarClock,
   AlertTriangle,
@@ -139,21 +140,11 @@ export default function DeadlinesPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Сроки и напоминания"
+        description="Ключевые даты из ваших договоров. За 3 дня до срока придёт письмо-напоминание."
+      />
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <CalendarClock className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Сроки и напоминания
-              </h1>
-              <p className="text-sm text-muted">
-                Ключевые даты из ваших договоров. За 3 дня до срока придёт
-                письмо-напоминание.
-              </p>
-            </div>
-          </div>
 
           {error && (
             <div

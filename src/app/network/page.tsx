@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { buttonClass } from "@/components/button";
 import {
   Users,
   Search,
@@ -310,28 +312,20 @@ export default function NetworkPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="Сеть"
+        description="Находите коллег, объединяйтесь в команды и отправляйте договоры на ревью."
+        actions={
+          <Link
+            href="/network/messages"
+            className={buttonClass({ variant: "secondary", size: "sm" })}
+          >
+            <MessageSquare className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Сообщения</span>
+          </Link>
+        }
+      />
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-                <Users className="h-5 w-5 text-primary-dark" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Сеть</h1>
-                <p className="text-sm text-muted">
-                  Находите коллег, объединяйтесь в команды и отправляйте
-                  договоры на ревью.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/network/messages"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Сообщения</span>
-            </Link>
-          </div>
 
           {/* Tabs */}
           <div className="mb-6 flex flex-wrap gap-1 border-b border-border">

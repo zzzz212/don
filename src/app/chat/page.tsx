@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
   Send,
   Scale,
@@ -444,25 +445,15 @@ export default function ChatPage() {
 
   return (
     <AppShell>
+      <PageHeader
+        title="AI-консультант"
+        description="Задайте вопрос о законодательстве РФ — модель ответит со ссылками на статьи законов."
+      />
         {isEmpty ? (
           /* Empty state — welcome + suggested questions */
           <div className="flex flex-1 flex-col">
             <div className="flex-1 overflow-y-auto">
               <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-                {/* Welcome */}
-                <div className="mb-10 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-700 shadow-lg shadow-primary/20">
-                    <MessageCircle className="h-8 w-8 text-white" />
-                  </div>
-                  <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                    Юридический AI-консультант
-                  </h1>
-                  <p className="mt-2 text-muted max-w-lg mx-auto">
-                    Задайте вопрос о законодательстве РФ — получите понятный ответ
-                    с ссылками на статьи законов за секунды
-                  </p>
-                </div>
-
                 {/* Suggested questions grid */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {suggestedQuestions.map((category, i) => (
