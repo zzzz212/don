@@ -108,7 +108,7 @@ Geist font / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus)
 с prompt caching. **Read `node_modules/next/dist/docs/`** перед изменением
 Next.js паттернов — это Next 16, не та Next.js что помнит твоё обучение.
 
-**Тесты**: 267 unit-тестов через vitest. `npm test`.
+**Тесты**: 369 unit-тестов через vitest. `npm test`.
 
 ---
 
@@ -1088,7 +1088,13 @@ GROUP BY model;
 - **ИП зарегистрирован** — реквизиты в `legal-info.ts` (`OPERATOR`). Расчётного счёта пока нет (банковский блок оферты скрыт), RKN-номер не получен.
 - **Anthropic `temperature` убран** (foot-gun #41) — ломал `/api/analyze` в проде. Groq как фолбэк для analyze слаб (free-tier 12k TPM при запросе ~24k токенов) — при падении Anthropic подстраховки нет; стоит задать `GEMINI_API_KEY`.
 - **CI подключён** — GitHub Actions гоняет `lint`/`tsc`/`vitest`/`build` на каждый PR и пуш в main.
-- **Тесты — 267** (было 260): +7 `schema-helpers.ts`.
+- **Тесты — 369** (было 267). Полировочный заход добавил 8 тест-файлов на
+  непокрытые чистые модули: `score-calibration`, `tier-policy`,
+  `contracts/numbers`, `contracts/clauses`, `ai/sse`, `network`,
+  `legal-info` (launch-guard на foot-gun #20 — падает, если `OPERATOR`
+  откатится в плейсхолдеры), `parsers`. Плюс зачистка оставшихся
+  debug-`console.log` (dadata + counterparty-роут) и `aria-describedby`
+  в inline-edit. Production-логику не трогали.
 - **Trek A (код-долги, этот заход)** — аудит трёх пунктов. (1) Hard cap PRO
   100/мес — уже стоял в `plans.ts` (roadmap-чекбокс был устаревший, поправлен).
   (2) Plan-lookup аудит (foot-gun #33) — чисто: каждый `MAP[plan]` либо с
