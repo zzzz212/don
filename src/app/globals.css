@@ -6,79 +6,78 @@
    variant matching either the .dark element itself or any descendant. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Palette is defined in oklch — perceptually-uniform, so the same hue
-   parameter looks the "same kind of blue" across both themes. Brand
-   primary moved from blue-600 to indigo (~270deg) — feels less
-   default-Tailwind, more premium without veering into purple. */
+/* "Деловой модерн" palette — a deep-blue accent on a warm off-white
+   canvas, hairline borders instead of tinted fills. Hex is the single
+   source of truth; color-mix() derives the translucent tokens. The
+   .dark block re-binds every variable for the deep-ink theme. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.21 0.04 264);
-  --primary: oklch(0.55 0.205 270);
-  --primary-dark: oklch(0.46 0.21 270);
-  --primary-light: oklch(0.95 0.04 270);
-  --primary-fg: oklch(1 0 0);
-  --accent: oklch(0.66 0.16 230);
-  --success: oklch(0.66 0.16 158);
-  --success-light: oklch(0.95 0.05 158);
-  --warning: oklch(0.74 0.17 65);
-  --warning-light: oklch(0.96 0.06 85);
-  --danger: oklch(0.63 0.22 27);
-  --danger-light: oklch(0.95 0.04 27);
-  --muted: oklch(0.55 0.03 260);
-  --border: oklch(0.92 0.01 260);
-  --card: oklch(1 0 0);
-  --card-hover: oklch(0.985 0.005 260);
-  --surface: oklch(0.97 0.01 260);
-  --ring: oklch(0.62 0.18 270);
+  --background: #fbfaf8;
+  --foreground: #16202e;
+  --primary: #2348c8;
+  --primary-dark: #1c399e;
+  --primary-light: #e9edfb;
+  --primary-fg: #ffffff;
+  --accent: #4a6fe0;
+  --success: #0f7a52;
+  --success-light: #e3f1eb;
+  --warning: #b45309;
+  --warning-light: #fbf0e1;
+  --danger: #b42318;
+  --danger-light: #fae9e7;
+  --muted: #5b6573;
+  --border: #e7e4de;
+  --card: #ffffff;
+  --card-hover: #f6f4f0;
+  --surface: #f1efe9;
+  --ring: #2348c8;
   /* Translucent border tokens — for places where a hairline makes more
      visual sense than a solid neutral (cards-on-surface, dividers). */
   --border-soft: color-mix(in oklch, var(--foreground) 8%, transparent);
   --border-strong: color-mix(in oklch, var(--foreground) 16%, transparent);
   /* Hero / landing decorative gradients — overridden in dark */
-  --hero-grad-from: oklch(0.97 0.01 260);
-  --hero-grad-via: oklch(0.97 0.025 270);
-  --hero-grad-to: oklch(1 0 0);
-  --hero-radial: oklch(0.55 0.205 270 / 6%);
+  --hero-grad-from: #f1efe9;
+  --hero-grad-via: #eceffa;
+  --hero-grad-to: #fbfaf8;
+  --hero-radial: rgba(35, 72, 200, 0.06);
   /* Shadow values defined as plain vars so they cascade with theme —
      Tailwind 4's @theme inline references them by var() and the .dark
-     override re-binds them at runtime. */
-  --shadow-2xs-value: 0 1px 1px oklch(0.21 0.04 264 / 4%);
-  --shadow-xs-value: 0 1px 2px oklch(0.21 0.04 264 / 5%);
-  --shadow-sm-value: 0 1px 2px oklch(0.21 0.04 264 / 5%), 0 1px 3px oklch(0.21 0.04 264 / 4%);
-  --shadow-md-value: 0 2px 4px oklch(0.21 0.04 264 / 6%), 0 4px 12px oklch(0.21 0.04 264 / 6%);
-  --shadow-lg-value: 0 4px 8px oklch(0.21 0.04 264 / 6%), 0 12px 24px oklch(0.21 0.04 264 / 8%);
-  --shadow-xl-value: 0 8px 16px oklch(0.21 0.04 264 / 8%), 0 24px 48px oklch(0.21 0.04 264 / 10%);
-  --shadow-2xl-value: 0 16px 32px oklch(0.21 0.04 264 / 10%), 0 32px 64px oklch(0.21 0.04 264 / 14%);
+     override re-binds them at runtime. Tinted with the ink colour. */
+  --shadow-2xs-value: 0 1px 1px rgba(22, 32, 46, 0.04);
+  --shadow-xs-value: 0 1px 2px rgba(22, 32, 46, 0.05);
+  --shadow-sm-value: 0 1px 2px rgba(22, 32, 46, 0.05), 0 1px 3px rgba(22, 32, 46, 0.04);
+  --shadow-md-value: 0 2px 4px rgba(22, 32, 46, 0.06), 0 4px 12px rgba(22, 32, 46, 0.06);
+  --shadow-lg-value: 0 4px 8px rgba(22, 32, 46, 0.06), 0 12px 24px rgba(22, 32, 46, 0.08);
+  --shadow-xl-value: 0 8px 16px rgba(22, 32, 46, 0.08), 0 24px 48px rgba(22, 32, 46, 0.1);
+  --shadow-2xl-value: 0 16px 32px rgba(22, 32, 46, 0.1), 0 32px 64px rgba(22, 32, 46, 0.14);
 }
 
 .dark {
-  /* Slightly warmer than #0a0f1c — pushes the dark canvas off the
-     "compsci-blue" cliché toward something closer to a deep ink. */
-  --background: oklch(0.18 0.02 264);
-  --foreground: oklch(0.92 0.012 260);
-  --primary: oklch(0.68 0.19 270);
-  --primary-dark: oklch(0.78 0.16 270);
-  --primary-light: oklch(0.55 0.205 270 / 18%);
-  --primary-fg: oklch(0.98 0 0);
-  --accent: oklch(0.74 0.16 230);
-  --success: oklch(0.76 0.16 160);
-  --success-light: oklch(0.76 0.16 160 / 16%);
-  --warning: oklch(0.82 0.16 80);
-  --warning-light: oklch(0.82 0.16 80 / 16%);
-  --danger: oklch(0.74 0.18 25);
-  --danger-light: oklch(0.74 0.18 25 / 16%);
-  --muted: oklch(0.7 0.02 260);
-  --border: oklch(0.28 0.02 264);
-  --card: oklch(0.22 0.02 264);
-  --card-hover: oklch(0.26 0.022 264);
-  --surface: oklch(0.21 0.02 264);
-  --ring: oklch(0.78 0.16 270);
+  /* Deep warm-neutral ink — off the "compsci-blue" cliché. */
+  --background: #14161b;
+  --foreground: #e8e6e1;
+  --primary: #6e8cf5;
+  --primary-dark: #93a8f8;
+  --primary-light: rgba(110, 140, 245, 0.18);
+  --primary-fg: #ffffff;
+  --accent: #7e9bf7;
+  --success: #45b488;
+  --success-light: rgba(69, 180, 136, 0.16);
+  --warning: #e0922e;
+  --warning-light: rgba(224, 146, 46, 0.16);
+  --danger: #e26458;
+  --danger-light: rgba(226, 100, 88, 0.16);
+  --muted: #9a9fa9;
+  --border: #2a2d35;
+  --card: #1c1f26;
+  --card-hover: #23262f;
+  --surface: #181a20;
+  --ring: #93a8f8;
   --border-soft: color-mix(in oklch, var(--foreground) 10%, transparent);
   --border-strong: color-mix(in oklch, var(--foreground) 22%, transparent);
-  --hero-grad-from: oklch(0.18 0.02 264);
-  --hero-grad-via: oklch(0.21 0.03 270);
-  --hero-grad-to: oklch(0.18 0.02 264);
-  --hero-radial: oklch(0.68 0.19 270 / 12%);
+  --hero-grad-from: #14161b;
+  --hero-grad-via: #1a1d26;
+  --hero-grad-to: #14161b;
+  --hero-radial: rgba(110, 140, 245, 0.12);
   /* Dark-mode shadows are deeper black-tinted + a 1px inset white hint
      so cards "lift" off the ink canvas without reading as muddy. */
   --shadow-2xs-value: 0 1px 1px oklch(0 0 0 / 30%);
@@ -117,11 +116,20 @@
      then to system-ui. */
   --font-sans: var(--font-geist-sans), "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), "SF Mono", "Fira Code", monospace;
+  /* Serif for display headings (h1/h2) — the деловой-модерн accent. */
+  --font-serif: var(--font-source-serif), "Source Serif 4", Georgia, "Times New Roman", serif;
   /* Tighter heading tracking — Tailwind defaults are tuned for body
      copy; bumped headings need a hair of negative letter-spacing to
      read as deliberate display type. */
   --tracking-tight: -0.02em;
   --tracking-tighter: -0.03em;
+  /* Tightened radii — Tailwind's defaults (xl .75rem / 2xl 1rem) read
+     as the rounded "AI-template" look; pulled in so containers feel
+     composed rather than bubbly. */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
   /* Softer, more premium shadows. Tailwind 4 defaults are too high-
      contrast — they read as "Material" rather than "fine document".
      Light: a barely-there 1px hairline + a soft diffuse drop. Dark:
@@ -140,6 +148,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Display headings carry the serif — the деловой-модерн accent. */
+h1,
+h2 {
+  font-family: var(--font-serif);
 }
 
 /* Decorative hero gradient — wired to theme variables so it adapts in dark mode. */
@@ -391,6 +405,9 @@ select:focus-visible {
 .document-preview h2,
 .document-preview h3 {
   text-indent: 0;
+  /* Generated documents stay on their own Times serif — don't inherit
+     the app's display serif. */
+  font-family: inherit;
 }
 
 /* Document "page" wrapper — always white paper regardless of theme,

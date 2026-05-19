@@ -1,12 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Source_Serif_4 } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { SkipLink } from "@/components/skip-link";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { InstallPrompt } from "@/components/install-prompt";
 import { BRAND, CONTACTS } from "@/lib/legal-info";
 import "./globals.css";
+
+// Serif for display headings — the деловой-модерн accent. Source Serif 4
+// is a variable font with full Cyrillic coverage.
+const displaySerif = Source_Serif_4({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-source-serif",
+  display: "swap",
+});
 
 // metadataBase resolves all relative OG / canonical URLs throughout the
 // app to absolute ones — needed for valid Open Graph cards and for
@@ -51,8 +60,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b12" },
+    { media: "(prefers-color-scheme: light)", color: "#fbfaf8" },
+    { media: "(prefers-color-scheme: dark)", color: "#14161b" },
   ],
 };
 
@@ -103,7 +112,7 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
-      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${displaySerif.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
