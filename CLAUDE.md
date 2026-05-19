@@ -7,12 +7,14 @@
 
 ```
 Привет! Я работаю над Яксо — Russian legal-tech SaaS на Next.js 16 +
-Prisma + Neon Postgres. Проект большой (~120 коммитов): AI-анализ
+Prisma + Neon Postgres. Проект большой (~140 коммитов): AI-анализ
 договоров с verdict + apply-fix, генерация из 20 шаблонов с AI-доработкой,
 чат-юрист, проверка контрагентов, workspaces, биллинг через ЮKassa, 2FA,
 audit log, admin-панель, PostHog, dark mode + i18n provider + ⌘K, AccountMenu,
-onboarding, кастомные 404/500/OG, user-level план + триал. Production:
-https://yakso.ru. Все детали в CLAUDE.md в корне репозитория.
+onboarding, кастомные 404/500/OG, user-level план + триал, сеть между
+пользователями, установка как PWA, массовая проверка договоров, и
+платформенная оболочка «sidebar + page-header» на всех auth-страницах.
+Production: https://yakso.ru. Все детали в CLAUDE.md в корне репозитория.
 
 ПЕРВЫМ ДЕЛОМ:
 
@@ -87,10 +89,10 @@ invasive вариант + явная отметка что оставил под
 
 # Яксо — состояние проекта
 
-**Дата последнего обновления**: 2026-05-18 (после Sprint 11 — социальный слой + анти-абуз; ребрендинг ЮрИИст → Яксо; регистрация ИП; CI; hotfix Anthropic `temperature`)
+**Дата последнего обновления**: 2026-05-20 (после Sprint 12 — полный редизайн «деловой модерн»: 7 фаз 1A–1G + платформенная оболочка sidebar + page-header на всех auth-страницах; вставка текста для анализа; массовая проверка договоров; зачистка мёртвого кода; hotfix Gemini-фолбэка)
 **Production URL**: https://yakso.ru
 **Repo**: https://github.com/zzzz212/don
-**Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR)
+**Active branch**: `claude/sprint-8-ui-polish` (мерж в `main` через PR — PR #7)
 
 Russian legal-tech SaaS: AI-анализ договоров с verdict и per-risk apply-fix
 + 20 шаблонов генерации + AI-refine + чат-юрист + проверка контрагентов
@@ -108,7 +110,7 @@ Geist font / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus)
 с prompt caching. **Read `node_modules/next/dist/docs/`** перед изменением
 Next.js паттернов — это Next 16, не та Next.js что помнит твоё обучение.
 
-**Тесты**: 377 unit-тестов через vitest. `npm test`.
+**Тесты**: 389 unit-тестов через vitest. `npm test`.
 
 ---
 
@@ -356,32 +358,69 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 - Audit `auth.2fa_enabled` / `auth.2fa_disabled` с proofKind.
 
 ### UX foundation — `src/components/`
+
+**Платформенная оболочка (Sprint 12)** — двухколоночный shell на всех
+auth-страницах. Это не «сайт с навбаром», это полноценное приложение:
+- **`<AppShell>`** (`app-shell.tsx`) — корневой каркас auth-страниц.
+  Persistent left sidebar + content column + mobile top bar (только
+  ниже `lg`, с hamburger). Снизу `<Disclaimer />`. Все auth-страницы
+  начинаются с `<AppShell>…</AppShell>` (НЕ `<Header />` — `<Header>`
+  остался только для публичных: landing, /blog, /help, /sample-report,
+  /privacy/terms/offer, /pricing, /login/register/password-reset).
+- **`<Sidebar>`** (`sidebar.tsx`) — sticky 240px-колонка на `lg+`,
+  slide-in drawer ниже. Структура сверху вниз: Logo → OrgSwitcher →
+  6 nav-пунктов (Дашборд / Анализ / Шаблоны / Контрагенты / Чат /
+  Сеть) → AccountMenu + CommandPalette + ThemeToggle в нижней полке.
+  Drawer-overlay использует `bg-black/60` (НЕ `bg-foreground/40` —
+  тот инвертится в тёмной теме, foot-gun #43). Auto-close на смену
+  pathname; Escape закрывает.
+- **`<PageHeader>`** (`page-header.tsx`) — единая шапка контента:
+  `bg-card`-полоса с волосяной нижней границей, props `title`
+  (обязательно), `description?`, `eyebrow?`, `actions?` (правый
+  слот). Каждая `<AppShell>`-страница открывается этим компонентом —
+  единый «первый такт» вместо разнобоя back-links + икон-плашек +
+  bespoke-h1 в теле.
+
+**Дизайн-система «деловой модерн»**:
+- **Цвета** — hex-токены: глубокий синий `#2348C8` на тёплом off-white
+  `#FBFAF8`, чернила `#16202E`, волосяная граница `#E7E4DE`; тёмная
+  тема — тёплые чернила `#14161B`. color-mix borders
+  (`--border-soft`, `--border-strong`).
+- **Шрифты**: Geist (body) + Source Serif 4 (дисплейные `h1`/`h2`,
+  переменный, кириллица) — оба через next/font. Веса заголовков
+  `extrabold/bold` → `semibold` под serif. Theme-aware shadow scale.
+- **Айдентика**: компонент `<Logo>` — чернильная плашка с serif-«Я»,
+  авто-инверсия в тёмной теме. favicon/apple-icon/PWA-иконки/OG
+  перерисованы под этот знак.
+- **Примитивы**: `<Button>` / `buttonClass()` (5 размеров × 4 варианта)
+  и `<Badge>` (`tone` prop). `risk-badge` — обёртка над `<Badge>`.
+  «Таблетки» → `rounded-md`-чипы. Везде через токены, не hardcoded
+  tailwind цвета.
+
+**Прочие столпы**:
 - **Dark mode**: ThemeProvider (light/dark, system дефолт через
   prefers-color-scheme). Inline no-FOIT script в `<head>`. CSS
   variables в `:root` / `.dark`. Tailwind 4 `@custom-variant dark`.
 - **i18n infra** (RU/EN): I18nProvider, `messages.ts`, `useT()` хук.
   LanguageToggle убран из header (вернуть когда дозреем до EN-аудитории).
-- **Цвета** («деловой модерн», см. редизайн ниже): hex-токены —
-  глубокий синий `#2348C8` на тёплом off-white `#FBFAF8`, чернила
-  `#16202E`, волосяная граница `#E7E4DE`; тёмная тема — тёплые чернила
-  `#14161B`. color-mix borders (`--border-soft`, `--border-strong`).
-- **Шрифты**: Geist (body) + Source Serif 4 (дисплейные `h1`/`h2`,
-  переменный, кириллица) — оба через next/font. Theme-aware shadow scale.
 - **Motion** (motion/react v12): spring анимации на toast, OrgSwitcher
-  dropdown, mobile menu, refine modal, onboarding modal.
+  dropdown, mobile drawer, refine modal, onboarding modal.
 - **⌘K command palette** (`<CommandPalette>`): nav + actions + theme
-  toggle. j/k navigation, Enter/Esc.
+  toggle. j/k navigation, Enter/Esc. Открывается из sidebar-полки.
 - **AccountMenu**: avatar dropdown с профилем, planChip (тариф+триал),
-  links на billing/security/account/admin/logout.
+  links на billing/security/account/admin/logout. Живёт в sidebar
+  bottom-rail (на mobile — в top-bar).
 - **OrgSwitcher**: workspace pill + dropdown (Settings + Invite +
-  Create). Trial badge перенесён в AccountMenu (план — user-scoped).
+  Create + workspace-чат). Trial badge перенесён в AccountMenu (план —
+  user-scoped).
 - **InlineEdit** (`<InlineEdit value onSave variant maxLength />`):
   click pencil → input → Enter/blur save → Esc cancel. Используется
   для workspace name + doc title.
 - **OnboardingModal**: 3 illustrated карточки при первом login (once
   per browser, localStorage flag).
 - **Breadcrumbs**: home → ... → current. На /generated/[id]/versions
-  и /compare.
+  и /compare — добавляют doc-specific контекст, который sidebar дать
+  не может.
 - **Empty states**: bespoke inline SVG (Docs / Chat / Counterparty /
   Search). `<EmptyState illustration title description actions />`.
 - **Toast actions**: `toast.success("...", { action: { label, onClick } })`.
@@ -393,11 +432,16 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 - **Dynamic OG image** для landing (`app/opengraph-image.tsx`),
   Node.js runtime (не edge — Next 16 warning).
 - **Skeleton**: shimmer sweep вместо pulse (CSS keyframe в globals).
+- **Modal scrim** — везде `bg-black/60 backdrop-blur-md`, НЕ
+  `bg-foreground/40`. `--foreground` в тёмной теме светлый, и «затемняющий»
+  overlay становится «осветляющим» — содержимое под модалкой подсвечивается
+  вместо того чтобы уходить в фон. См. foot-gun #43.
 - **A11y**: `:focus-visible` rings (с opt-out для form fields),
   prefers-reduced-motion, skip-link, ARIA labels везде, useId для
-  htmlFor связей.
+  htmlFor связей. Mobile drawer — `role="dialog"`, Escape, focus-trap.
 - **Mobile-first**: hamburger 44px touch target, OrgSwitcher compact
-  на narrow, admin tables в overflow-x-auto с min-w-[640px].
+  на narrow, admin tables в overflow-x-auto с min-w-[640px], sidebar
+  → drawer ниже `lg`.
 
 ### Rate limit — `src/lib/rate-limit.ts`
 - Upstash Redis с in-memory fallback.
@@ -466,7 +510,133 @@ Next.js паттернов — это Next 16, не та Next.js что помн
 
 ## Полный список коммитов работы (новейшие сверху)
 
-### Sprint 11 — социальный слой + анти-абуз + ребрендинг (этот заход)
+### Sprint 12 — полный редизайн + платформенная оболочка (этот заход)
+
+Коммиты (новейшие сверху, ветка `claude/sprint-8-ui-polish`, PR #7,
+в `main` НЕ смержено):
+```
+1e133d6 Move billing, templates, version + share/profile detail onto PageHeader
+e31500a Move admin pages onto PageHeader
+d5e9c1c Move account, settings, referral, workspace chat, messages onto PageHeader
+b92422e Recompose /chat, /network, /deadlines, /compare-contracts onto PageHeader
+a73f0d4 Recompose /analyze, /templates, /counterparty, /bulk onto PageHeader
+2e6b736 Recompose /report onto PageHeader
+2e2b194 Roll AppShell out to every authenticated screen
+c8907c2 Fix dark-mode modal scrim + propagate AppShell to top pages
+a740061 Total redesign: platform shell + recomposed dashboard
+0a62f2b Update CLAUDE.md for the completed redesign
+04b5d36 Redesign 1F/1G: emails and app states
+2711c00 Redesign 1E (part 3): templates and counterparty screens
+178a4d0 Redesign 1E (part 2): dashboard and report screens
+fb90f7a Redesign 1E (part 1): analyze and bulk screens
+94b2986 Redesign 1D: landing page
+fc00c25 Redesign 1C: Button and Badge primitives
+a28c4ab Redesign 1B: brand identity
+ebde47c Redesign 1A: new "деловой модерн" design system
+4a45120 Fix counterparty risk score ignoring company status
+eca4691 Remove dead code: orphaned route, prompts, components, deps
+81844d2 Let users paste contract text on /analyze instead of a file
+e0bd1f2 Add bulk contract analysis (/bulk)
+6bd4bfd Tighten accessibility on the upload zone and two modals
+18869e0 Add unit tests for three more untested pure-logic modules
+c706097 Drop leftover debug logging; tie inline-edit error to its input
+489cded Add unit tests for five untested pure-logic modules
+ad4bd14 Convert schemas for Gemini instead of silently gutting them
+```
+
+Три волны работы в этом спринте:
+
+**1. Качественный долг и новые фичи (доводки до редизайна)**:
+- **Массовая проверка договоров `/bulk`** — клиентская оркестрация:
+  страница держит очередь файлов и шлёт по одному в существующий
+  `/api/analyze` (последовательно — само укладывается в rate-limit
+  10/мин и квоту; параллельно упрётся). Без нового API-роута / модели
+  БД. Кап `MAX_BULK_FILES = 20`. Чистый хелпер `src/lib/bulk.ts`
+  (`bulkFileError`) + тест. Результаты сохраняются как обычные
+  `Document` → видны в дашборде. Обнаружение — ссылка с `/analyze`
+  + пункт ⌘K (7-й пункт в hex-nav не добавляли — overflow).
+- **Вставка текста для анализа** — на `/analyze` переключатель
+  «Загрузить файл / Вставить текст». В режиме текста вставленное
+  оборачивается в `.txt`-`File` на клиенте и идёт через тот же
+  `/api/analyze` — бэкенд не менялся вообще. Гард `MIN_PASTE_LENGTH = 200`.
+- **Зачистка мёртвого кода (knip-аудит)**. Удалено: роут `/api/generate`
+  (AI-генерация ничем не вызывалась — документы идут детерминированно
+  через `generateContract()`); промпты `GENERATE_TEXT` / `GENERATE_DOCUMENT_SYSTEM`;
+  компоненты `count-up.tsx`, `status-pill.tsx`; email-шаблон
+  `inn-verification.ts`; backward-compat-шимы в `ai/client.ts`;
+  зависимости `class-variance-authority`, `dotenv`, `@types/diff`,
+  `@types/bcryptjs`. Knip оставляет ложные срабатывания (`public/sw.js`
+  — рантайм, `language-toggle.tsx` — задел) — оставлены.
+- **+13 unit-тестов** на чистые модули (`score-calibration`,
+  `tier-policy`, `contracts/numbers`, `contracts/clauses`, `ai/sse`,
+  `network`, `legal-info` launch-guard на foot-gun #20, `parsers`,
+  `bulk`, `schema-helpers`). 377 → 389.
+- **A11y-фиксы**: `upload-zone`, `refine-panel`, `public-share-button`
+  получили `aria-label`, `role="dialog"`, Escape.
+- **Counterparty risk-scoring** игнорировал статус компании
+  (LIQUIDATING/INACTIVE — давало 0). Добавлен «жёсткий» каркас оценки
+  по статусу + регресс-тест.
+- **Gemini-фолбэк фикс**: `toGeminiSchema` молча резал `oneOf` →
+  Gemini получал «массив чего угодно», zod валился. Теперь
+  конвертирует осмысленные ключи, дропает шум, на неизвестное —
+  `throw` (ловится fallback-цепочкой). Foot-gun #42.
+
+**2. Семь фаз дизайн-системы 1A–1G (коммиты `ebde47c…04b5d36`)**:
+- **1A** — палитра переписана с oklch/indigo на hex-токены
+  (`#2348C8` / `#FBFAF8` / `#16202E` / `#E7E4DE`), радиусы поджаты,
+  Source Serif 4 на h1/h2.
+- **1B** — компонент `<Logo>` (чернильная плашка с serif-«Я»,
+  авто-инверсия в тёмной теме); favicon/apple-icon/PWA/OG перерисованы.
+- **1C** — примитивы `<Button>`/`buttonClass` и `<Badge>` (`risk-badge`
+  стал обёрткой над `<Badge>`).
+- **1D** — landing page переверстан.
+- **1E** (3 коммита) — 6 экранов приложения (analyze, bulk, dashboard,
+  report, templates, counterparty) на систему кнопок.
+- **1F/1G** — единый email-layout + 404/500/empty-state.
+
+После 1G пользователь сказал прямо: «Главная страница осталась той же…
+мне нужен полный полный редизайн с сохранностью всех функций». 1A–1G
+оказалось пере-обивкой, а не пере-каркасом. → волна 3.
+
+**3. Платформенная оболочка (коммиты `a740061…1e133d6`)**:
+- **Новые компоненты**: `<AppShell>` (двухколоночный shell с persistent
+  sidebar), `<Sidebar>` (sticky 240px / mobile drawer, 6 nav-пунктов
+  + OrgSwitcher + bottom-rail), `<PageHeader>` (единая `bg-card`-полоса
+  с title/description/eyebrow/actions).
+- **`<Header>` теперь только публичный**: landing, /blog, /help,
+  /sample-report, /privacy, /terms, /offer, /pricing, /login, /register,
+  /password-reset. Все 27+ auth-страниц переведены на `<AppShell>`.
+- **Bulk migration**: 27 auth-страниц мигрированы perl + sed
+  (`<div min-h-full flex flex-col><Header /><main>…</main><Disclaimer />
+  </div>` → `<AppShell>…</AppShell>`). 3 outlier-страницы вручную
+  (`billing/page.tsx`, `billing/return/page.tsx`, `chat/page.tsx`).
+- **Modal scrim hotfix** (`c8907c2`): `bg-foreground/40 backdrop-blur-sm`
+  → `bg-black/60 backdrop-blur-md` в 5 модалках (command-palette,
+  onboarding-modal, refine-panel, send-for-review, sidebar drawer).
+  `--foreground` в тёмной теме светлый — overlay инвертился,
+  «затемняющий» эффект становился «осветляющим». Foot-gun #43.
+- **PageHeader migration**: 21 страница переведена на единый header-band.
+  Сохранили back-link только там, где он несёт смысл (Breadcrumbs на
+  `/generated/[id]/versions` и `/compare`, in-thread back-arrow на
+  `/network/messages/[id]`). Где «карточка-как-заголовок» (профиль
+  юзера, share-карточка) — back-link убран, но PageHeader не
+  добавлялся, чтобы избежать дублирования.
+- **Сознательно пропущены**:
+  - `/network/messages/[id]` — chat thread, back-arrow + counterpart-
+    аватар IS контекстный header, не page-chrome.
+  - `/billing/return` — transient post-payment screen, success card
+    серверует роль title-блока.
+  - `/admin/users/[id]` — email-карточка пользователя играет роль
+    заголовка (back-link удалён).
+
+**Результат**: каждая auth-страница теперь имеет одинаковую
+структурную подпись — sidebar слева, header-band сверху контента,
+тело страницы — это контент, а не смесь chrome и контента.
+`tsc --noEmit` / 389 тестов / `lint` / `next build` — зелёные.
+
+---
+
+### Sprint 11 — социальный слой + анти-абуз + ребрендинг
 Коммиты, новейшие сверху (ветка `claude/sprint-8-ui-polish`, PR #7, в `main` НЕ смержено):
 ```
 cd5d885 Stop sending `temperature` to Anthropic — current models reject it
@@ -776,6 +946,28 @@ bdc0e4c Hard-reload after workspace switch
     risks, synthesis. `refine-patch` идёт через `generateText` (без схемы) — там
     discriminated union безопасен. `toAnthropicSchema` ключи НЕ фильтрует.
 
+43. **Modal scrim — `bg-black/60`, НЕ `bg-foreground/40`.** Theme-aware
+    `--foreground` в светлой теме тёмный (`#16202E`), а в тёмной — светлый
+    (`#e8e6e1`). Получается: «затемняющий» overlay в тёмной теме становится
+    «осветляющим» — содержимое под модалкой не уходит в фон, а наоборот
+    подсвечивается светлым полупрозрачным слоем. Поэтому везде, где нужен
+    scrim модалки/дропа/дровера — фиксированный `bg-black/60` + `backdrop-blur-md`,
+    не theme-token. Затронуты: `command-palette`, `onboarding-modal`,
+    `refine-panel`, `send-for-review`, `sidebar` (mobile drawer). Чёрный
+    overlay 60% работает корректно в обеих темах.
+
+44. **Auth-страницы под `<AppShell>`, публичные — под `<Header>`.**
+    Это две разные хром-системы; смешивать на одной странице нельзя —
+    получится двойной header. `<AppShell>` имеет mobile top-bar и sidebar,
+    `<Header>` — горизонтальный навбар без sidebar. Правило: всё что под
+    auth-гейтом (dashboard, analyze, templates, counterparty, report,
+    generated, chat, network, settings, admin, billing, account, deadlines,
+    referral, workspace/chat, bulk, compare-contracts) → `<AppShell>`.
+    Всё публичное (landing, blog, help, sample-report, privacy/terms/offer,
+    pricing, login/register/password-reset) → `<Header>`. Каждая auth-страница
+    начинается с `<AppShell><PageHeader … />` — добавил новую страницу,
+    не забудь оба компонента.
+
 ---
 
 ## Как дебажить когда что-то не работает
@@ -1055,96 +1247,96 @@ GROUP BY model;
 
 ## Оперативный кэш (что свежо в голове у предыдущей сессии)
 
+- **Sprint 12 (полный редизайн + платформенная оболочка)** — закрыт
+  (этот заход, 2026-05-20). Три волны:
+  (1) Доводки: bulk-проверка `/bulk`, вставка текста на `/analyze`,
+  зачистка мёртвого кода (knip + ручная вычитка: удалён `/api/generate`,
+  4 deps, мёртвые компоненты и шимы), +13 тестов до 389, a11y-фиксы,
+  counterparty risk-scoring учитывает статус, Gemini-фолбэк не режет
+  `oneOf` (foot-gun #42).
+  (2) Семь фаз дизайн-системы 1A–1G — палитра/font/айдентика/примитивы/
+  лендинг/экраны/email-layout. Это был re-skin (палитра + шрифт + кнопки),
+  не re-architecture. Пользователь после 1G отчётливо сказал:
+  «Дашборд тот же, изменился только шрифт. Мне нужен полный полный
+  редизайн».
+  (3) Платформенная оболочка — новые компоненты `<AppShell>` /
+  `<Sidebar>` / `<PageHeader>`, `<Header>` остался только на публичных
+  страницах, 27+ auth-страниц мигрированы (perl-bulk + manual outliers),
+  modal scrim hotfix (foot-gun #43), 21 страница на PageHeader-band.
+  Результат: каждая auth-страница имеет одинаковую структурную подпись.
+  `tsc` / 389 тестов / `lint` / `next build` — зелёные. PR #7 НЕ смержен.
+- **Sprint 11 (социальный слой + анти-абуз + ребрендинг)** — закрыт.
+  10 фич (ИНН-привязка, слоистый анти-абуз, чат компании, роль VIEWER,
+  пересылка договоров в чаты, AI-напоминания, сравнение договоров,
+  публичные ссылки, рефералка) + ребрендинг в **Яксо** + регистрация ИП
+  + CI + security-ревью + hotfix Anthropic (foot-gun #41).
+- **Sprint 10 (сеть + PWA + доработки)** — закрыт. Cross-user network
+  (профили / связи / ревью договоров / личные сообщения), установка как
+  PWA, реальный ФССП-провайдер под `FSSP_AUTH_KEY`, поля `consequence` +
+  `balance` в анализе + `verifyRiskQuotes`, поиск по шаблонам, живой
+  предпросмотр генерации.
+- **Sprint 9 (revenue + retention + SEO)** — закрыт. Sample report +
+  blog с 9 cornerstone-статьями + /help FAQ + sitemap/robots/JSON-LD +
+  5-tier pricing + 152-ФЗ dual-consent + FREE→Haiku + lifecycle cron
+  (4 стадии писем).
 - **Sprint 8 (UI polish) и AI calibration** — закрыты. Dark mode + i18n + ⌘K + AccountMenu + onboarding + custom 404/500 + Geist + oklch + motion. Plan/trial переехали на User. Verdict UI добавлен. Apply-fix per-risk + inline edit готовы. Tier policy по action × plan. Cache_control на system + tool. Retry script на Neon cold-start.
-- **Sprint 9 (revenue + retention + SEO)** — закрыт. Sample report + blog scaffold с 9 cornerstone-статьями + /help FAQ + sitemap/robots/Organization-JSON-LD/FAQPage-JSON-LD/per-post-OG-images + 5-tier pricing + 152-ФЗ dual-consent + FREE→Haiku + legal-reference card в analyze prompts (~3-4К токенов закэшированных). **Lifecycle cron** с 4 стадиями: trial-expiring / trial-expired / inactive-14d / checkout-abandoned. Welcome email обновлён под бесплатный «Старт» (10 анализов вместо 3, без auto-trial). Admin backfill endpoint расширен до rename PRO → PRO_SOLO. Все 9 commit'ов запушены в claude/sprint-8-ui-polish.
-- **Sprint 10 (сеть + PWA + доработки)** — закрыт (этот заход).
-  Cross-user network (профили / связи / ревью договоров / личные
-  сообщения; rate-limit + Resend-уведомления), установка как PWA,
-  реальный ФССП-провайдер под `FSSP_AUTH_KEY`, поля `consequence` +
-  `balance` в анализе + `verifyRiskQuotes`, хотфикс креша дашборда
-  (`PLAN_META` без PRO_SOLO), фиксы мобильной вёрстки (онбординг был
-  невидим, дашборд уезжал вбок), поиск по шаблонам, живой предпросмотр
-  генерации, страница профиля коллеги. 15 коммитов в
-  `claude/sprint-8-ui-polish` — **в `main` НЕ смержено**.
-- **Запуск (следующий блок)** — ИП ✓ зарегистрировано. Осталось
-  user-side: ЮKassa (`YOOKASSA_SHOP_ID`/`_SECRET_KEY` + включить
-  B2B-платежи `b2b_sberbank` для проверки ИНН), уведомление в
-  Роскомнадзор (→ `OPERATOR.rknOperatorNumber`), подключить домен
-  `yakso.ru` к Vercel (A-запись `@` на IP Vercel), verify домена в
-  Resend, почтовый ящик (Яндекс 360). Затем — каналы привлечения.
-- **AI prompts** — после нескольких raunds tuning'a сейчас sweet spot: ~1.5k токенов system + 4k tool schema = ~5.5k кэшируемого префикса. Anthropic кэширует. Tone сбалансированный — "защищаю клиента, но не выдумываю риски".
-- **TRIAL_DAYS = 2.** Активация только через `/billing` (auto-trial при signup убран).
-- **Verdict UI говорит «уровень риска», не «рекомендация подписать»** (юр.ответственность).
-- **КАД — заглушка; ФССП — реальный провайдер под `FSSP_AUTH_KEY`** (без ключа работает заглушка). Не продавать «проверку контрагента» как ключевую фичу пока КАД не интегрирован.
-- **Vercel maxDuration = 300** на AI routes. Работает только на Pro plan ($20/мес). Hobby clamps to 60s.
-- **Neon cold-start** ловится retry-обёрткой в build script.
-- **Себе PRO выдать**: SQL в Neon → `UPDATE "User" SET plan = 'PRO', "trialEndsAt" = NULL WHERE email = 'твой@email';` → выход/вход для перевыпуска JWT.
-- **Backfill после plan-on-user миграции** (если ещё не сделан): `curl -X POST -H "x-admin-key:..." https://yakso.ru/api/admin/backfill-user-plan`.
-- **AI стоит $0.15-0.30 за анализ** на Sonnet, $0.02 на Haiku. Cache hit снижает input cost в ~3 раза. Track в Neon: `SELECT model, SUM("inputTokens"), SUM("cachedTokens"), SUM("outputTokens") FROM "AiUsage" WHERE feature = 'analyze' GROUP BY model;`.
-- **План user-scoped.** OWNER membership определяет какой User.plan применяется к workspace.
-- **Sprint 11 (социальный слой + анти-абуз + ребрендинг)** — закрыт (этот заход). ~19 коммитов в `claude/sprint-8-ui-polish`, открыт **PR #7** (база — `claude/complete-previous-tasks-rzcSp`, это и есть «main»), в `main` НЕ смержено. 10 фич (ИНН-привязка, слоистый анти-абуз, чат компании, роль VIEWER, пересылка договоров в чаты, AI-напоминания, сравнение договоров, публичные ссылки, рефералка) + ребрендинг в **Яксо** + регистрация ИП + CI + security-ревью + hotfix Anthropic. `lint` + `tsc` + 260 тестов + `build` — зелёные. Foot-guns #37–41.
-- **Ребрендинг ЮрИИст → Яксо.** Домен `yakso.ru` (куплен на SpaceWeb, DNS подключается к Vercel — A-запись `@` должна указывать на IP Vercel). Логотип — буквенный знак «Я». `BRAND.publicUrl = https://yakso.ru`: пока домен не подключён к Vercel, ссылки в письмах / OG / `/r/[token]` ведут на ещё не работающий адрес — подключить домен примерно при мерже PR.
-- **ИП зарегистрирован** — реквизиты в `legal-info.ts` (`OPERATOR`). Расчётного счёта пока нет (банковский блок оферты скрыт), RKN-номер не получен.
-- **Anthropic `temperature` убран** (foot-gun #41) — ломал `/api/analyze` в проде. Groq как фолбэк для analyze слаб (free-tier 12k TPM при запросе ~24k токенов) — при падении Anthropic подстраховки нет; стоит задать `GEMINI_API_KEY`.
-- **CI подключён** — GitHub Actions гоняет `lint`/`tsc`/`vitest`/`build` на каждый PR и пуш в main.
-- **Тесты — 377** (было 267). Полировочный заход добавил 8 тест-файлов на
-  непокрытые чистые модули: `score-calibration`, `tier-policy`,
-  `contracts/numbers`, `contracts/clauses`, `ai/sse`, `network`,
-  `legal-info` (launch-guard на foot-gun #20 — падает, если `OPERATOR`
-  откатится в плейсхолдеры), `parsers`. Плюс зачистка оставшихся
-  debug-`console.log` (dadata + counterparty-роут) и `aria-describedby`
-  в inline-edit. Затем a11y-фиксы (`upload-zone`, `refine-panel`,
-  `public-share-button` — `aria-label`, `role="dialog"`, Escape) и
-  фича массовой проверки (`bulk.test.ts`, +8). Production-логику не
-  ломали.
-- **Массовая проверка договоров (`/bulk`)** — клиентская оркестрация:
-  страница держит очередь файлов и шлёт их по одному в существующий
-  `/api/analyze` (последовательно — само укладывается в rate-limit
-  10/мин и квоту; параллельно — упрётся). Без нового API-роута и модели
-  БД. Кап `MAX_BULK_FILES = 20` (50 последовательных = 30+ мин с
-  открытой вкладкой). Чистый хелпер `src/lib/bulk.ts` (`bulkFileError`)
-  + тест. Результаты сохраняются как обычные `Document` → видны в
-  дашборде. Обнаружение — ссылка с `/analyze` и пункт ⌘K (в хедер-навигацию
-  7-й пункт не добавляли — foot-gun overflow).
-- **Вставка текста для анализа** — на `/analyze` переключатель «Загрузить
-  файл / Вставить текст». В режиме текста вставленное оборачивается в
-  `.txt`-`File` на клиенте и идёт через тот же `/api/analyze` — бэкенд
-  не менялся вообще. Гард `MIN_PASTE_LENGTH = 200`.
-- **Зачистка мёртвого кода (этот заход).** knip-аудит + ручная вычитка
-  (knip даёт и ложные срабатывания: `public/sw.js` грузится рантаймом —
-  оставлен; `language-toggle.tsx` помечен в CLAUDE.md как задел под
-  EN-аудиторию — оставлен). Удалено: роут `/api/generate` (AI-генерация
-  ничем не вызывалась — документы идут детерминированно через
-  `generateContract()` + `/api/generated`); промпты `GENERATE_TEXT` /
-  `GENERATE_DOCUMENT_SYSTEM` и два мёртвых алиаса в `prompts.ts`;
-  компоненты `count-up.tsx`, `status-pill.tsx` (нигде не рендерились);
-  email-шаблон `inn-verification.ts` (флоу проверки ИНН по выписке убран
-  в Sprint 11); блок backward-compat-шимов в `ai/client.ts` (`generateAI` /
-  `chatAI` / `Legacy*` + осиротевший `chat()`); зависимости
-  `class-variance-authority`, `dotenv`, `@types/diff`, `@types/bcryptjs`
-  (`bcryptjs`/`diff` поставляют собственные типы). `tsc` / 377 тестов /
-  `lint` / `build` — зелёные.
-- **Полный редизайн «деловой модерн» (этот заход).** 7 фаз, по коммиту
-  на фазу в `claude/sprint-8-ui-polish`. 1A — дизайн-система: палитра
-  переписана с дефолтного indigo/oklch на hex-токены (синий `#2348C8`,
-  тёплый off-white `#FBFAF8`, чернила `#16202E`), радиусы поджаты, Source
-  Serif 4 на `h1`/`h2`. 1B — айдентика: знак «буква в ярком боксе» →
-  чернильная плашка с serif-«Я» (компонент `<Logo>`, авто-инверсия в
-  тёмной теме); favicon/apple-icon/PWA/OG перерисованы. 1C — примитивы
-  `<Button>`/`buttonClass` и `<Badge>` (`risk-badge` стал обёрткой над
-  `<Badge>`). 1D — лендинг. 1E — 6 экранов приложения (analyze, bulk,
-  dashboard, report, templates, counterparty) на систему кнопок. 1F/1G —
-  единый email-layout под палитру + 404/500/empty-state. Везде: веса
-  заголовков `extrabold/bold` → `semibold` под serif, «таблетки» →
-  `rounded-md`-чипы, уход от захардкоженных tailwind-цветов к токенам.
-- **Trek A (код-долги, этот заход)** — аудит трёх пунктов. (1) Hard cap PRO
-  100/мес — уже стоял в `plans.ts` (roadmap-чекбокс был устаревший, поправлен).
-  (2) Plan-lookup аудит (foot-gun #33) — чисто: каждый `MAP[plan]` либо с
-  `?? fallback`, либо exhaustive `Record<Plan,…>` по типобезопасному ключу.
-  (3) Gemini-фолбэк: `cleanForGemini` молча резал `oneOf` → почини́л (foot-gun
-  #42 + регресс-тест `schema-helpers.test.ts`). Установка `GEMINI_API_KEY` —
-  по-прежнему user-side: без неё при падении Anthropic фолбэк только на слабый
-  Groq.
+
+### Что осталось user-side до запуска
+
+- **Запуск** — ИП ✓ зарегистрировано (реквизиты в `legal-info.ts`).
+  Осталось:
+  - ЮKassa: получить `YOOKASSA_SHOP_ID`/`_SECRET_KEY`, включить
+    B2B-платежи `b2b_sberbank` для будущей проверки ИНН.
+  - Уведомление в Роскомнадзор → положить полученный номер в
+    `OPERATOR.rknOperatorNumber`.
+  - Подключить домен `yakso.ru` к Vercel (A-запись `@` на IP Vercel).
+    Пока домен не подключён, ссылки в письмах / OG / `/r/[token]`
+    ведут на адрес, отвечающий 404.
+  - Verify домена в Resend → переключить welcome/password-reset на
+    реальную доставку.
+  - Открыть расчётный счёт ИП → заполнить `OPERATOR.bank*` (тогда
+    раскроется банковский блок оферты).
+  - Каналы привлечения (см. roadmap, Неделя 3).
+- **PR #7** (база — `claude/complete-previous-tasks-rzcSp`, это и есть
+  «main») открыт, в `main` НЕ смержен. После merge — auto-deploy на
+  Vercel.
+
+### Операционные напоминания
+
+- **AI prompts** — sweet spot: ~1.5k токенов system + 4k tool schema =
+  ~5.5k кэшируемого префикса. Anthropic кэширует, TTL 5 минут. Tone
+  сбалансированный — «защищаю клиента, но не выдумываю риски».
+- **TRIAL_DAYS = 2.** Активация только через `/billing` (auto-trial
+  при signup убран). One trial per user lifetime.
+- **Verdict UI говорит «уровень риска», не «рекомендация подписать»**
+  (юр.ответственность). Не возвращай императив.
+- **КАД — заглушка; ФССП — реальный провайдер под `FSSP_AUTH_KEY`**
+  (без ключа работает заглушка). Не продавать «проверку контрагента»
+  как ключевую фичу пока КАД не интегрирован.
+- **Vercel maxDuration = 300** на AI routes. Работает только на Pro
+  plan ($20/мес). Hobby clamps to 60s.
+- **Neon cold-start** ловится retry-обёрткой в build script
+  (`scripts/db-push-with-retry.mjs`).
+- **Себе PRO выдать**: SQL в Neon →
+  `UPDATE "User" SET plan = 'PRO', "trialEndsAt" = NULL WHERE email = 'твой@email';`
+  → выход/вход для перевыпуска JWT.
+- **Backfill после plan-on-user миграции** (если ещё не сделан):
+  `curl -X POST -H "x-admin-key:..." https://yakso.ru/api/admin/backfill-user-plan`.
+- **AI стоит $0.15–0.30 за анализ** на Sonnet, $0.02 на Haiku.
+  Cache hit снижает input cost в ~3 раза. Track в Neon:
+  `SELECT model, SUM("inputTokens"), SUM("cachedTokens"), SUM("outputTokens") FROM "AiUsage" WHERE feature = 'analyze' GROUP BY model;`.
+- **План user-scoped.** OWNER membership определяет какой User.plan
+  применяется к workspace. Не пиши в Organization.plan напрямую —
+  он только legacy mirror.
+- **Anthropic без `GEMINI_API_KEY` опасен** — при падении Anthropic
+  Groq не вытягивает analyze по TPM-лимиту (12k free vs ~24k нужно).
+  Поставь Gemini key хотя бы как страховку.
+- **CI** — GitHub Actions гоняет `lint` / `tsc --noEmit` / `vitest` /
+  `next build` на каждый PR и пуш в `main` (`.github/workflows/ci.yml`).
+- **Тесты — 389.** Перед commit: `npx tsc --noEmit && npm test`.
+  Перед push: `npx next build`
+  (нужен `DATABASE_URL="postgresql://x:y@localhost:5432/db"
+   AUTH_SECRET="build-check-only-not-a-real-secret"` для локальной проверки).
 
 ---
 
