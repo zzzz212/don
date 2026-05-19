@@ -14,7 +14,7 @@
 // The route emits a "mode" SSE event at the start of each path so this
 // panel knows which UI state to show.
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   Sparkles,
@@ -65,8 +65,10 @@ export function RefinePanel({
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const toast = useToast();
+  const titleId = useId();
+  const fieldId = useId();
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setInstruction("");
     setPhase("idle");
     setStreamedText("");
@@ -76,14 +78,25 @@ export function RefinePanel({
       abortRef.current.abort();
       abortRef.current = null;
     }
-  };
+  }, []);
 
-  const close = () => {
+  const close = useCallback(() => {
     reset();
     setOpen(false);
-  };
+  }, [reset]);
 
   const isWorking = phase === "patch-running" || phase === "regen-streaming";
+
+  // Escape closes the modal — but not mid-operation, matching the
+  // disabled state of the header close button.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isWorking) close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, isWorking, close]);
 
   const handleStop = () => {
     abortRef.current?.abort();
@@ -218,6 +231,9 @@ export function RefinePanel({
       className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 backdrop-blur-sm px-4 py-6 sm:items-center"
     >
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.97 }}
@@ -231,7 +247,10 @@ export function RefinePanel({
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">
+              <h2
+                id={titleId}
+                className="text-base font-bold text-foreground"
+              >
                 Доработать документ AI
               </h2>
               <p className="text-xs text-muted">
@@ -255,10 +274,14 @@ export function RefinePanel({
           {phase === "idle" && (
             <>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                <label
+                  htmlFor={fieldId}
+                  className="mb-1.5 block text-sm font-medium text-foreground"
+                >
                   Что нужно изменить?
                 </label>
                 <textarea
+                  id={fieldId}
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   rows={4}

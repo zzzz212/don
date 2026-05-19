@@ -3,7 +3,7 @@
 // "Share by link" action on the analysis report. Creates / shows /
 // revokes a public read-only link to the contract's analysis.
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Share2, Loader2, X, Copy, Check, Link2Off } from "lucide-react";
 
 interface ShareLink {
@@ -18,6 +18,17 @@ export function PublicShareButton({ documentId }: { documentId: string }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+
+  // Escape closes the modal unless a request is in flight.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, busy]);
 
   function openModal() {
     setOpen(true);
@@ -94,11 +105,17 @@ export function PublicShareButton({ documentId }: { documentId: string }) {
           onClick={() => !busy && setOpen(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
             className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between">
-              <h2 className="text-base font-bold text-foreground">
+              <h2
+                id={titleId}
+                className="text-base font-bold text-foreground"
+              >
                 Публичная ссылка на заключение
               </h2>
               <button
