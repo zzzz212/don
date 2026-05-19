@@ -110,8 +110,6 @@ export async function fetchFromDaData(inn: string): Promise<DaDataCompany | null
     return null;
   }
 
-  console.log(`[DaData] Fetching data for INN ${inn}...`);
-
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -189,7 +187,6 @@ export async function fetchFromDaData(inn: string): Promise<DaDataCompany | null
       organizationType: party.opf?.short,
     };
 
-    console.log(`[DaData] Found: ${result.name} (${result.status})`);
     return result;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {

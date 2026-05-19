@@ -28,9 +28,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid INN format" }, { status: 400 });
     }
 
-    console.log(`[Counterparty] Checking INN ${inn} (forceRefresh=${!!forceRefresh})`);
-    console.log(`[Counterparty] DADATA_API_KEY=${process.env.DADATA_API_KEY ? "SET" : "NOT SET"}, DADATA_SECRET_KEY=${process.env.DADATA_SECRET_KEY ? "SET" : "NOT SET"}`);
-
     // Check if profile exists and is fresh (< 30 days)
     let profile = await prisma.counterpartyProfile.findUnique({
       where: { inn },
@@ -42,8 +39,6 @@ export async function POST(request: Request) {
       profile.dataSource === "mock" ||
       (profile.lastUpdated &&
         Date.now() - profile.lastUpdated.getTime() > 30 * 24 * 60 * 60 * 1000);
-
-    console.log(`[Counterparty] Profile found=${!!profile}, dataSource=${profile?.dataSource || "none"}, isStale=${isStale}`);
 
     if (isStale) {
       // Fetch fresh data from external sources
@@ -206,8 +201,6 @@ export async function POST(request: Request) {
       debtSources: JSON.parse(profile.debtSources),
       riskFactors: JSON.parse(profile.riskFactors),
     };
-
-    console.log(`[Counterparty] Response: name="${responseProfile.name}", source=${responseProfile.dataSource}, status=${responseProfile.statusCode}`);
 
     void captureEvent({
       userId: session?.user?.id ?? null,

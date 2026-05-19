@@ -43,6 +43,7 @@ export function InlineEdit({
   editLabel = "Редактировать",
 }: Props) {
   const inputId = useId();
+  const errorId = `${inputId}-error`;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -131,6 +132,7 @@ export function InlineEdit({
             disabled={saving}
             maxLength={maxLength + 10}
             aria-invalid={Boolean(error) || undefined}
+            aria-describedby={error ? errorId : undefined}
             className={cn(
               "rounded-lg border border-border bg-card px-2 py-1 text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60",
               VARIANT_CLASSES[variant]
@@ -144,7 +146,7 @@ export function InlineEdit({
           )}
         </div>
         {error && (
-          <p role="alert" className="mt-1 text-xs text-danger">
+          <p id={errorId} role="alert" className="mt-1 text-xs text-danger">
             {error}
           </p>
         )}
