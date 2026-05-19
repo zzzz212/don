@@ -9,6 +9,7 @@ import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import { SendForReview } from "@/components/send-for-review";
 import { DeadlineScanButton } from "@/components/deadline-scan-button";
 import { PublicShareButton } from "@/components/public-share-button";
+import { buttonClass } from "@/components/button";
 import {
   ArrowLeft,
   FileText,
@@ -279,16 +280,13 @@ export default function ReportPage({
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto px-4">
             <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-            <h2 className="text-lg font-bold text-foreground mb-2">
+            <h2 className="text-lg font-semibold text-foreground mb-2">
               Отчёт не найден
             </h2>
             <p className="text-muted mb-6">
               {error || "Результат анализа не найден."}
             </p>
-            <Link
-              href="/analyze"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-            >
+            <Link href="/analyze" className={buttonClass()}>
               Загрузить документ
             </Link>
           </div>
@@ -324,7 +322,7 @@ export default function ReportPage({
               {analysis.hasOriginal && (
                 <button
                   onClick={handleDownloadOriginal}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className={buttonClass({ variant: "secondary", size: "sm" })}
                   title="Скачать оригинальный загруженный файл"
                 >
                   <FileImage className="h-4 w-4" />
@@ -335,7 +333,7 @@ export default function ReportPage({
                 <button
                   onClick={handleReanalyze}
                   disabled={reanalyzing}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  className={buttonClass({ variant: "secondary", size: "sm" })}
                   title="Запустить анализ заново — например, после обновления AI-модели"
                 >
                   {reanalyzing ? (
@@ -381,7 +379,7 @@ export default function ReportPage({
               </button>
               <Link
                 href="/analyze"
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                className={buttonClass({ variant: "secondary", size: "sm" })}
               >
                 Анализировать ещё
               </Link>
@@ -411,7 +409,7 @@ export default function ReportPage({
               <div className="flex-1 text-center sm:text-left">
                 <div className="mb-2 flex items-center justify-center gap-2 sm:justify-start">
                   <FileText className="h-5 w-5 text-muted" />
-                  <h1 className="text-lg font-bold text-foreground">
+                  <h1 className="text-lg font-semibold text-foreground">
                     {analysis.fileName}
                   </h1>
                 </div>
@@ -633,7 +631,7 @@ export default function ReportPage({
 
           {/* Risk cards */}
           <div className="mt-6 space-y-4">
-            <h2 className="text-lg font-bold text-foreground">
+            <h2 className="text-lg font-semibold text-foreground">
               Обнаруженные риски
             </h2>
             {analysis.risks.map((risk, i) => {
@@ -718,7 +716,7 @@ export default function ReportPage({
             <div className="mt-6 rounded-xl border border-warning/30 bg-warning-light/50 p-5">
               <div className="mb-3 flex items-center gap-2">
                 <ListChecks className="h-5 w-5 text-warning" />
-                <h2 className="text-lg font-bold text-foreground">
+                <h2 className="text-lg font-semibold text-foreground">
                   Что добавить в договор
                 </h2>
               </div>
@@ -745,7 +743,7 @@ export default function ReportPage({
               <div className="mt-6 rounded-xl border border-primary/20 bg-primary-light/20 p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <ClipboardCheck className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-bold text-foreground">
+                  <h2 className="text-lg font-semibold text-foreground">
                     Чек-лист перед подписанием
                   </h2>
                 </div>
@@ -773,10 +771,7 @@ export default function ReportPage({
             <p className="font-semibold text-foreground">
               Хотите проверить ещё один договор?
             </p>
-            <Link
-              href="/analyze"
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-            >
+            <Link href="/analyze" className={buttonClass({ className: "mt-4" })}>
               Загрузить новый договор
             </Link>
           </div>

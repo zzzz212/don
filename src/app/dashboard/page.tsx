@@ -9,6 +9,7 @@ import { UsageWidget } from "@/components/usage-widget";
 import { DocumentSearchBar } from "@/components/document-search-bar";
 import { DocumentRowSkeleton } from "@/components/skeleton";
 import { useToast } from "@/components/toast";
+import { buttonClass } from "@/components/button";
 import {
   EmptyState,
   DocsEmptyIllustration,
@@ -271,7 +272,7 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Дашборд</h1>
+              <h1 className="text-2xl font-semibold text-foreground">Дашборд</h1>
               <p className="mt-1 text-sm text-muted">
                 Обзор ваших документов и анализов
               </p>
@@ -279,14 +280,17 @@ export default function DashboardPage() {
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Link
                 href="/templates"
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface sm:flex-none"
+                className={buttonClass({
+                  variant: "secondary",
+                  className: "flex-1 sm:flex-none",
+                })}
               >
                 <FolderOpen className="h-4 w-4" aria-hidden="true" />
                 Шаблоны
               </Link>
               <Link
                 href="/analyze"
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark sm:flex-none"
+                className={buttonClass({ className: "flex-1 sm:flex-none" })}
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Новый анализ
@@ -318,7 +322,7 @@ export default function DashboardPage() {
                     <stat.icon className={`h-5 w-5 ${stat.color}`} />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">
+                    <p className="text-2xl font-semibold text-foreground">
                       {stat.value}
                     </p>
                     <p className="text-xs text-muted">{stat.label}</p>
@@ -378,21 +382,21 @@ export default function DashboardPage() {
                     <>
                       <Link
                         href="/analyze"
-                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark"
+                        className={buttonClass()}
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />
                         Анализировать договор
                       </Link>
                       <Link
                         href="/sample-report"
-                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                        className={buttonClass({ variant: "secondary" })}
                       >
                         <FileText className="h-4 w-4" aria-hidden="true" />
                         Посмотреть пример отчёта
                       </Link>
                       <Link
                         href="/chat"
-                        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                        className={buttonClass({ variant: "secondary" })}
                       >
                         <MessageCircle className="h-4 w-4" aria-hidden="true" />
                         Спросить AI-юриста
