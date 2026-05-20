@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Logo size={44} wordmark="Яксо" />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
+          <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-foreground">
             Восстановление пароля
           </h1>
           <p className="mt-2 text-sm text-muted">

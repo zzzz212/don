@@ -53,11 +53,13 @@ export function LegalPageShell({
                 ← На главную
               </Link>
             </p>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               {title}
             </h1>
             {description && (
-              <p className="mt-3 text-base text-muted">{description}</p>
+              <p className="mt-4 text-lg leading-relaxed text-foreground/70">
+                {description}
+              </p>
             )}
             <p className="mt-4 text-sm text-muted">
               Дата вступления в силу: {formatDate(effectiveDate)}

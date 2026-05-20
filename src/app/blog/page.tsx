@@ -40,14 +40,14 @@ export default function BlogIndexPage() {
       <Header />
       <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-          <header className="mb-10">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+          <header className="mb-12">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
               Журнал
             </p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Разборы договоров под право РФ
             </h1>
-            <p className="mt-3 text-base leading-relaxed text-muted">
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-foreground/70">
               Без воды. По каждой теме — статьи ГК и ППВС, реальные суммы
               и сроки, формулировки, которые работают в суде. Каждая
               статья содержит ссылки на конкретные пункты, которые проверяет
@@ -74,7 +74,7 @@ export default function BlogIndexPage() {
                     {post.readingTimeMin} мин
                   </span>
                 </div>
-                <h2 className="text-xl font-bold tracking-tight text-foreground group-hover:text-primary sm:text-2xl">
+                <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl">
                   {post.title}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted">

@@ -56,14 +56,16 @@ const iconMap: Record<string, typeof Shield> = {
 
 // Category palette uses semantic tokens (theme-aware) where possible and
 // raw Tailwind hues with explicit dark variants where the design needs
-// distinct accents that don't map onto success/warning/primary.
+// distinct accents that don't map onto success/warning/primary. Hues
+// chosen to harmonise with the cream canvas: stone for muted, teal as
+// the cool complement of terracotta, dusty rose for kadry.
 const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
-  "Конфиденциальность": { bg: "bg-purple-50 dark:bg-purple-500/15", text: "text-purple-700 dark:text-purple-300", border: "border-purple-200 dark:border-purple-500/30" },
+  "Конфиденциальность": { bg: "bg-stone-100 dark:bg-stone-500/15", text: "text-stone-700 dark:text-stone-300", border: "border-stone-300 dark:border-stone-500/30" },
   "Недвижимость": { bg: "bg-primary-light", text: "text-primary-dark", border: "border-primary/30" },
   "Торговля": { bg: "bg-success-light", text: "text-success", border: "border-success/30" },
-  "Финансы": { bg: "bg-indigo-50 dark:bg-indigo-500/15", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-500/30" },
+  "Финансы": { bg: "bg-teal-50 dark:bg-teal-500/15", text: "text-teal-700 dark:text-teal-300", border: "border-teal-200 dark:border-teal-500/30" },
   "Услуги": { bg: "bg-warning-light", text: "text-warning", border: "border-warning/30" },
-  "Кадры": { bg: "bg-rose-50 dark:bg-rose-500/15", text: "text-rose-700 dark:text-rose-300", border: "border-rose-200 dark:border-rose-500/30" },
+  "Кадры": { bg: "bg-rose-50 dark:bg-rose-500/15", text: "text-rose-800 dark:text-rose-300", border: "border-rose-200 dark:border-rose-500/30" },
   "Документооборот": { bg: "bg-surface", text: "text-foreground", border: "border-border" },
 };
 

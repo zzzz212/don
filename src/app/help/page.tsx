@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { BRAND, CONTACTS } from "@/lib/legal-info";
-import { ChevronDown, HelpCircle, ArrowRight, Mail } from "lucide-react";
+import { ChevronDown, ArrowRight, Mail } from "lucide-react";
 
 // Public-facing FAQ. Two goals:
 //   1. SEO — captures the "как X в договоре" / "что такое Y" long-tail
@@ -382,19 +382,19 @@ export default function HelpPage() {
       <Header />
       <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-          <header className="mb-10 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-light text-primary">
-              <HelpCircle className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+          <header className="mb-12">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+              Справочник
+            </p>
+            <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Частые вопросы
             </h1>
-            <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-muted">
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-foreground/70">
               Прямые ответы. Без маркетинговых формулировок. Не нашли свой
               вопрос — напишите на{" "}
               <a
                 href={`mailto:${CONTACTS.support}`}
-                className="font-medium text-primary hover:underline"
+                className="font-semibold text-primary hover:underline"
               >
                 {CONTACTS.support}
               </a>

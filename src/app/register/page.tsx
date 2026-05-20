@@ -154,11 +154,11 @@ export default function RegisterPage() {
           <Link href="/" className="inline-flex items-center gap-2.5">
             <Logo size={44} wordmark="Яксо" />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
-            Создайте аккаунт
+          <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-foreground">
+            Заведите аккаунт
           </h1>
           <p className="mt-2 text-sm text-muted">
-            3 бесплатных анализа договоров каждый месяц
+            Десять проверок договоров в месяц — бесплатно. Без карты.
           </p>
         </div>
 

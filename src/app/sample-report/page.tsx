@@ -245,25 +245,26 @@ export default function SampleReportPage() {
             </div>
           </div>
 
-          {/* Bottom CTA. Anyone who scrolled this far has high intent —
-              don't make them scroll back up to the top CTA banner. */}
-          <section className="mt-12 rounded-3xl bg-gradient-to-br from-primary to-blue-700 px-6 py-12 text-center text-white shadow-xl shadow-primary/20 sm:px-10">
-            <h2 className="text-2xl font-bold sm:text-3xl">
-              Запустите такой же анализ для своего договора
+          {/* Bottom CTA — warm-ink slab matching the landing's final
+              CTA pattern. Anyone who scrolled this far has high intent;
+              don't make them scroll back up to the top banner. */}
+          <section className="mt-12 rounded-3xl bg-foreground px-6 py-12 text-center sm:px-10">
+            <h2 className="font-serif text-2xl font-semibold tracking-tight text-background sm:text-3xl">
+              Загрузите свой договор — получите такой же отчёт
             </h2>
-            <p className="mx-auto mt-3 max-w-xl text-base text-blue-100">
-              PDF или DOCX. Через 30–60 секунд — отчёт со ссылками на статьи ГК
-              и готовыми формулировками правок. 10 анализов в месяц бесплатно,
-              без привязки карты.
+            <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-background/70">
+              PDF или DOCX. Через 30–60 секунд — со ссылками на статьи ГК и
+              готовыми формулировками правок. Десять проверок в месяц —
+              бесплатно, без карты.
             </p>
             <Link
               href="/analyze"
-              className="mt-7 inline-flex items-center gap-2 rounded-xl bg-white px-7 py-3 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50"
+              className="mt-7 inline-flex items-center gap-2 rounded-lg bg-background px-7 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-card"
             >
-              Загрузить свой договор
+              Загрузить договор
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <p className="mt-4 text-xs text-blue-100/70">
+            <p className="mt-4 text-xs text-background/55">
               Без регистрации — сразу анализ. Регистрация нужна только чтобы
               сохранить историю и применять правки.
             </p>
