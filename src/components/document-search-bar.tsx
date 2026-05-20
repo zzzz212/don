@@ -128,7 +128,7 @@ export function DocumentSearchBar() {
             <span className="flex items-center gap-1.5 text-muted">
               {data.mode === "semantic" ? (
                 <>
-                  <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
                   Семантический поиск
                 </>
               ) : (
@@ -190,7 +190,7 @@ export function DocumentSearchBar() {
                       <div className="flex shrink-0 flex-col items-end gap-1">
                         {typeof hit.similarity === "number" && (
                           <span
-                            className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700"
+                            className="rounded-md bg-primary-light px-1.5 py-0.5 text-[10px] font-bold text-primary-dark"
                             title={`Релевантность: ${hit.similarity.toFixed(3)}`}
                           >
                             {Math.round(hit.similarity * 100)}%

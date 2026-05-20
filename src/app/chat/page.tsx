@@ -529,8 +529,8 @@ export default function ChatPage() {
                       )}
                     >
                       {message.role === "assistant" && (
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-700 mt-1">
-                          <Scale className="h-4 w-4 text-white" />
+                        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary">
+                          <Scale className="h-4 w-4 text-primary-fg" />
                         </div>
                       )}
                       <div

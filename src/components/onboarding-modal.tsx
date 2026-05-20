@@ -115,7 +115,7 @@ export function OnboardingModal() {
               </p>
               <h2
                 id="onboarding-heading"
-                className="mt-2 text-2xl font-extrabold tracking-tight text-foreground"
+                className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground"
               >
                 Что в Яксо можно сделать
               </h2>

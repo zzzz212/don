@@ -422,24 +422,24 @@ export default function BillingPage() {
                       className={`relative rounded-2xl border bg-card p-6 ${popular ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary" : "border-border"}`}
                     >
                       {popular && (
-                        <div className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
-                          Популярный
+                        <div className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-fg">
+                          Рекомендуем
                         </div>
                       )}
-                      <h3 className="text-lg font-bold text-foreground">
+                      <h3 className="font-serif text-lg font-semibold text-foreground">
                         {PLAN_LABEL[plan]}
                       </h3>
                       <p className="mt-1 text-sm text-muted">
                         {PLAN_DESCRIPTION[plan]}
                       </p>
-                      <div className="mt-4">
-                        <span className="text-3xl font-extrabold text-foreground">
+                      <div className="mt-4 flex items-baseline gap-1">
+                        <span className="font-serif text-3xl font-semibold text-foreground">
                           {new Intl.NumberFormat("ru-RU").format(
                             PLAN_PRICE_RUB[plan]
                           )}{" "}
                           ₽
                         </span>
-                        <span className="text-muted"> / мес</span>
+                        <span className="text-sm text-muted"> / мес</span>
                       </div>
                       <ul className="mt-5 space-y-2">
                         {PLAN_FEATURES[plan].map((f) => (

@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 type Variant = "h1" | "h2" | "body";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  h1: "text-2xl font-extrabold tracking-tight sm:text-3xl",
-  h2: "text-xl font-bold",
+  h1: "font-serif text-2xl font-semibold tracking-tight sm:text-3xl",
+  h2: "font-serif text-xl font-semibold",
   body: "text-base",
 };
 

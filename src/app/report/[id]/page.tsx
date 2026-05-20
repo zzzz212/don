@@ -428,7 +428,7 @@ export default function ReportPage({
                     )}
                     {analysis.usedOcr && (
                       <span
-                        className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-surface px-2.5 py-1 text-xs font-semibold text-foreground"
                         title="Текст распознан со скана через Yandex Vision OCR"
                       >
                         <FileImage className="h-3 w-3" />
