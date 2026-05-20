@@ -87,12 +87,13 @@ NEXT.JS 16 (НЕ та Next.js что помнит твоё обучение):
 
 # Яксо — состояние проекта
 
-**Дата последнего обновления**: 2026-05-20 (после Sprint 12 — полный
-редизайн «деловой модерн» 7 фаз + платформенная оболочка sidebar +
-page-header на всех auth-страницах; вставка текста для анализа; массовая
-проверка договоров; зачистка мёртвого кода; hotfix Gemini-фолбэка;
-overflow-меню на /report и /generated/[id]; WCAG focus-trap на mobile
-drawer; Escape close на всех dropdown'ах).
+**Дата последнего обновления**: 2026-05-21 (после Sprint 13 — переход
+от «делового модерна» к «тёплому минимализму»: cream-палитра + terracotta
+primary + warm-ink + warm-сепия тени; полная переписка лендинга
+структурой и тоном — split-hero с live sample-card, новая копия, snесли
+fake-stats и feature-dump'ы; прокидка по 27 auth-экранам через токены +
+PageHeader; brand-chrome favicon/PWA/OG + email-шаблоны под новый
+палитр).
 
 | | |
 |---|---|
@@ -413,17 +414,23 @@ auth-страницах. Это не «сайт с навбаром», это п
   /blog, /help, /sample-report, /privacy/terms/offer, /pricing,
   /login/register/password-reset). НЕ смешивать с AppShell (foot-gun #44).
 
-**Дизайн-система «деловой модерн»**:
+**Дизайн-система «тёплый минимализм»** (Sprint 13):
 
-- **Цвета** — hex-токены: глубокий синий `#2348C8` на тёплом off-white
-  `#FBFAF8`, чернила `#16202E`, волосяная граница `#E7E4DE`; тёмная
-  тема — тёплые чернила `#14161B`. color-mix borders.
+- **Цвета** — hex-токены: terracotta `#C2613F` (primary CTA) на тёплом
+  cream `#F5EDDF`, warm ink `#1F1B16` (foreground), sage `#6E7F62`
+  (accent), волосяная граница `#E3D8C5`; тёмная тема — coffee charcoal
+  `#1A1612` с lifted terracotta `#E08966`. Тени с тёплой сепия-rgba
+  `rgba(96, 56, 26, …)` — drop усиливает paper feel вместо ухода в
+  холодный cool-gray. color-mix borders.
 - **Шрифты**: Geist (body) + Source Serif 4 (`h1`/`h2`, переменный,
-  кириллица) — оба через next/font. Заголовки `semibold` под serif.
-  Theme-aware shadow scale.
-- **Айдентика**: `<Logo>` — чернильная плашка с serif-«Я», авто-
-  инверсия в тёмной. favicon/apple-icon/PWA-иконки/OG перерисованы.
-- **Примитивы**: `<Button>` / `buttonClass()` (5 размеров × 4 варианта),
+  кириллица, заданы глобально в `globals.css`) — оба через next/font.
+  Заголовки `semibold` под serif. Theme-aware shadow scale.
+- **Айдентика**: `<Logo>` — warm-ink плашка с serif-«Я» (cream
+  foreground), авто-инверсия в тёмной. favicon/apple-icon/PWA-иконки/OG
+  ручные через `next/og` ImageResponse, синхронизированы по палитре с
+  in-app Logo. Email-шаблоны (`renderEmailHtml`) тоже на cream/terracotta.
+- **Примитивы**: `<Button>` / `buttonClass()` (5 размеров × 4 варианта,
+  binds к `bg-primary text-primary-fg` — авто-подхват токенов),
   `<Badge>` (`tone` prop). `risk-badge` — обёртка над `<Badge>`.
 
 **Прочие столпы**:
@@ -782,6 +789,26 @@ auth-страницах. Это не «сайт с навбаром», это п
     header. AppShell имеет mobile top-bar и sidebar, Header — горизонтальный
     навбар без sidebar. Каждая auth-страница: `<AppShell><PageHeader … />`.
 
+45. **`next/og` Satori требует `display: flex` на любом div'е с более
+    чем одним ребёнком.** Inline JSX вроде `<div>текст <span>ещё
+    текст</span></div>` валит prerender: «Expected `<div>` to have
+    explicit `display: flex/contents/none`». Лечится двумя способами:
+    (а) разнести фразу на два stacked block-div'а (предпочтительно для
+    typographic-эффектов вроде italic-фразы на новой строке), либо
+    (б) поставить `display: flex` + `flex-wrap: wrap` на родителя.
+    Затронуто Sprint 13 при добавлении italic terracotta на закрывающую
+    фразу `opengraph-image.tsx`. CSS-переменные тоже не работают —
+    Satori не читает `var(--…)`, только hex; вот почему favicon / OG /
+    email хардкодят палитру и обновляются отдельным коммитом.
+
+46. **Глобальное правило `h1, h2 { font-family: var(--font-serif); }` в
+    `globals.css` делает любой `<h1>` / `<h2>` serif автоматически.**
+    Класс `font-serif` явно ставить избыточно. Но `font-extrabold` /
+    `font-bold` остаются — они контролируют font-weight, не семейство,
+    и поверх serif читаются тяжелее, чем хочется. Стандарт для
+    display-заголовков — `font-semibold tracking-tight`. Variable
+    Source Serif при semibold уже передаёт достаточную плотность.
+
 ---
 
 ## 🐛 Дебаг — когда что-то не работает
@@ -1072,9 +1099,67 @@ add-on usage pricing.
 
 ## 📋 Полный список коммитов (новейшие сверху)
 
-### Sprint 12 — редизайн + платформенная оболочка (последний заход)
+### Sprint 13 — «тёплый минимализм» (последний заход)
 
 PR #7, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено.
+
+```
+7b57d64 Redesign 2E: brand chrome and email under the new palette
+6c86b92 Redesign 2D: serif headings through the platform shell
+f2b4144 Redesign 2C: align public-page typography and recolour templates
+2482cf2 Redesign 2B: rebuild landing on the new palette and tone
+87d6dfd Redesign 2A: switch palette tokens to warm minimalism
+```
+
+Sprint 12 был эффективно re-skin (палитра + шрифт + кнопки + плейтформенная
+оболочка) — структура и тон лендинга остались «как у любого B2B SaaS». В
+Sprint 13 двойной swing: новая палитра + переписанный с нуля лендинг.
+
+Пять фаз, по одной на коммит:
+
+**2A — токены.** `:root` и `.dark` в `globals.css` полностью перепрошиты:
+cream `#f5eddf` фон, terracotta `#c2613f` primary, warm ink `#1f1b16`,
+sage `#6e7f62` accent, danger burgundy `#9b2d26` (явно отдельный по
+тону от terracotta). Тени с warm-сепия rgba'шкой. Тёмная — coffee
+charcoal с lifted terracotta. viewport theme-color подбит.
+
+**2B — лендинг.** `src/app/page.tsx` переписан с нуля. Hero split
+(copy 7/12 + live SampleReportCard 5/12 mirror'ит /sample-report).
+Новый headline: «Юрист, который читает _договор за вас_» с italic
+terracotta на закрывающей фразе. Снесли fake-stats / feature-dump /
+4-grid «Как мы это делаем». Новые секции: «Что мы ловим» 2×2 без
+иконок, «Никакой магии» 3 шага с крупными serif-номерами, pricing с
+Pro Solo в `border-2 border-primary` + пилл «Рекомендуем» (не
+«Популярный»), FAQ 4 вопроса со ссылкой на /help, final CTA с
+cream-кнопкой на warm-ink band.
+
+**2C — публичные страницы.** Типографика приведена к новой системе на
+LegalPageShell, blog (list + slug), help, login (h1: «С возвращением»),
+register, forgot-password, password-reset — `font-extrabold` →
+`font-serif font-semibold tracking-tight`, eyebrows uppercase
+`tracking-[0.18em] text-primary`. `/sample-report` bottom CTA
+переделан с `from-primary to-blue-700` в warm-ink slab. `/templates`
+category colors: purple/indigo → stone/teal (Конф./Финансы), rose-800
+text для Кадров для контраста на pale bg.
+
+**2D — auth chrome.** PageHeader title теперь serif → 27 экранов
+подхватывают за один коммит. InlineEdit + OnboardingModal: `font-extrabold`
+→ `font-serif font-semibold`. Три места с jewel-tone Tailwind зачищены:
+/chat assistant avatar (`from-primary to-blue-700` → solid terracotta),
+/report violet OCR-pill → surface/foreground, DocumentSearchBar
+violet AI-tag → primary. /billing pricing — serif цены, «Популярный»
+→ «Рекомендуем», `text-white` → `text-primary-fg`.
+
+**2E — brand chrome + email.** favicon / apple-icon / pwa/icon /
+manifest / opengraph-image (landing + blog/[slug]) перерисованы: warm
+ink tile `#1f1b16` с cream `#fcf7ef` «Я». OG-картинка landing'а
+рендерит новый headline с italic terracotta — пришлось разнести на
+два stacked div'а из-за Satori-ограничения (foot-gun #45). Email
+`renderEmailHtml` константы (`COLOR_FG`, `COLOR_PRIMARY`, etc.)
+переведены на warm-minimalism палитру. `tsc` / 389 тестов / `next build`
+зелёные.
+
+### Sprint 12 — редизайн + платформенная оболочка
 
 ```
 d29d444 Close AccountMenu and OrgSwitcher on Escape too
@@ -1288,10 +1373,18 @@ bdc0e4c Hard-reload after workspace switch
 
 ### Sprint-итоги по убыванию
 
-- **Sprint 12** (закрыт, этот заход, 2026-05-20) — полный редизайн +
-  платформенная оболочка. Три волны: код-долги/фичи, 7 фаз 1A–1G,
-  AppShell+Sidebar+PageHeader+MenuButton. `tsc` / 389 тестов / `lint` /
-  `next build` зелёные. PR #7 НЕ смержен.
+- **Sprint 13** (закрыт, этот заход, 2026-05-21) — «тёплый минимализм».
+  Палитра ушла от глубокого синего на cool off-white к terracotta на
+  cream warm-ink. Лендинг переписан с нуля: split-hero с live
+  sample-card, новый headline с italic terracotta, снесли fake-stats и
+  feature-dump'ы. Прокидка через 27 auth-экранов автоматически (токены
+  + serif h1 в PageHeader). Brand chrome (favicon/PWA/OG, обе) и email
+  шаблоны перерисованы под палитру. Пять коммитов 2A-2E. `tsc` /
+  389 тестов / `next build` зелёные. PR #7 НЕ смержен.
+- **Sprint 12** — Sprint 12 был эффективно re-skin (палитра + Geist +
+  Source Serif + кнопки) + платформенная оболочка
+  (AppShell+Sidebar+PageHeader+MenuButton). После 1G пользователь
+  сказал «дашборд тот же, изменился только шрифт» — отсюда Sprint 13.
 - **Sprint 11** — социальный слой (10 фич: ИНН, анти-абуз, чат
   компании, VIEWER, пересылка в чаты, напоминания, сравнение договоров,
   публичные ссылки, рефералка) + ребрендинг в Яксо + регистрация ИП +
