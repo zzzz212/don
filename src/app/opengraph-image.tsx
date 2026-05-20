@@ -12,7 +12,7 @@ import { ImageResponse } from "next/og";
 // Display type is set in a serif (Georgia — a safe Cyrillic-capable
 // fallback for the app's Source Serif) to match the redesigned brand.
 
-export const alt = "Яксо — аудит договоров со ссылками на ГК РФ";
+export const alt = "Яксо — юрист, который читает договор за вас";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -28,12 +28,12 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           background:
-            "linear-gradient(135deg, #f1efe9 0%, #eceffa 55%, #fbfaf8 100%)",
+            "linear-gradient(135deg, #ebe0cd 0%, #f5eddf 55%, #fbf5ec 100%)",
           padding: 80,
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        {/* Brand mark — ink tile, serif "Я" */}
+        {/* Brand mark — warm-ink tile, serif "Я" */}
         <div
           style={{
             display: "flex",
@@ -47,11 +47,11 @@ export default function OpengraphImage() {
               width: 64,
               height: 64,
               borderRadius: 14,
-              background: "#16202e",
+              background: "#1f1b16",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#fbfaf8",
+              color: "#fcf7ef",
               fontSize: 36,
               fontWeight: 600,
               fontFamily: SERIF,
@@ -63,7 +63,7 @@ export default function OpengraphImage() {
             style={{
               fontSize: 46,
               fontWeight: 600,
-              color: "#16202e",
+              color: "#1f1b16",
               fontFamily: SERIF,
               letterSpacing: -0.5,
             }}
@@ -72,19 +72,37 @@ export default function OpengraphImage() {
           </div>
         </div>
 
-        {/* Headline */}
+        {/* Headline — terracotta accent on the closing phrase mirrors the
+            landing's italic "за вас". Two stacked divs because Satori
+            (next/og's renderer) needs explicit display:flex on any
+            container with more than one child — easier to split the
+            phrase into two display:block lines than to wrap inline. */}
         <div
           style={{
             fontSize: 88,
             fontWeight: 600,
-            color: "#16202e",
+            color: "#1f1b16",
             fontFamily: SERIF,
             lineHeight: 1.08,
             letterSpacing: -2,
             maxWidth: 1000,
           }}
         >
-          Аудит договоров. Со ссылками на закон.
+          Юрист, который читает
+        </div>
+        <div
+          style={{
+            fontSize: 88,
+            fontWeight: 600,
+            fontStyle: "italic",
+            color: "#c2613f",
+            fontFamily: SERIF,
+            lineHeight: 1.08,
+            letterSpacing: -2,
+            maxWidth: 1000,
+          }}
+        >
+          договор за вас.
         </div>
 
         {/* Subhead */}
@@ -92,13 +110,13 @@ export default function OpengraphImage() {
           style={{
             marginTop: 28,
             fontSize: 31,
-            color: "#5b6573",
+            color: "#6b6258",
             maxWidth: 880,
             lineHeight: 1.35,
           }}
         >
-          60+ статей ГК и ППВС в каждом отчёте. Готовые формулировки правок.
-          10 проверок в месяц бесплатно.
+          Загрузите PDF или DOCX. Через минуту увидите, на что обратить
+          внимание — со ссылками на ГК и готовыми формулировками правок.
         </div>
 
         {/* Footer mark */}
@@ -109,7 +127,7 @@ export default function OpengraphImage() {
             alignItems: "center",
             gap: 12,
             fontSize: 24,
-            color: "#5b6573",
+            color: "#6b6258",
           }}
         >
           yakso.ru

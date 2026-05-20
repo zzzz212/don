@@ -19,13 +19,17 @@ interface LayoutOptions {
   ctaFallbackNote?: string;
 }
 
-// Mirrors the app's "деловой модерн" palette (src/app/globals.css).
-const COLOR_FG = "#16202e";
-const COLOR_MUTED = "#5b6573";
-const COLOR_BORDER = "#e7e4de";
-const COLOR_PRIMARY = "#2348c8";
-const COLOR_PRIMARY_DARK = "#1c399e";
-const COLOR_SURFACE = "#fbfaf8";
+// Mirrors the app's "тёплый минимализм" palette (src/app/globals.css).
+// Inbox light/dark logic is unreliable, so we render the cream-canvas
+// light theme everywhere — body background is the cream surface, the
+// inner card is white paper for maximum legibility regardless of client.
+const COLOR_FG = "#1f1b16";
+const COLOR_MUTED = "#6b6258";
+const COLOR_BORDER = "#e3d8c5";
+const COLOR_PRIMARY = "#c2613f";
+const COLOR_PRIMARY_DARK = "#a24e30";
+const COLOR_PRIMARY_FG = "#fcf7ef";
+const COLOR_SURFACE = "#f5eddf";
 
 function escapeHtml(s: string): string {
   return s
@@ -42,7 +46,7 @@ export function renderEmailHtml(opts: LayoutOptions): string {
         <tr>
           <td style="padding: 8px 0 24px 0;">
             <a href="${escapeHtml(opts.cta.url)}"
-               style="display: inline-block; background: ${COLOR_PRIMARY}; color: #ffffff; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 8px; font-size: 15px;">
+               style="display: inline-block; background: ${COLOR_PRIMARY}; color: ${COLOR_PRIMARY_FG}; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 8px; font-size: 15px;">
               ${escapeHtml(opts.cta.label)}
             </a>
           </td>
@@ -79,7 +83,7 @@ export function renderEmailHtml(opts: LayoutOptions): string {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                   <tr>
                     <td style="vertical-align: middle;">
-                      <span style="display:inline-block; vertical-align:middle; width:36px; height:36px; line-height:36px; text-align:center; background:${COLOR_FG}; color:#fbfaf8; border-radius:8px; font-family:Georgia,'Times New Roman',serif; font-weight:600; font-size:19px;">Я</span>
+                      <span style="display:inline-block; vertical-align:middle; width:36px; height:36px; line-height:36px; text-align:center; background:${COLOR_FG}; color:${COLOR_PRIMARY_FG}; border-radius:8px; font-family:Georgia,'Times New Roman',serif; font-weight:600; font-size:19px;">Я</span>
                       <span style="display:inline-block; vertical-align:middle; margin-left:10px; font-family:Georgia,'Times New Roman',serif; font-size:19px; font-weight:600; color:${COLOR_FG}; letter-spacing:-0.01em;">
                         ${escapeHtml(BRAND.name)}
                       </span>

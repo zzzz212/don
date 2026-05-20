@@ -45,12 +45,12 @@ export default async function BlogPostOg({
           display: "flex",
           flexDirection: "column",
           background:
-            "linear-gradient(135deg, #f1efe9 0%, #eceffa 55%, #fbfaf8 100%)",
+            "linear-gradient(135deg, #ebe0cd 0%, #f5eddf 55%, #fbf5ec 100%)",
           padding: 72,
           fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
-        {/* Brand strip — ink tile, serif "Я" */}
+        {/* Brand strip — warm-ink tile, serif "Я" */}
         <div
           style={{
             display: "flex",
@@ -64,11 +64,11 @@ export default async function BlogPostOg({
               width: 52,
               height: 52,
               borderRadius: 12,
-              background: "#16202e",
+              background: "#1f1b16",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#fbfaf8",
+              color: "#fcf7ef",
               fontSize: 29,
               fontWeight: 600,
               fontFamily: SERIF,
@@ -80,7 +80,7 @@ export default async function BlogPostOg({
             style={{
               fontSize: 35,
               fontWeight: 600,
-              color: "#16202e",
+              color: "#1f1b16",
               fontFamily: SERIF,
               letterSpacing: -0.5,
             }}
@@ -91,22 +91,22 @@ export default async function BlogPostOg({
             style={{
               marginLeft: 8,
               fontSize: 22,
-              color: "#5b6573",
+              color: "#6b6258",
             }}
           >
             · Журнал
           </div>
         </div>
 
-        {/* Category chip */}
+        {/* Category chip — terracotta tint on cream. */}
         <div
           style={{
             display: "inline-flex",
             alignSelf: "flex-start",
             padding: "8px 16px",
             borderRadius: 999,
-            background: "#e9edfb",
-            color: "#1c399e",
+            background: "#f4dcc9",
+            color: "#a24e30",
             fontSize: 22,
             fontWeight: 700,
             letterSpacing: 0.3,
@@ -122,7 +122,7 @@ export default async function BlogPostOg({
           style={{
             fontSize: title.length > 80 ? 54 : 66,
             fontWeight: 600,
-            color: "#16202e",
+            color: "#1f1b16",
             fontFamily: SERIF,
             lineHeight: 1.12,
             letterSpacing: -1,
@@ -140,7 +140,7 @@ export default async function BlogPostOg({
             alignItems: "center",
             justifyContent: "space-between",
             fontSize: 22,
-            color: "#5b6573",
+            color: "#6b6258",
           }}
         >
           <div>yakso.ru/blog</div>
