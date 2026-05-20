@@ -1,74 +1,31 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { buttonClass } from "@/components/button";
 import {
-  FileSearch,
-  CheckCircle,
   ArrowRight,
-  FileText,
-  Scale,
-  ScrollText,
   ChevronDown,
+  Quote,
 } from "lucide-react";
 
-// Three concrete capabilities, not "AI does everything" handwave. The
-// third card got rewritten from "Юридический скоринг" (which is just
-// part of analysis, not a separate feature) to "Сравнение версий" —
-// it's actually a distinct piece of the product and a real workflow
-// для юристов и менеджеров.
-const features = [
-  {
-    icon: FileSearch,
-    title: "Аудит договоров",
-    description:
-      "Загрузите PDF или DOCX — модель находит несоразмерные штрафы, кабальные условия, пропущенные существенные пункты. Каждое замечание со ссылкой на статью ГК РФ.",
-    href: "/analyze",
-  },
-  {
-    icon: FileText,
-    title: "Шаблоны под право РФ",
-    description:
-      "20 типов договоров — NDA, аренда, услуги, поставка, подряд, трудовой. Все формулировки соответствуют статьям ГК РФ и ТК РФ. После генерации — точечная AI-доработка под ваш кейс.",
-    href: "/templates",
-  },
-  {
-    icon: ScrollText,
-    title: "История и сравнение версий",
-    description:
-      "Каждая правка договора сохраняется. Версии сравниваются построчно с подсветкой изменений. Откат на любую предыдущую редакцию — одним кликом.",
-    href: "/templates",
-  },
-];
-
-// Stats grounded in things we can actually point at — every number is
-// defensible to a sceptical visitor. No "99% точность", no "10 000
-// довольных клиентов" while we're still pre-launch.
-const stats = [
-  { value: "30–60 сек", label: "Время анализа договора средней длины" },
-  { value: "60+", label: "Статей ГК / ППВС в справочнике модели" },
-  { value: "20", label: "Готовых шаблонов договоров" },
-  { value: "Сонэт 4.6", label: "Модель Claude для платных тарифов" },
-];
-
-// Pricing tiles. Numbers and limits MUST match src/lib/legal-info.ts
-// PRICING_RUB and src/lib/plans.ts PLAN_LIMITS — those are the source
-// of truth for billing / quota; this landing block is a marketing
-// mirror that gets edited alongside.
+// Pricing tiles. Numbers and limits MUST stay in sync with
+// src/lib/legal-info.ts PRICING_RUB and src/lib/plans.ts PLAN_LIMITS —
+// those are the source of truth for billing / quota; this block is the
+// marketing mirror, edited alongside.
 const pricing = [
   {
     name: "Старт",
     price: "0",
     period: "",
-    description: "Для знакомства с сервисом",
+    description: "Чтобы понять, как это работает",
     features: [
-      "10 анализов договоров в месяц",
-      "5 генераций документов",
+      "10 проверок договоров в месяц",
+      "5 шаблонов документов",
       "Базовый отчёт о рисках",
     ],
-    cta: "Начать бесплатно",
+    cta: "Начать без карты",
     href: "/register",
-    popular: false,
+    accent: false,
   },
   {
     name: "Pro Solo",
@@ -76,209 +33,219 @@ const pricing = [
     period: "/ мес",
     description: "Для ИП и фрилансеров",
     features: [
-      "100 анализов договоров в месяц",
+      "100 проверок в месяц",
       "Безлимитная генерация документов",
-      "OCR для скан-PDF",
-      "Векторный поиск по договорам",
+      "OCR сканов и PDF",
+      "Поиск по договорам",
       "Приоритетная поддержка",
     ],
-    cta: "Подключить Pro Solo",
+    cta: "Подключить",
     href: "/billing",
-    popular: true,
+    accent: true,
   },
   {
     name: "Pro Team",
     price: "4 990",
     period: "/ мес",
-    description: "Для команд до 5 человек",
+    description: "Командам до пяти",
     features: [
       "Всё из Pro Solo",
       "До 5 участников",
-      "500 анализов в месяц на команду",
-      "Совместная история анализов",
+      "500 проверок на команду",
+      "Общая история и обсуждения",
     ],
-    cta: "Подключить Pro Team",
+    cta: "Подключить",
     href: "/billing",
-    popular: false,
+    accent: false,
   },
   {
     name: "Бизнес",
     price: "14 990",
     period: "/ мес",
-    description: "Для компаний и юр.отделов",
+    description: "Юр.отделам и корпорациям",
     features: [
       "Всё из Pro Team",
-      "Безлимитные анализы",
+      "Безлимитные проверки",
       "Анализ на модели Opus",
-      "Расширенная история",
       "Персональный менеджер",
     ],
-    cta: "Перейти на Бизнес",
+    cta: "Подключить",
     href: "/billing",
-    popular: false,
+    accent: false,
   },
 ];
 
-// Reviews intentionally removed from this file. The previous fake
-// testimonials (Алексей К., Мария С., Дмитрий В.) hurt credibility:
-// any visitor familiar with B2B landing pages spots invented quotes
-// instantly. Reinstate this list only with real customers who agreed
-// to be quoted by full name + company.
+// "Что мы ловим" — четыре категории, под которые откалиброван prompt.
+// Не маркетинговый feature-dump, а конкретные конструкции с привязкой
+// к статьям ГК РФ.
+const categories = [
+  {
+    title: "Несоразмерные штрафы и неустойки",
+    body:
+      "Штраф 50% за расторжение, неустойка 1% в день, удержание аванса — суды снижают по ст. 333 ГК РФ. Но проще убрать до подписания.",
+  },
+  {
+    title: "Кабальные условия",
+    body:
+      "Односторонний отказ исполнителя, безотзывные обязательства, отказ от ответственности за умысел — ст. 401 п. 4 ГК РФ делает такие пункты ничтожными.",
+  },
+  {
+    title: "Пропущенные существенные условия",
+    body:
+      "Без предмета, цены, срока договор либо незаключён, либо толкуется не в вашу пользу. ст. 432 ГК РФ.",
+  },
+  {
+    title: "Расхождения с практикой ВС РФ",
+    body:
+      "Постановления Пленумов и обзоров судебной практики за последние десять лет — внутри системного промпта. Если конструкция уже разбита в суде, отметим.",
+  },
+];
+
+const steps = [
+  {
+    num: "01",
+    title: "Загружаете файл",
+    body:
+      "PDF или DOCX до 30 страниц. Если PDF — скан, на платных тарифах подключается OCR. Текст идёт по TLS, оригинал — в Vercel Blob.",
+  },
+  {
+    num: "02",
+    title: "Модель проходит по договору",
+    body:
+      "Claude Sonnet 4.6 — на платных тарифах, Opus 4.7 — на «Бизнесе». Со встроенным справочником из 60+ статей ГК и Постановлений Пленумов ВС. Длинные документы режутся на главы и сводятся с дедупликацией.",
+  },
+  {
+    num: "03",
+    title: "Получаете отчёт",
+    body:
+      "Уровень риска, каждое замечание с цитатой и ссылкой на статью, готовая формулировка правки. Одна кнопка — DOCX с исправлениями.",
+  },
+];
+
+const faq = [
+  {
+    q: "AI может ошибиться. Кто несёт ответственность за решение подписать?",
+    a:
+      "Ответственность за подписание — на вас или вашем юристе. Наш отчёт — автоматическая оценка рисков, формально не является юридической консультацией (ст. 779 ГК РФ). Для сделок с существенной ценой обязательно покажите отчёт живому юристу.",
+  },
+  {
+    q: "Чем это отличается от ChatGPT, в который можно вставить договор?",
+    a:
+      "Тремя вещами. (1) Промпт калиброван под одиннадцать кабальных конструкций из российской судебной практики, каждая со статьёй. (2) В системе зашит справочник из 60+ статей ГК и ППВС — модель сверяет номера с ним, реже выдумывает несуществующие пункты. (3) Структурированный вывод: одна кнопка применяет правку и экспортирует чистый DOCX. ChatGPT даёт абзац текста — мы даём готовый патч.",
+  },
+  {
+    q: "Какие модели вы используете и где обрабатываются данные?",
+    a:
+      "Anthropic Claude Sonnet 4.6 на платных тарифах, Haiku 4.5 на бесплатном, Opus 4.7 на «Бизнесе» в режиме анализа. Серверы Anthropic — США. При регистрации вы даёте отдельное согласие на трансграничную передачу по ст. 12 152-ФЗ. Свои метаданные (логи, пользователи, аудит) храним в Neon Postgres.",
+  },
+  {
+    q: "Можно отказаться от подписки и забрать деньги?",
+    a:
+      "Подписка отменяется в личном кабинете в любой момент — доступ сохраняется до конца оплаченного периода. Возврат за неиспользованную часть — по правилам публичной оферты (ст. 32 ЗоЗПП), за вычетом стоимости уже оказанных услуг по тарифам разовой оплаты.",
+  },
+];
 
 export default function LandingPage() {
   return (
     <div className="flex min-h-full flex-col">
       <Header />
 
-      {/* Hero. Deliberately understated — the "нового поколения" badge
-          was the giveaway that the page was AI-marketing-fluff. Lead
-          with what the product actually does, in legalese a senior
-          юрист would recognise as competent. */}
-      <section className="relative overflow-hidden bg-hero-gradient py-20 lg:py-28">
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="animate-fade-in mb-6 inline-flex items-center gap-2 rounded-md border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted">
-              <Scale className="h-3.5 w-3.5" aria-hidden="true" />
-              Договорное право РФ · ГК · ППВС
-            </div>
-            <h1 className="animate-fade-in stagger-1 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Аудит договоров.{" "}
-              <span className="text-primary">
-                Со ссылками на закон.
-              </span>
-            </h1>
-            <p className="animate-fade-in stagger-2 mt-6 text-lg text-muted sm:text-xl max-w-2xl mx-auto leading-relaxed">
-              Загрузите PDF или DOCX. Модель пройдёт по договору со справочником
-              из 60+ статей ГК РФ и постановлений Пленумов ВС — отдельно
-              отметит несоразмерные штрафы, кабальные условия, пропущенные
-              существенные пункты. Каждый риск с цитатой и готовой правкой.
-            </p>
-            <div className="animate-fade-in stagger-3 mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Link
-                href="/analyze"
-                className={buttonClass({
-                  variant: "primary",
-                  size: "lg",
-                  className: "group",
-                })}
-              >
-                Проверить договор бесплатно
-                <ArrowRight
-                  className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                  aria-hidden="true"
-                />
-              </Link>
-              <Link
-                href="/templates"
-                className={buttonClass({ variant: "secondary", size: "lg" })}
-              >
-                <FileText className="h-4 w-4" aria-hidden="true" />
-                Создать документ
-              </Link>
-            </div>
-            <p className="animate-fade-in stagger-4 mt-6 text-xs text-muted">
-              10 анализов в месяц бесплатно. Без привязки карты.{" "}
-              <Link
-                href="/sample-report"
-                className="font-semibold text-primary hover:underline"
-              >
-                Посмотреть пример отчёта →
-              </Link>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="border-y border-border bg-card py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-3xl font-bold text-primary">{stat.value}</p>
-                <p className="mt-1 text-sm text-muted">{stat.label}</p>
+      {/*
+        Hero — split layout, copy on the left, a live sample report
+        card on the right. The card is what makes the landing read as
+        "I get it" instead of "I guess what they do". Pure markup,
+        no real data — but keyed to the same example contract the
+        /sample-report page renders, so the story is consistent.
+      */}
+      <section className="relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-hero-gradient"
+        />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-16">
+            <div className="lg:col-span-7">
+              <p className="animate-fade-in mb-6 text-sm font-medium uppercase tracking-[0.18em] text-muted">
+                Яксо · Аудит договоров под право РФ
+              </p>
+              <h1 className="animate-fade-in stagger-1 font-serif text-4xl sm:text-5xl lg:text-[3.75rem] font-semibold tracking-tight text-foreground leading-[1.05]">
+                Юрист, который читает{" "}
+                <span className="italic text-primary">договор за вас.</span>
+              </h1>
+              <p className="animate-fade-in stagger-2 mt-7 max-w-xl text-lg lg:text-xl leading-relaxed text-foreground/75">
+                Загрузите PDF или DOCX. Через минуту увидите, на что
+                обратить внимание — со ссылками на ГК и готовыми
+                формулировками правок.
+              </p>
+              <div className="animate-fade-in stagger-3 mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link
+                  href="/analyze"
+                  className={buttonClass({
+                    variant: "primary",
+                    size: "lg",
+                    className: "group",
+                  })}
+                >
+                  Проверить договор
+                  <ArrowRight
+                    className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                    aria-hidden="true"
+                  />
+                </Link>
+                <Link
+                  href="/sample-report"
+                  className={buttonClass({ variant: "ghost", size: "lg" })}
+                >
+                  Посмотреть пример отчёта
+                </Link>
               </div>
-            ))}
+              <p className="animate-fade-in stagger-4 mt-5 text-sm text-muted">
+                Бесплатно. Без карты. Первая проверка — за полминуты.
+              </p>
+            </div>
+
+            {/* Live-feeling sample card. Static markup styled to mirror
+                the real /report page so a visitor recognises the shape
+                of the output before they upload. */}
+            <div className="animate-fade-in stagger-2 lg:col-span-5">
+              <SampleReportCard />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/*
+        Что мы ловим — single-paragraph eyebrow, then a calm 2×2 of
+        categories. No icons (they read as "AI feature dump") — just
+        category title + a sentence each, with the GK reference baked
+        into the body copy.
+      */}
       <section className="py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Всё, что нужно для юридической безопасности
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+              На чём срываются договоры
+            </p>
+            <h2 className="mt-4 font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+              Что мы ловим
             </h2>
-            <p className="mt-4 text-lg text-muted">
-              Один сервис заменяет рутинную работу юриста
+            <p className="mt-4 text-lg text-foreground/70 leading-relaxed">
+              Четыре категории, под которые откалиброван промпт. Не
+              «AI разбирает любой документ» — а конкретные конструкции,
+              которые суды уже видели сотни раз.
             </p>
           </div>
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <Link
-                key={feature.title}
-                href={feature.href}
-                className="group rounded-2xl border border-border bg-card p-8 transition-all hover:border-primary/30 hover:shadow-lg"
+          <div className="mt-14 grid gap-6 sm:grid-cols-2">
+            {categories.map((c) => (
+              <div
+                key={c.title}
+                className="rounded-2xl border border-border bg-card p-7 transition-colors hover:border-border-strong"
               >
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-light text-primary transition-colors group-hover:bg-primary group-hover:text-white">
-                  <feature.icon className="h-6 w-6" aria-hidden="true" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground">
-                  {feature.title}
+                <h3 className="font-serif text-xl font-semibold text-foreground">
+                  {c.title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {feature.description}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works. Each step describes what specifically happens —
-          file format, the model and reference base, the structure of
-          the output. No "AI does its magic" black-box step. */}
-      <section className="bg-surface/50 py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Как это работает
-            </h2>
-            <p className="mt-4 text-lg text-muted">
-              Без чёрного ящика. Конкретные шаги — конкретный результат.
-            </p>
-          </div>
-          <div className="mt-16 grid gap-8 lg:grid-cols-3">
-            {[
-              {
-                step: "1",
-                title: "Загрузите файл",
-                description:
-                  "PDF или DOCX до 30 страниц. Если PDF скан — подключается Yandex OCR (на платных тарифах). Текст и метаданные шифруются по TLS.",
-              },
-              {
-                step: "2",
-                title: "Модель проходит по договору",
-                description:
-                  "Claude Sonnet 4.6 (Opus 4.7 на «Бизнесе») сверяет каждый пункт со встроенным справочником из 60+ статей ГК РФ и Постановлений Пленумов ВС. Длинные договоры режутся на главы и обрабатываются параллельно с дедупликацией.",
-              },
-              {
-                step: "3",
-                title: "Структурированный отчёт",
-                description:
-                  "Уровень риска (низкий / средний / высокий), список замечаний с цитатой и точной статьёй, готовый юридический текст правки, чек-лист «что проверить до подписания». Применить правку — одна кнопка, экспорт в DOCX.",
-              },
-            ].map((item) => (
-              <div key={item.step} className="relative text-center">
-                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-white">
-                  {item.step}
-                </div>
-                <h3 className="text-lg font-semibold text-foreground">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {item.description}
+                <p className="mt-3 text-[15px] leading-relaxed text-foreground/70">
+                  {c.body}
                 </p>
               </div>
             ))}
@@ -286,123 +253,105 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* What we actually do — replaces the fake-reviews section. Real
-          testimonials get added back here once we have 5+ paying users
-          who'd let us quote them with name + company. */}
-      <section className="py-20 lg:py-28">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Как мы это делаем
-            </h2>
-            <p className="mt-4 text-lg text-muted">
-              Без магии. Конкретный AI-конвейер под российское право.
+      {/*
+        Как это работает — three steps on warm surface band. Numbers are
+        big serif, not pill-buttons (which read как любой step-by-step
+        SaaS). Each step describes the concrete thing the system does.
+      */}
+      <section className="bg-surface py-20 lg:py-28">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+              Без чёрного ящика
             </p>
+            <h2 className="mt-4 font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+              Никакой магии. Тридцать секунд от файла до отчёта.
+            </h2>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Модель и справочник
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Claude Sonnet 4.6 / Opus 4.7. В системный промпт зашит
-                справочник из 60+ статей ГК РФ и постановлений Пленумов
-                ВС — модель цитирует статьи из этого списка, а не
-                «вспоминает» номера. Меньше выдуманных ссылок,
-                стабильное качество от запроса к запросу.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Калибровка под РФ
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Промпт настроен на 11 кабальных конструкций из российской
-                судебной практики: штраф за расторжение (ст. 333, 179, 450.1),
-                односторонняя расторжка (ст. 450.1), безлимитная неустойка
-                (ст. 333), отказ от ответственности за умысел (ст. 401, п. 4)
-                и др. Каждый паттерн со статьёй.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Хранение и передача
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Документы по TLS, метаданные в Neon Postgres. Инференс —
-                на серверах Anthropic / Voyage в США; трансграничная
-                передача явно фиксируется отдельным согласием по
-                ст. 12 152-ФЗ при регистрации.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Чего сервис не делает
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">
-                Не представляет в суде, не подаёт документы в Росреестр
-                и Роспатент, не выстраивает налоговую структуру.
-                Это к живому юристу. Мы — предсделочная диагностика,
-                шаблоны и история правок. Отчёт носит информационный
-                характер (ст. 779 ГК РФ).
-              </p>
-            </div>
+          <div className="mt-14 grid gap-10 lg:grid-cols-3 lg:gap-12">
+            {steps.map((s) => (
+              <div key={s.num} className="relative">
+                <div className="font-serif text-5xl font-semibold tracking-tight text-primary/30 leading-none">
+                  {s.num}
+                </div>
+                <h3 className="mt-4 font-serif text-xl font-semibold text-foreground">
+                  {s.title}
+                </h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-foreground/70">
+                  {s.body}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="bg-surface/50 py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Простые тарифы
+      {/*
+        Pricing. Same four tiers, but visual hierarchy via the accent
+        ring on Pro Solo (the recommended one) instead of a "Популярный"
+        badge — feels less salesy, reads as "this is the one we'd pick
+        for you".
+      */}
+      <section className="py-20 lg:py-28">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+              Тариф
+            </p>
+            <h2 className="mt-4 font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+              Одна цена за то, что заменяет час юриста.
             </h2>
-            <p className="mt-4 text-lg text-muted">
-              От 1 990 ₽/мес. Первые 10 анализов в месяц — бесплатно, без
-              карты.
+            <p className="mt-4 text-lg text-foreground/70 leading-relaxed">
+              Если меньше или больше — есть варианты. Но восемь
+              из десяти работают на Pro Solo.
             </p>
           </div>
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-4 lg:grid-cols-4">
             {pricing.map((plan) => (
               <div
                 key={plan.name}
-                className={`relative rounded-2xl border bg-card p-8 ${
-                  plan.popular ? "border-primary shadow-md" : "border-border"
-                }`}
+                className={
+                  plan.accent
+                    ? "relative rounded-2xl border-2 border-primary bg-card p-7 shadow-md"
+                    : "relative rounded-2xl border border-border bg-card p-7"
+                }
               >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-fg">
-                    Популярный
+                {plan.accent && (
+                  <div className="absolute -top-3 left-7 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-fg">
+                    Рекомендуем
                   </div>
                 )}
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {plan.name}
-                  </h3>
-                  <p className="mt-1 text-sm text-muted">{plan.description}</p>
-                  <div className="mt-4">
-                    <span className="text-4xl font-extrabold text-foreground">
-                      {plan.price === "0" ? "Бесплатно" : `${plan.price} ₽`}
-                    </span>
-                    {plan.period && (
-                      <span className="text-muted">{plan.period}</span>
-                    )}
-                  </div>
+                <h3 className="font-serif text-lg font-semibold text-foreground">
+                  {plan.name}
+                </h3>
+                <p className="mt-1 text-sm text-muted">{plan.description}</p>
+                <div className="mt-5 flex items-baseline gap-1">
+                  <span className="font-serif text-3xl font-semibold text-foreground">
+                    {plan.price === "0" ? "Бесплатно" : `${plan.price} ₽`}
+                  </span>
+                  {plan.period && (
+                    <span className="text-sm text-muted">{plan.period}</span>
+                  )}
                 </div>
-                <ul className="mt-8 space-y-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                      <span className="text-sm text-foreground">{feature}</span>
+                <ul className="mt-6 space-y-2.5">
+                  {plan.features.map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 text-[13px] leading-relaxed text-foreground/80"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mt-1.5 inline-block h-1 w-1 shrink-0 rounded-full bg-primary"
+                      />
+                      {f}
                     </li>
                   ))}
                 </ul>
                 <Link
                   href={plan.href}
                   className={buttonClass({
-                    variant: plan.popular ? "primary" : "secondary",
-                    className: "mt-8 w-full",
+                    variant: plan.accent ? "primary" : "secondary",
+                    className: "mt-7 w-full",
                   })}
                 >
                   {plan.cta}
@@ -413,98 +362,194 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ. Addresses the questions that show up in every B2B SaaS
-          sales conversation: "AI это надёжно?", "А если ошибётся?",
-          "Кто отвечает?", "Что с данными?". Skipping these is what
-          makes a site read как лендинг типового AI-стартапа. */}
-      <section id="faq" className="py-20 lg:py-28">
+      {/*
+        FAQ — kept on the warm surface band. Four questions only; the
+        long form lives on /help. These four are the ones every B2B sales
+        conversation surfaces in the first ten minutes.
+      */}
+      <section className="bg-surface py-20 lg:py-28" id="faq">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+              Что обычно спрашивают
+            </p>
+            <h2 className="mt-4 font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
               Частые вопросы
             </h2>
-            <p className="mt-4 text-lg text-muted">
-              Прямые ответы. Без маркетинговых формулировок.
-            </p>
           </div>
           <div className="mt-12 space-y-3">
-            {[
-              {
-                q: "AI может ошибиться. Кто несёт ответственность за решение подписать?",
-                a: "Ответственность за подписание — на вас или вашем юристе. Наш отчёт — автоматическая оценка рисков, формально не является юридической консультацией (ст. 779 ГК РФ). Мы фиксируем это в дисклеймере под каждым отчётом и в публичной оферте. Для сделок с существенной ценой обязательно покажите отчёт живому юристу.",
-              },
-              {
-                q: "Чем это отличается от ChatGPT, в который можно вставить договор?",
-                a: "Тремя вещами. (1) Промпт калиброван под кабальные конструкции из российской судебной практики — 11 паттернов критичных нарушений, каждый со статьёй. (2) В системе зашит справочник из 60+ статей ГК и ППВС, модель сверяет с ним номера — реже выдумывает несуществующие пункты. (3) Структурированный JSON-вывод: одна кнопка применяет правку к договору и экспортирует чистый DOCX. ChatGPT даёт абзац текста; мы — готовый патч.",
-              },
-              {
-                q: "Какие модели вы используете и где обрабатываются данные?",
-                a: "Anthropic Claude Sonnet 4.6 на платных тарифах, Haiku 4.5 на бесплатном, Opus 4.7 на «Бизнесе» только для анализа. Серверы Anthropic — США. На странице регистрации вы даёте отдельное согласие на трансграничную передачу (ст. 12 152-ФЗ). Свои метаданные (логи, пользователи, аудит) храним в Neon Postgres (Россия / ЕС в зависимости от региона). Документы — Vercel Blob.",
-              },
-              {
-                q: "Что делать с длинным договором (50+ страниц)?",
-                a: "Договоры до 50 000 символов модель анализирует за один проход. Длиннее — режутся на главы, каждая обрабатывается параллельно, потом результаты сводятся с дедупликацией повторных рисков. На «Бизнесе» подключается Opus 4.7, который лучше держит контекст длинных документов.",
-              },
-              {
-                q: "Какие документы поддерживаются?",
-                a: "Любые договорные документы по праву РФ: купля-продажа, поставка, аренда, подряд, услуги, NDA, трудовые, агентский, заём, лицензионный и т.д. Не подходим для процессуальных документов (исковые, отзывы, апелляции), судебных стратегий, налоговых консультаций, регистрации интеллектуальной собственности.",
-              },
-              {
-                q: "Можно ли использовать сгенерированные шаблоны без юриста?",
-                a: "Для типовых сделок небольшого объёма — да, шаблоны рабочие и проходят формальные требования ГК РФ. Для сделок с существенной ценой (от ~500 тыс. руб.), уникальной структурой, иностранными контрагентами, ИС — лучше показать юристу. Мы экономим юристу 80% рутины, не заменяем его на сложных кейсах.",
-              },
-              {
-                q: "Можно отказаться от подписки и забрать деньги?",
-                a: "Подписка отменяется в личном кабинете в любой момент — доступ сохраняется до конца оплаченного периода. Возврат за неиспользованную часть — по правилам публичной оферты (ст. 32 Закона о защите прав потребителей). Возврат вычитает стоимость уже оказанных услуг (анализы, генерации) по тарифам разовой оплаты.",
-              },
-            ].map((item, i) => (
+            {faq.map((item, i) => (
               <details
                 key={i}
-                className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-border-strong"
+                className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-border-strong"
               >
-                <summary className="flex cursor-pointer items-start justify-between gap-3 text-base font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer items-start justify-between gap-4 font-serif text-lg font-semibold text-foreground [&::-webkit-details-marker]:hidden">
                   <span>{item.q}</span>
                   <ChevronDown
-                    className="mt-0.5 h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180"
+                    className="mt-1 h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180"
                     aria-hidden="true"
                   />
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted">
+                <p className="mt-4 text-[15px] leading-relaxed text-foreground/75">
                   {item.a}
                 </p>
               </details>
             ))}
           </div>
+          <p className="mt-8 text-center text-sm text-muted">
+            Полный список —{" "}
+            <Link
+              href="/help"
+              className="font-semibold text-primary hover:underline"
+            >
+              в справочнике →
+            </Link>
+          </p>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-20">
+      {/*
+        Final CTA — warm dark band on cream. The whole landing's been
+        deliberately quiet so this single dark slab carries weight as
+        the ask. Cream button on warm ink — the strongest contrast
+        ratio in the design system.
+      */}
+      <section className="py-20 lg:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border border-border bg-foreground px-8 py-16 text-center text-background sm:px-16">
-            <Scale
-              className="mx-auto mb-4 h-9 w-9 text-background/55"
+          <div className="relative overflow-hidden rounded-3xl bg-foreground px-8 py-16 text-center sm:px-16 lg:py-20">
+            <Quote
               aria-hidden="true"
+              className="mx-auto h-8 w-8 text-background/40"
             />
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Загрузите договор — узнайте, что в нём не так
+            <h2 className="mt-5 font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-background leading-tight">
+              Договор у вас уже открыт?
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-background/70">
-              PDF или DOCX. Отчёт со ссылками на ГК и готовыми правками.
-              10 анализов в месяц бесплатно, без карты.
+            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-background/70">
+              Загрузите — через минуту увидите, что в нём стоит обсудить
+              с контрагентом до подписания.
             </p>
-            <Link
-              href="/analyze"
-              className="mt-8 inline-flex h-12 items-center gap-2 rounded-lg bg-background px-6 text-base font-semibold text-foreground transition-colors hover:bg-surface"
-            >
-              Загрузить договор
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            <div className="mt-9">
+              <Link
+                href="/analyze"
+                className="inline-flex h-12 items-center gap-2 rounded-lg bg-background px-7 text-base font-semibold text-foreground transition-colors hover:bg-card"
+              >
+                Проверить договор
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <p className="mt-5 text-sm text-background/55">
+              Десять проверок в месяц — бесплатно.
+            </p>
           </div>
         </div>
       </section>
 
       <Disclaimer />
+    </div>
+  );
+}
+
+// The hero's right-column "live report" illustration. Hand-curated to
+// mirror what /sample-report renders — same example contract type
+// (IT-services), same 3 risks. Updating one without the other will
+// quietly drift the story; keep them aligned.
+function SampleReportCard() {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-xl lg:p-7">
+      <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+            Договор оказания услуг
+          </p>
+          <p className="mt-1 truncate font-serif text-base font-semibold text-foreground">
+            IT-разработка, 12 страниц
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-danger-light px-3 py-1 text-xs font-semibold text-danger">
+          Высокий риск
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        <SampleRisk
+          tone="critical"
+          title="Штраф 50% при расторжении заказчиком"
+          quote="…при досрочном расторжении заказчик уплачивает штраф в размере 50% от стоимости договора…"
+          reference="ст. 333, 450.1 ГК РФ"
+          note="Суды признают такие штрафы кабальными — снижают по ст. 333."
+        />
+        <SampleRisk
+          tone="medium"
+          title="Срок оплаты услуг не определён"
+          reference="ст. 314 ГК РФ"
+          note="Без срока — «в разумный срок», что трудно доказать."
+        />
+        <SampleRisk
+          tone="medium"
+          title="Односторонняя правка тарифов исполнителем"
+          reference="ст. 450.1, п. 2 ГК РФ"
+        />
+      </div>
+
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
+        <Link
+          href="/sample-report"
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Открыть полный отчёт →
+        </Link>
+        <span className="text-xs text-muted">Анализ занял 47 сек</span>
+      </div>
+    </div>
+  );
+}
+
+function SampleRisk({
+  tone,
+  title,
+  quote,
+  reference,
+  note,
+}: {
+  tone: "critical" | "medium";
+  title: string;
+  quote?: string;
+  reference: string;
+  note?: string;
+}) {
+  const toneClasses =
+    tone === "critical"
+      ? "border-danger/25 bg-danger-light/40"
+      : "border-border bg-surface/60";
+  const pillClasses =
+    tone === "critical"
+      ? "bg-danger text-white"
+      : "bg-warning text-white";
+  const pillLabel = tone === "critical" ? "Критично" : "Средний";
+
+  return (
+    <div className={`rounded-xl border p-4 ${toneClasses}`}>
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${pillClasses}`}
+        >
+          {pillLabel}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          {quote && (
+            <p className="mt-1.5 text-xs italic leading-relaxed text-foreground/65">
+              {quote}
+            </p>
+          )}
+          <p className="mt-2 text-xs font-medium text-primary">{reference}</p>
+          {note && (
+            <p className="mt-1.5 text-xs leading-relaxed text-foreground/65">
+              {note}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
