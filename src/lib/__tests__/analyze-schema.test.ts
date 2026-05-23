@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AnalysisResultSchema, AnalysisRiskSchema } from "../ai/schemas/analyze";
+import { AnalysisRiskSchema } from "../ai/schemas/analyze";
 
 describe("AnalysisRiskSchema with counterPerspective", () => {
   const baseRisk = {
@@ -46,5 +46,12 @@ describe("AnalysisRiskSchema with counterPerspective", () => {
     };
     const result = AnalysisRiskSchema.safeParse(broken);
     expect(result.success).toBe(false);
+    if (!result.success) {
+      // Pin the failing path so weakening `theirGain` to .optional()
+      // would actually fail this test, not pass silently.
+      expect(
+        result.error.issues.some((i) => i.path.includes("theirGain"))
+      ).toBe(true);
+    }
   });
 });
