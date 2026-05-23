@@ -65,28 +65,18 @@ verdictReason: одно предложение, прямой ответ "мож�
 - contractType / parties / notarization.reason / registration.reason — со ссылками на закон.
 - balance: favor — в чью пользу смещён договор: "balanced" (сбалансирован), "first" (в пользу первой названной в parties стороны), "second" (в пользу второй). comment — 1-2 предложения: какую РОЛЬ (Заказчик / Исполнитель / Арендодатель и т.п.) договор защищает сильнее и по каким пунктам перекос. Если явных перекосов нет — favor "balanced".
 
-═══ КОНТРПОЗИЦИЯ (для каждого риска) ═══
-Для каждого риска добавь поле \`counterPerspective\` — что выигрывает
-ВТОРАЯ сторона договора от этого пункта. Одна короткая строка, без
-оценок «плохо/хорошо», просто механика: «жёсткий штраф 0.5%/день
-гарантирует им стабильный денежный поток при просрочке».
-
-Если очевиден компромиссный вариант — добавь \`counterPerspective.compromise\`:
-одна формулировка, балансирующая обе стороны. Если компромисс не
-очевиден (например, требование императивной нормы) — оставь
-compromise пустым (поле опционально).
-
-ПРИМЕР:
-{
-  "counterPerspective": {
-    "theirGain": "Регулярный денежный поток при любой просрочке оплаты",
-    "compromise": "Снизить до 0.1%/день, ограничить общий штраф 5% от суммы"
-  }
-}
-
-НЕ выдумывай compromise если нет реального баланса — оставь пустым.
-
 Всё на русском.`;
+
+// NOTE: A Counter-AI instruction block (counterPerspective per risk)
+// briefly lived between the `balance` line and "Всё на русском." in
+// Sprint 14. It contained an isolated `ПРИМЕР: { "counterPerspective":
+// { ... } }` JSON example that the model copied as its FULL top-level
+// response — producing `{counterPerspective: {...}}` with every other
+// required field missing. Analyze broke on prod immediately after
+// deploy. Pulled the block; `counterPerspective` stays `.optional()` in
+// the schema so Sprint 14 UI gracefully hides the column. Re-add in
+// Sprint 15 with the field described INLINE in the "В risks[]…" bullet
+// list above, without a standalone top-level JSON example.
 
 // Full analyze system prompt: discipline + risk catalogue + legal
 // reference card. Concatenated up front so the entire block can be
