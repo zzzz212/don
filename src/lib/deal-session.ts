@@ -1,10 +1,14 @@
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 
-// Cookie name for the anonymous receiver session. Scoped to /deal/
-// paths in the route handlers (Next 16 cookie API). 128 bits is enough
-// for an opaque session id — not used for authentication, only to bind
-// repeat actions on the same DealParticipant.
+// Cookie name for the anonymous receiver session. The cookie is set
+// with path "/" so it travels on BOTH the /deal/[token] page navigation
+// AND the /api/deals/by-token/* API calls — a narrower scope (e.g.
+// "/deal") would silently break the receiver flow: POSTs would mint a
+// fresh sessionId per request and never match the claimed participant.
+// 128 bits is enough for an opaque session id — not used for
+// authentication, only to bind repeat actions on the same
+// DealParticipant.
 export const DEAL_SESSION_COOKIE = "yakso_deal_session";
 
 export function generateDealSessionId(): string {
@@ -29,7 +33,7 @@ export async function getOrCreateDealSessionId(): Promise<{
   jar.set(DEAL_SESSION_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",
-    path: "/deal",
+    path: "/",
     // 90 days — long enough for a multi-week negotiation, short enough
     // that abandoned sessions eventually expire.
     maxAge: 60 * 60 * 24 * 90,

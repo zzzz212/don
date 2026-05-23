@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getOrCreateDealSessionId } from "@/lib/deal-session";
+import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,14 @@ export async function GET(
   try {
     const { token } = await params;
     const session = await auth();
+
+    // Token-scoped rate limit. Each deal can be polled at most 60×/min;
+    // the action endpoint is separately throttled per-session. Without
+    // this, a leaked token enables free DB hammering with deep includes.
+    const rl = await rateLimit(`deals.by_token.get:${token}`, "deals.action");
+    if (!rl.ok) {
+      return NextResponse.json({ error: "Слишком много обращений." }, { status: 429 });
+    }
 
     const deal = await prisma.deal.findUnique({
       where: { inviteToken: token },
@@ -42,7 +51,10 @@ export async function GET(
           },
         },
         document: { select: { fileName: true, rawText: true } },
-        owner: { select: { name: true, email: true } },
+        // Only the owner's display name leaves this endpoint. Email is
+        // PII and must not be exposed to anonymous viewers via the
+        // public token URL (anyone with the link could read it).
+        owner: { select: { name: true } },
       },
     });
     if (!deal) return NextResponse.json({ error: "Не найдено" }, { status: 404 });
@@ -61,23 +73,34 @@ export async function GET(
         data: { lastSeenAt: new Date() },
       });
     } else {
-      // Anonymous receiver path — bind session to RECEIVER participant.
+      // Anonymous receiver path. The claim is done as an ATOMIC
+      // conditional update — `updateMany` with `sessionId: null,
+      // userId: null` in the WHERE clause. If `count === 1` we won the
+      // race; if `count === 0` another session beat us (or already
+      // owned the row) and we fall through to the existing-match check.
+      // A pure read-then-write would let two concurrent first-time
+      // visitors both claim the receiver slot, silently overwriting
+      // each other.
       const { sessionId } = await getOrCreateDealSessionId();
       const receiver = deal.participants.find((p) => p.role === "RECEIVER");
-      if (receiver && !receiver.sessionId && !receiver.userId) {
-        await prisma.dealParticipant.update({
-          where: { id: receiver.id },
-          data: { sessionId, lastSeenAt: new Date() },
-        });
-        myParticipantId = receiver.id;
-        myRole = "RECEIVER";
-      } else if (receiver && receiver.sessionId === sessionId) {
-        await prisma.dealParticipant.update({
-          where: { id: receiver.id },
-          data: { lastSeenAt: new Date() },
-        });
-        myParticipantId = receiver.id;
-        myRole = "RECEIVER";
+      if (receiver) {
+        if (!receiver.sessionId && !receiver.userId) {
+          const claim = await prisma.dealParticipant.updateMany({
+            where: { id: receiver.id, sessionId: null, userId: null },
+            data: { sessionId, lastSeenAt: new Date() },
+          });
+          if (claim.count === 1) {
+            myParticipantId = receiver.id;
+            myRole = "RECEIVER";
+          }
+        } else if (receiver.sessionId === sessionId) {
+          await prisma.dealParticipant.update({
+            where: { id: receiver.id },
+            data: { lastSeenAt: new Date() },
+          });
+          myParticipantId = receiver.id;
+          myRole = "RECEIVER";
+        }
       }
       // Sprint 14 invariant: one receiver per deal. Other sessions get
       // read-only view (myParticipantId stays null).
