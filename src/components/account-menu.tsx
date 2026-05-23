@@ -41,7 +41,13 @@ const PLAN_LABEL: Record<string, string> = {
   PRO: "Pro Solo", // legacy
 };
 
-export function AccountMenu() {
+// "down" is the default — menu drops below the trigger. Use "up" when
+// the trigger sits at the bottom of the viewport (sidebar bottom rail);
+// a downward menu there falls off-screen because the sidebar is
+// `h-screen` and its bottom edge IS the viewport bottom.
+type Placement = "down" | "up";
+
+export function AccountMenu({ placement = "down" }: { placement?: Placement } = {}) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -149,12 +155,16 @@ export function AccountMenu() {
         {open && (
           <motion.div
             role="menu"
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            initial={{ opacity: 0, y: placement === "up" ? 6 : -6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.12 } }}
+            exit={{ opacity: 0, y: placement === "up" ? 4 : -4, scale: 0.98, transition: { duration: 0.12 } }}
             transition={{ type: "spring", stiffness: 600, damping: 40, mass: 0.6 }}
-            style={{ transformOrigin: "top right" }}
-            className="absolute right-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+            style={{ transformOrigin: placement === "up" ? "bottom right" : "top right" }}
+            className={
+              placement === "up"
+                ? "absolute right-0 bottom-full z-30 mb-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+                : "absolute right-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+            }
           >
             {/* Profile header */}
             <div className="flex items-center gap-3 border-b border-border px-3 py-3">

@@ -12,15 +12,18 @@ import {
 } from "../types";
 import { toAnthropicSchema } from "../schema-helpers";
 
-const TOOL_NAME = "submit_result";
+// Tool name and description matter for Anthropic's tool_use schema
+// parsing. The earlier name `submit_result` + description "Submit the
+// structured result" caused claude-opus-4-7 to wrap the entire payload
+// under `{ result: {...} }`, treating the schema as describing "the
+// result object" rather than the top-level shape. Neutral verb-noun
+// naming with explicit "fields directly" wording avoids that.
+const TOOL_NAME = "record_response";
 
 // True when the model wrapped its tool_use payload under a single
-// `{ "result": {...} }` key — observed on claude-opus-4-7. Recognises
-// exactly that pattern (one key, non-null object value) so it cannot
-// false-positive on a real top-level schema with a `result` field.
-// Defensive only — the root-cause fix is to rename the tool away from
-// `submit_result` so the model stops treating the schema as describing
-// "the result object". Tracked in CLAUDE.md follow-up.
+// `{ "result": {...} }` key — observed on claude-opus-4-7 with the old
+// `submit_result` tool name. Still defended against because models
+// can regress and this is cheap to keep.
 function isResultWrapper(input: unknown): input is { result: object } {
   if (!input || typeof input !== "object" || Array.isArray(input)) return false;
   const keys = Object.keys(input);
@@ -77,7 +80,8 @@ export async function generate<T extends z.ZodTypeAny>(
   // 1024-token minimum, so this also rescues short-system requests.
   const tool = {
     name: TOOL_NAME,
-    description: "Submit the structured result. You MUST call this tool exactly once.",
+    description:
+      "Provide the response fields described in input_schema as direct top-level properties. Do NOT nest them under any wrapper key. Call this tool exactly once.",
     input_schema: toAnthropicSchema(opts.schema) as never,
     ...(system.cacheable
       ? { cache_control: { type: "ephemeral" as const } }

@@ -180,7 +180,10 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <div className="flex items-center justify-between border-t border-border px-3 py-3">
         <div className="min-w-0 flex-1">
-          <AccountMenu />
+          {/* The sidebar bottom rail is at the viewport bottom (h-screen
+              aside), so the dropdown must open UPWARD or it falls
+              off-screen. Mobile top-bar still uses the default `down`. */}
+          <AccountMenu placement="up" />
         </div>
         <div className="flex items-center gap-0.5">
           <CommandPalette />

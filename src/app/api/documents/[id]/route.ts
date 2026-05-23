@@ -40,6 +40,13 @@ export async function GET(
 
     return NextResponse.json({
       id: document.id,
+      // The /analyze flow returns `documentId` (its own create-then-read
+      // shape); the report page reads `analysis.documentId` to gate
+      // collaboration buttons (PublicShare / SendForReview /
+      // DeadlineScan / SendAsDeal). Without this alias, those buttons
+      // silently disappear on page reload because the doc-fetch path
+      // returned only `id`.
+      documentId: document.id,
       fileName: document.fileName,
       fileSize: document.fileSize,
       mimeType: document.mimeType,
