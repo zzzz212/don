@@ -14,6 +14,21 @@ import { toAnthropicSchema } from "../schema-helpers";
 
 const TOOL_NAME = "submit_result";
 
+// True when the model wrapped its tool_use payload under a single
+// `{ "result": {...} }` key — observed on claude-opus-4-7. Recognises
+// exactly that pattern (one key, non-null object value) so it cannot
+// false-positive on a real top-level schema with a `result` field.
+// Defensive only — the root-cause fix is to rename the tool away from
+// `submit_result` so the model stops treating the schema as describing
+// "the result object". Tracked in CLAUDE.md follow-up.
+function isResultWrapper(input: unknown): input is { result: object } {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return false;
+  const keys = Object.keys(input);
+  if (keys.length !== 1 || keys[0] !== "result") return false;
+  const inner = (input as { result: unknown }).result;
+  return inner !== null && typeof inner === "object" && !Array.isArray(inner);
+}
+
 function getKey(): string | null {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key || key === "your-api-key-here") return null;
@@ -98,6 +113,17 @@ export async function generate<T extends z.ZodTypeAny>(
       throw new AIError("No tool_use block in Anthropic response", "anthropic");
     }
 
+    // Some Anthropic models (observed on claude-opus-4-7 in prod 2026-05-24)
+    // wrap the tool_use payload under a single `{ "result": {...} }` key,
+    // treating the schema as describing "the result object" rather than
+    // the top-level shape. Detect that exact pattern and unwrap — both
+    // shapes lose nothing because our schema never has a top-level
+    // `result` property (search src/lib/ai/schemas/ — none do).
+    let rawInput: unknown = block.input;
+    if (isResultWrapper(rawInput)) {
+      rawInput = (rawInput as { result: unknown }).result;
+    }
+
     // Diagnostic: log the raw tool_use.input so we can see what the
     // model actually wrote when zod parsing fails downstream. Remove
     // once the empty-response root cause is pinned (Sprint 14 incident
@@ -110,13 +136,14 @@ export async function generate<T extends z.ZodTypeAny>(
         input_keys: block.input && typeof block.input === "object"
           ? Object.keys(block.input as object)
           : null,
+        unwrapped: rawInput !== block.input,
         input_length: inputStr.length,
         input_preview: inputStr.slice(0, 800),
         usage: response.usage,
       });
     }
 
-    const data = opts.schema.parse(block.input);
+    const data = opts.schema.parse(rawInput);
     return {
       data,
       usage: toUsage(response.usage, model, Date.now() - start),
