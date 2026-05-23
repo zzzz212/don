@@ -101,13 +101,18 @@ export async function POST(
       data: { status: newStatus },
     });
 
-    // If every clause in the deal is AGREED, flip deal.status.
+    // Sync deal.status with the current state of all clauses. Promote to
+    // AGREED when no clause is still open; demote back to ACTIVE if a
+    // previously-AGREED deal has any clause flip back to DISPUTED/PENDING
+    // (a DISAGREE arrived after both parties had AGREEd).
     const stillOpen = await prisma.dealClause.count({
       where: { dealId, status: { not: "AGREED" } },
     });
-    if (stillOpen === 0) {
-      await prisma.deal.update({ where: { id: dealId }, data: { status: "AGREED" } });
-    }
+    const desiredStatus = stillOpen === 0 ? "AGREED" : "ACTIVE";
+    await prisma.deal.updateMany({
+      where: { id: dealId, status: { not: desiredStatus } },
+      data: { status: desiredStatus },
+    });
 
     await logAudit({
       action: "deal.clause_action",
