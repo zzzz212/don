@@ -63,7 +63,7 @@ export function AnalysisCard({
   return (
     <div
       className={`animate-slide-up rounded-xl border bg-card p-5 transition-shadow hover:shadow-md ${
-        applied ? "border-success/40 ring-1 ring-success/20" : "border-border"
+        applied ? "border-success/40 ring-1 ring-success/20" : "border-rule"
       }`}
       style={{ animationDelay: `${index * 0.1}s`, opacity: 0 }}
     >

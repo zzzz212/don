@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Header } from "@/components/header";
 import { Disclaimer } from "@/components/disclaimer";
 import { buttonClass } from "@/components/button";
+import { DealRoomIllustration } from "@/components/deal-room-illustration";
 import {
   ArrowRight,
   ChevronDown,
@@ -249,6 +250,70 @@ export default function LandingPage() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/*
+        Deal Room band — Sprint 14 flagship gets a dedicated mention on
+        the landing. Editorial split: copy on left, bespoke illustration
+        on right. Sits between "Что мы ловим" and "Как это работает" —
+        the natural place to say "and once you've found the risks, you
+        can negotiate them right here".
+      */}
+      <section className="border-y border-rule py-20 lg:py-24">
+        <div className="paper-grain mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+                Sprint 14 · Deal Room
+              </p>
+              <h2 className="mt-4 font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+                Переговоры в одной комнате —{" "}
+                <span className="italic text-primary">без переписки в WhatsApp</span>
+                .
+              </h2>
+              <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-foreground/75">
+                Отправляете контрагенту одну ссылку. Он открывает её без
+                регистрации и e‑mail — видит ваш AI-разбор пункт за пунктом,
+                принимает то, что устраивает, и оставляет правки на спорном.
+                Когда оба согласовали — выгружаете финальный DOCX.
+              </p>
+              <ul className="mt-7 space-y-2.5 text-[15px] leading-relaxed text-foreground/80">
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 inline-block h-px w-4 bg-primary shrink-0" />
+                  <span>
+                    <strong className="font-semibold text-foreground">
+                      Получатель без логина —
+                    </strong>{" "}
+                    кликнул ссылку, сразу видит разбор и кнопки «согласен / не согласен / комментарий».
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 inline-block h-px w-4 bg-accent shrink-0" />
+                  <span>
+                    <strong className="font-semibold text-foreground">
+                      Counter-AI —
+                    </strong>{" "}
+                    AI показывает обе стороны: что выгодно вам и что выгодно
+                    им. Предлагает компромисс там, где это возможно.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 inline-block h-px w-4 bg-foreground/40 shrink-0" />
+                  <span>
+                    <strong className="font-semibold text-foreground">
+                      Аудит-трейл —
+                    </strong>{" "}
+                    кто что отметил и когда, для всех пунктов. Готов к
+                    подписанию когда оба согласовали.
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div className="text-foreground" aria-hidden="true">
+              <DealRoomIllustration className="h-auto w-full max-w-md mx-auto" />
+            </div>
           </div>
         </div>
       </section>

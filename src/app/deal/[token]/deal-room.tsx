@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { motion } from "motion/react";
 import { Loader2 } from "lucide-react";
 import { ClauseCard, type ClauseView } from "./clause-card";
 import { IdentifyModal } from "./identify-modal";
@@ -162,15 +163,27 @@ export function DealRoom({ token }: { token: string }) {
           </p>
         </header>
 
-        {/* ── Clauses ────────────────────────────────────────────── */}
+        {/* ── Clauses — staggered fade-in, like turning the pages of a
+              contract. Reduced-motion users get instant render via
+              motion/react's built-in respect for prefers-reduced-motion. */}
         <div className="space-y-10">
-          {deal.clauses.map((c) => (
-            <ClauseCard
+          {deal.clauses.map((c, idx) => (
+            <motion.div
               key={c.id}
-              clause={c}
-              myParticipantId={myParticipantId}
-              onAction={onAction}
-            />
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: Math.min(idx * 0.05, 0.5),
+                duration: 0.35,
+                ease: [0.21, 0.47, 0.32, 0.98],
+              }}
+            >
+              <ClauseCard
+                clause={c}
+                myParticipantId={myParticipantId}
+                onAction={onAction}
+              />
+            </motion.div>
           ))}
         </div>
 

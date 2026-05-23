@@ -418,8 +418,9 @@ export default function ReportPage({
             </div>
           )}
 
-          {/* Report header */}
-          <div className="animate-fade-in rounded-2xl border border-border bg-card p-6 sm:p-8">
+          {/* Report header — editorial frame: hairline rule, generous
+              padding, paper-grain for that title-page feel. */}
+          <div className="paper-grain animate-fade-in rounded-2xl border border-rule bg-card p-6 sm:p-8">
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
               <ScoreRing score={analysis.score} />
               <div className="flex-1 text-center sm:text-left">
@@ -450,7 +451,7 @@ export default function ReportPage({
                   </div>
                 )}
 
-                <p className="text-sm leading-relaxed text-muted">
+                <p className="text-sm leading-relaxed text-ink-quiet">
                   {analysis.summary}
                 </p>
 
