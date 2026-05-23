@@ -301,20 +301,23 @@ export default function NetworkPage() {
   ).length;
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: "directory", label: "Каталог" },
+    // The tab used to be "Связи" but the whole section is now called
+    // Связи; renaming the tab to "Подключения" removes the redundant
+    // crumb-trail effect (Связи → Связи) and makes the action verb-y.
     {
       id: "connections",
-      label: "Связи",
+      label: "Подключения",
       badge: incoming.length || undefined,
     },
     { id: "shares", label: "Ревью", badge: pendingShares || undefined },
-    { id: "profile", label: "Мой профиль" },
+    { id: "profile", label: "Профиль" },
   ];
 
   return (
     <AppShell>
       <PageHeader
-        title="Сеть"
-        description="Находите коллег, объединяйтесь в команды и отправляйте договоры на ревью."
+        title="Связи"
+        description="Коллеги, договоры на ревью и сообщения в одном месте."
         actions={
           <Link
             href="/network/messages"

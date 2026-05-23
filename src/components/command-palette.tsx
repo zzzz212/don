@@ -111,8 +111,8 @@ export function CommandPalette() {
       },
       {
         id: "nav.network",
-        label: "Сеть",
-        hint: "Каталог коллег, связи, ревью",
+        label: "Связи",
+        hint: "Каталог коллег, подключения, ревью",
         group: "Навигация",
         icon: Users,
         run: () => router.push("/network"),
