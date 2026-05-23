@@ -102,6 +102,10 @@ model User {
   directMessages      DirectMessage[]
   workspaceMessages   WorkspaceMessage[]
 
+  // Deal Room (Sprint 14).
+  dealsOwned          Deal[]            @relation("DealOwner")
+  dealParticipations  DealParticipant[] @relation("DealParticipantUser")
+
   // Referral self-relation — onDelete: SetNull so a referrer's deletion
   // doesn't cascade into the people they invited.
   referredBy User?  @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
@@ -225,6 +229,7 @@ model Organization {
   payments           Payment[]
   auditEvents        AuditEvent[]
   workspaceMessages  WorkspaceMessage[]
+  deals              Deal[]
 }
 
 // Per-user paid subscription. One row per user — the plan applies to
@@ -418,6 +423,7 @@ model Document {
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   deadlines    ContractDeadline[]
   publicShares PublicShare[]
+  deals        Deal[]
 
   @@index([userId])
   @@index([orgId])
@@ -909,4 +915,115 @@ model WorkspaceMessage {
   attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
 
   @@index([orgId, createdAt])
+}
+
+// ── Deal Room (Sprint 14) ─────────────────────────────────────────
+// Two-party contract negotiation space. A Deal binds a Document to a
+// pair of participants (one SENDER + one RECEIVER in Sprint 14;
+// multi-party deferred to Sprint 17+). Receiver opens via inviteToken
+// without logging in — session-cookie identity, stored as guestName
+// on DealParticipant.
+model Deal {
+  id          String   @id @default(cuid())
+  ownerId     String
+  orgId       String
+  documentId  String
+  title       String
+  // ACTIVE — at least one participant still has unresolved clauses.
+  // AGREED — every clause has AGREED status from both participants.
+  // Sprint 15 adds DECLINED and EXPIRED.
+  status      String   @default("ACTIVE")
+  // 192-bit hex (48 chars) used as the public `/deal/[token]` URL.
+  // Uniqueness enforced in application code (foot-gun #38 — nullable
+  // unique on Postgres trips Prisma db push), backed by @@index.
+  inviteToken String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner        User           @relation("DealOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  document     Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  participants DealParticipant[]
+  clauses      DealClause[]
+
+  @@index([ownerId])
+  @@index([orgId])
+  @@index([documentId])
+}
+
+model DealParticipant {
+  id          String    @id @default(cuid())
+  dealId      String
+  // "SENDER" | "RECEIVER" — Sprint 14 invariant: exactly one of each.
+  role        String
+  // Set when the participant is a logged-in user (always for SENDER,
+  // optional for RECEIVER if they sign in mid-flow).
+  userId      String?
+  // Set for anonymous RECEIVER via session cookie. Either userId OR
+  // sessionId is non-null on any RECEIVER row.
+  sessionId   String?
+  // Display name the receiver enters in the identify modal. Falls back
+  // to "Гость" if blank.
+  guestName   String?
+  guestEmail  String?
+  joinedAt    DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+
+  deal    Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user    User?             @relation("DealParticipantUser", fields: [userId], references: [id], onDelete: SetNull)
+  actions ClauseAction[]
+
+  @@unique([dealId, role])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model DealClause {
+  id          String   @id @default(cuid())
+  dealId      String
+  ord         Int
+  // Raw text of the clause from the analysed contract. Mirrors
+  // AnalysisRisk.originalText for clauses corresponding to risks; for
+  // neutral clauses, taken from preSigningChecklist or document body.
+  text        String
+  // "critical" | "medium" | "low" | "none" — mirrors the analyze schema.
+  riskLevel   String   @default("none")
+  // Snapshot of the analyze output for the sender's side, JSON-encoded.
+  // Shape matches AnalysisRiskSchema (description, consequence,
+  // recommendation, legalReference).
+  yourSide    Json
+  // Counter-AI inference: what the other party gains from this clause.
+  // Optional because not every clause has a meaningful counter-position
+  // (e.g. boilerplate). Shape: { theirGain: string, compromise?: string }.
+  theirSide   Json?
+  // PENDING — no action yet, or only partial action.
+  // AGREED — both participants AGREE'd this clause.
+  // DISPUTED — at least one DISAGREE recorded.
+  // RESOLVED — was DISPUTED, now both participants AGREE.
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deal    Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  actions ClauseAction[]
+
+  @@index([dealId, ord])
+}
+
+model ClauseAction {
+  id            String   @id @default(cuid())
+  clauseId      String
+  participantId String
+  // "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT"
+  kind          String
+  // Free-text body. Empty for AGREE/DISAGREE, required for COMMENT and
+  // PROPOSE_EDIT.
+  body          String?
+  createdAt     DateTime @default(now())
+
+  clause      DealClause      @relation(fields: [clauseId], references: [id], onDelete: Cascade)
+  participant DealParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([clauseId, createdAt])
+  @@index([participantId])
 }
