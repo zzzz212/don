@@ -23,8 +23,14 @@ interface DealInviteOptions {
 
 export function buildDealInviteEmail(opts: DealInviteOptions): EmailMessage {
   const who = opts.fromName.trim() || "Пользователь";
+  const safeWho = escapeHtml(who);
+  const safeDoc = escapeHtml(opts.documentName);
   const subject = `${who} приглашает вас обсудить договор — ${BRAND.name}`;
 
+  // fromName comes from session.user.name (user-controlled) and
+  // documentName comes from doc.fileName (user-controlled at upload).
+  // renderEmailHtml raw-inserts opts.body — we MUST escape every
+  // user-controlled value before interpolating into the HTML string.
   const html = renderEmailHtml({
     preview: `${who} открыл сделку по договору «${opts.documentName}».`,
     body: `
@@ -32,8 +38,8 @@ export function buildDealInviteEmail(opts: DealInviteOptions): EmailMessage {
         Приглашение в Deal Room
       </p>
       <p style="margin: 0 0 16px 0;">
-        <strong>${opts.fromName}</strong> приглашает вас обсудить договор
-        <strong>«${opts.documentName}»</strong> на сервисе ${BRAND.name}.
+        <strong>${safeWho}</strong> приглашает вас обсудить договор
+        <strong>«${safeDoc}»</strong> на сервисе ${BRAND.name}.
       </p>
     `,
     cta: { label: "Открыть сделку", url: opts.dealUrl },
@@ -49,4 +55,13 @@ export function buildDealInviteEmail(opts: DealInviteOptions): EmailMessage {
   );
 
   return { to: opts.to, subject, html, text, tag: "deal-invite" };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

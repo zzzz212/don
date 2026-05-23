@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
 import { rateLimit } from "@/lib/rate-limit";
 import { createDealFromDocument } from "@/lib/deals";
 import { sendEmail } from "@/lib/email";
@@ -29,8 +29,15 @@ export async function POST(request: NextRequest) {
     const me = session.user.id;
 
     const orgId = await ensureActiveOrg(me);
-    if (!orgId) {
-      return NextResponse.json({ error: "Нет активной организации" }, { status: 400 });
+
+    // VIEWER role is read-only across the platform (foot-gun #37). Creating
+    // a Deal mints rows and fires an email — not allowed.
+    const membership = await getMembership(me, orgId);
+    if (membership?.role === "VIEWER") {
+      return NextResponse.json(
+        { error: "Роль «Наблюдатель» не позволяет создавать сделки." },
+        { status: 403 }
+      );
     }
 
     const rl = await rateLimit(`deals.create:${me}`, "deals.create");
@@ -44,13 +51,38 @@ export async function POST(request: NextRequest) {
     }
     const { documentId, counterpartyEmail, counterpartyName, message } = parsed.data;
 
-    const { deal, clauseCount } = await createDealFromDocument({
-      ownerId: me,
-      orgId,
-      documentId,
-      counterpartyEmail,
-      counterpartyName,
-    });
+    let createResult: Awaited<ReturnType<typeof createDealFromDocument>>;
+    try {
+      createResult = await createDealFromDocument({
+        ownerId: me,
+        orgId,
+        documentId,
+        counterpartyEmail,
+        counterpartyName,
+      });
+    } catch (err) {
+      // Map known application errors to client-facing status codes. We
+      // intentionally collapse "not found" and "not owned" into one
+      // generic 404 so callers can't probe document IDs across orgs.
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("Document not found")) {
+        return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
+      }
+      if (message.includes("not been analysed")) {
+        return NextResponse.json(
+          { error: "Документ ещё не проанализирован — дождитесь окончания анализа." },
+          { status: 422 }
+        );
+      }
+      if (message.includes("Analysis.risks")) {
+        return NextResponse.json(
+          { error: "Анализ договора повреждён. Запустите анализ заново." },
+          { status: 422 }
+        );
+      }
+      throw err; // unknown error → outer catch → 500
+    }
+    const { deal, clauseCount } = createResult;
 
     // Fetch the title for the email — createDealFromDocument doesn't return it.
     const fullDeal = await prisma.deal.findUnique({
@@ -70,11 +102,14 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    // Key name `email` (not `counterpartyEmail`) so `redact()` masks it
+    // in the audit log per foot-gun #26 — SENSITIVE_KEYS matches exact
+    // key names, not substrings.
     await logAudit({
       action: "deal.created",
       userId: me,
       orgId,
-      payload: { dealId: deal.id, counterpartyEmail, clauseCount },
+      payload: { dealId: deal.id, email: counterpartyEmail, clauseCount },
     });
 
     return NextResponse.json({
@@ -85,7 +120,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     await reportError(error, { op: "deals.create" });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось создать сделку" },
+      { error: "Не удалось создать сделку" },
       { status: 500 }
     );
   }
