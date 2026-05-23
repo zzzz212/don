@@ -31,6 +31,43 @@ Prisma + Neon Postgres. ~150 коммитов, production https://yakso.ru,
 
 ═══ ПРАВИЛА РАБОТЫ В ЭТОЙ СЕССИИ ═══
 
+🔌 ПЛАГИНЫ И SKILLS — ОБЯЗАТЕЛЬНО В КАЖДОЙ ЗАДАЧЕ НА КАЖДОМ ЭТАПЕ:
+- ВСЕГДА в начале задачи проверь список доступных skills и invoke
+  каждый, к которому есть хотя бы 1% релевантности. Это не опция,
+  не «если сложная задача», а железное правило для ЛЮБОЙ задачи —
+  даже «простой вопрос» или «маленький fix».
+- ПЛАГИН SUPERPOWERS — приоритет №1. Перед любым действием спроси
+  себя: «какой superpowers skill сейчас применим?» и invoke его.
+  Типовая прогонка для разных классов задач:
+    • Любая задача (даже вопрос) → superpowers:using-superpowers
+    • Что-то создаём/строим/меняем поведение → superpowers:brainstorming
+      ПЕРЕД кодом
+    • Есть план/спека на >1 шаг → superpowers:writing-plans, потом
+      superpowers:executing-plans или subagent-driven-development
+    • Несколько независимых подзадач → superpowers:dispatching-parallel-agents
+    • Реализация фичи/багфикса → superpowers:test-driven-development
+    • Любой баг / упавший тест / странное поведение →
+      superpowers:systematic-debugging ПЕРЕД фиксом
+    • Перед коммитом «готово/работает/прошло» →
+      superpowers:verification-before-completion
+    • Готовая фича/PR → superpowers:requesting-code-review
+    • Получил ревью → superpowers:receiving-code-review
+    • Изоляция от текущего workspace → superpowers:using-git-worktrees
+    • Закрываем ветку → superpowers:finishing-a-development-branch
+    • Создаём/редактируем skill → superpowers:writing-skills
+- Помимо superpowers — задействуй и остальные доступные tools:
+  frontend-design (UI), code-review / security-review, claude-api,
+  verify, run, context7 для свежих доков библиотек, claude-md-management
+  при структурных правках CLAUDE.md, telegram:* по запросу и т.д.
+- Skill-checklist'ы → разворачивай в TodoWrite по пункту на задачу.
+- Перед ответом проговори: «Использую [skill] чтобы [цель]» —
+  и только потом действуй. Тишина = ты skip'нул skills.
+- Rationalize'ы вида «это слишком просто», «я и так знаю», «overkill»,
+  «сначала по-быстрому посмотрю файлы» — запрещены. Это red flag из
+  using-superpowers, и означает что я skip'аю обязательный шаг.
+- Это правило ВЫШЕ привычки «сразу читать код» и «отвечать коротко».
+  Сначала skills — потом всё остальное.
+
 КАЧЕСТВО КОДА — SENIOR BAR:
 - Никаких `any`. Валидация на границах (zod). Явный error-handling.
 - Match the surrounding code — comment density, naming, идиомы, паттерны.
