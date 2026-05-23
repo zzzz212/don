@@ -961,8 +961,11 @@ model DealParticipant {
   // Set when the participant is a logged-in user (always for SENDER,
   // optional for RECEIVER if they sign in mid-flow).
   userId      String?
-  // Set for anonymous RECEIVER via session cookie. Either userId OR
-  // sessionId is non-null on any RECEIVER row.
+  // Set for anonymous RECEIVER via session cookie on first link visit.
+  // A freshly-created RECEIVER row has BOTH userId and sessionId null
+  // until the receiver opens /deal/[token] — that's when sessionId gets
+  // claimed (or userId if they're authed). Code reading participants
+  // must tolerate the "pre-claim" state.
   sessionId   String?
   // Display name the receiver enters in the identify modal. Falls back
   // to "Гость" if blank.
