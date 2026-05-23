@@ -1,9 +1,8 @@
-// Stub — Task 9 will replace this body with the full deal-invite template.
-// The function signature is final; only the body HTML/text is placeholder.
-//
 // Sent to a counterparty when a sender creates a Deal Room from an
-// analysed contract. The receiver opens /deal/[token] to view and
-// negotiate clauses without needing to register.
+// analysed contract. The receiver opens /deal/[token] to view the
+// AI-prepared position and negotiate clauses without needing to
+// register. Cookie-bound session identity (Task 5) tracks who has
+// agreed/disagreed/commented on each clause.
 
 import type { EmailMessage } from "../provider";
 import { renderEmailHtml, renderEmailText } from "./layout";
@@ -25,33 +24,55 @@ export function buildDealInviteEmail(opts: DealInviteOptions): EmailMessage {
   const who = opts.fromName.trim() || "Пользователь";
   const safeWho = escapeHtml(who);
   const safeDoc = escapeHtml(opts.documentName);
-  const subject = `${who} приглашает вас обсудить договор — ${BRAND.name}`;
+  const subject = `${who} отправил вам договор для согласования — ${BRAND.name}`;
+
+  // Personal message rendered as a warm-minimalism callout — cream
+  // background, terracotta left border. Escaped because it's
+  // user-controlled (sender free-types it).
+  const messageBlock = opts.message
+    ? `
+      <div style="margin: 0 0 20px 0; padding: 14px 16px; background: #FAF3E6; border-left: 3px solid #C2613F; border-radius: 4px; font-style: italic;">
+        «${escapeHtml(opts.message)}»
+      </div>
+    `
+    : "";
 
   // fromName comes from session.user.name (user-controlled) and
   // documentName comes from doc.fileName (user-controlled at upload).
-  // renderEmailHtml raw-inserts opts.body — we MUST escape every
-  // user-controlled value before interpolating into the HTML string.
+  // renderEmailHtml raw-inserts opts.body — every interpolated user
+  // value goes through escapeHtml first.
   const html = renderEmailHtml({
-    preview: `${who} открыл сделку по договору «${opts.documentName}».`,
+    preview: `${who} прислал вам договор «${opts.documentName}» для согласования.`,
     body: `
-      <p style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; line-height: 1.3;">
-        Приглашение в Deal Room
+      <p style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; line-height: 1.3;">
+        Договор для согласования
       </p>
       <p style="margin: 0 0 16px 0;">
-        <strong>${safeWho}</strong> приглашает вас обсудить договор
-        <strong>«${safeDoc}»</strong> на сервисе ${BRAND.name}.
+        <strong>${safeWho}</strong> хочет согласовать с вами договор
+        <strong>«${safeDoc}»</strong>.
       </p>
+      ${messageBlock}
+      <p style="margin: 0 0 8px 0;">
+        Откройте ссылку — Яксо покажет вам разбор договора с вашей стороны
+        и где можно поторговаться. Логин не требуется.
+      </p>
+      <ul style="margin: 0 0 16px 0; padding-left: 20px; color: #5C5446;">
+        <li>AI разберёт договор за вас и подсветит риски</li>
+        <li>Можно отметить пункты «согласен / не согласен»</li>
+        <li>Можно предложить правки в одном клике</li>
+      </ul>
     `,
-    cta: { label: "Открыть сделку", url: opts.dealUrl },
+    cta: { label: "Открыть договор", url: opts.dealUrl },
   });
 
   const text = renderEmailText(
     [
-      "Приглашение в Deal Room",
-      `${who} приглашает вас обсудить договор "${opts.documentName}" на сервисе ${BRAND.name}.`,
-      ...(opts.message ? [`Сообщение от отправителя: ${opts.message}`] : []),
+      "Договор для согласования",
+      `${who} хочет согласовать с вами договор "${opts.documentName}" на сервисе ${BRAND.name}.`,
+      ...(opts.message ? [`Сообщение: «${opts.message}»`] : []),
+      "Откройте ссылку — Яксо покажет вам разбор. Логин не требуется.",
     ],
-    { label: "Открыть сделку", url: opts.dealUrl }
+    { label: "Открыть договор", url: opts.dealUrl }
   );
 
   return { to: opts.to, subject, html, text, tag: "deal-invite" };
