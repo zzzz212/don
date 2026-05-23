@@ -23,8 +23,10 @@ import {
   Trash2,
   Download,
   MessageCircle,
+  Handshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DealRoomIllustration } from "@/components/deal-room-illustration";
 
 interface DocumentItem {
   id: string;
@@ -286,13 +288,16 @@ export default function DashboardPage() {
         <DocumentSearchBar />
         <UsageWidget />
 
-        {/* Active Deal Rooms — shown only when the user has sent at
-            least one deal invite. Positioned above the document tabs so
-            it's immediately visible without scrolling. Hidden while the
-            main data is still loading to avoid a flash of empty state. */}
+        {/* Active Deal Rooms — promotes the new Sprint 14 flagship.
+            When the user has deals: list them with editorial spacing.
+            When they have analysed contracts but no deals yet: surface
+            the bespoke illustration + a single-line invitation. The
+            promo is suppressed for first-time users (no documents at
+            all) — they need to upload a contract first, no point
+            promoting an action that requires one. */}
         {!loading && activeDeals.length > 0 && (
           <section>
-            <h2 className="font-serif text-xl font-semibold tracking-tight mb-3">
+            <h2 className="mb-3 font-serif text-xl font-semibold tracking-tight">
               Активные сделки
             </h2>
             <ul className="space-y-2">
@@ -320,6 +325,47 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+
+        {/* No deals yet, but the user has analysed something — invite
+            them to send their first deal. Bespoke illustration sells
+            the feature without taking over the dashboard. */}
+        {!loading && activeDeals.length === 0 && documents.length > 0 && (
+          <section className="paper-grain overflow-hidden rounded-2xl border border-rule bg-card">
+            <div className="grid items-center gap-4 px-6 py-5 sm:grid-cols-[1fr_auto] sm:gap-8 sm:px-8 sm:py-6">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-ink-quiet">
+                  Sprint 14 · Deal Room
+                </p>
+                <h2 className="mt-1.5 font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                  Отправьте первый договор на согласование
+                </h2>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-quiet">
+                  Контрагент откроет ссылку без регистрации, увидит ваш разбор
+                  и сможет принимать пункты или предлагать правки. Логин и
+                  e‑mail с его стороны не нужны.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Link
+                    href={`/report/${documents[0].id}`}
+                    className={buttonClass({ variant: "primary", size: "sm" })}
+                  >
+                    <Handshake className="h-3.5 w-3.5" aria-hidden="true" />
+                    Открыть отчёт и отправить
+                  </Link>
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-ink-quiet">
+                    или из <Link href="/analyze" className="text-foreground underline-offset-4 hover:underline">нового анализа</Link>
+                  </span>
+                </div>
+              </div>
+              <div
+                className="hidden text-foreground sm:block sm:w-56 lg:w-72"
+                aria-hidden="true"
+              >
+                <DealRoomIllustration className="h-auto w-full" />
+              </div>
+            </div>
           </section>
         )}
 

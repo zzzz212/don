@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/button";
+import { Check, X, MessageSquare } from "lucide-react";
+import { buttonClass } from "@/components/button";
 
 export interface ClauseView {
   id: string;
@@ -29,12 +30,29 @@ export interface ClauseView {
   }>;
 }
 
-const STATUS_STYLES: Record<ClauseView["status"], string> = {
-  PENDING: "border-border bg-card",
-  AGREED: "border-emerald-700/30 bg-emerald-50/40",
-  DISPUTED: "border-rose-700/30 bg-rose-50/40",
-  RESOLVED: "border-emerald-700/30 bg-emerald-50/40",
+// Status → editorial accent. AGREED runs a subtle sage left-rule;
+// DISPUTED a terracotta one. PENDING stays neutral so the page reads
+// like an unmarked contract until votes start landing.
+const STATUS_ACCENT: Record<ClauseView["status"], string> = {
+  PENDING: "border-l-rule",
+  AGREED: "border-l-success/60",
+  DISPUTED: "border-l-primary/70",
+  RESOLVED: "border-l-success/60",
 };
+
+const STATUS_LABEL: Record<ClauseView["status"], { text: string; cls: string } | null> = {
+  PENDING: null,
+  AGREED: { text: "Согласовано", cls: "text-success" },
+  DISPUTED: { text: "Спорный пункт", cls: "text-primary" },
+  RESOLVED: { text: "Решено", cls: "text-success" },
+};
+
+// Format a 0-based ordinal as a clause number with the leading zero of
+// a Roman-numeral feel — works as marginalia (§ 01, § 02, …).
+function clauseLabel(ord: number): string {
+  const n = ord + 1;
+  return n < 10 ? `0${n}` : String(n);
+}
 
 export function ClauseCard({
   clause,
@@ -57,123 +75,171 @@ export function ClauseCard({
     .filter((a) => a.kind === "AGREE" || a.kind === "DISAGREE")
     .at(-1)?.kind;
 
+  const comments = clause.actions.filter((a) => a.kind === "COMMENT");
+  const statusLabel = STATUS_LABEL[clause.status];
+
   return (
-    <div className={`rounded-lg border p-5 ${STATUS_STYLES[clause.status]}`}>
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Left column — clause text */}
-        <div>
-          <div className="text-xs uppercase tracking-wider text-muted mb-2">
-            Пункт {clause.ord + 1}
+    <article
+      className={`group border-l-2 ${STATUS_ACCENT[clause.status]} pl-5 sm:pl-7`}
+    >
+      <div className="grid gap-x-8 gap-y-5 md:grid-cols-[1.4fr_1fr]">
+        {/* ── Document column ─────────────────────────────────────── */}
+        <div className="relative">
+          {/* Marginalia: clause number in tabular serif, sitting in the
+              left gutter — like a printed legal opinion. */}
+          <div className="flex items-baseline gap-3">
+            <span className="font-serif text-xl font-semibold tabular-nums text-foreground/40 leading-none">
+              § {clauseLabel(clause.ord)}
+            </span>
+            {statusLabel && (
+              <span
+                className={`text-[10px] uppercase tracking-[0.18em] font-semibold ${statusLabel.cls}`}
+              >
+                {statusLabel.text}
+              </span>
+            )}
           </div>
-          <p className="text-sm leading-relaxed whitespace-pre-line">
+          <p className="mt-3 text-[15px] leading-[1.65] text-foreground whitespace-pre-line">
             {clause.text}
           </p>
         </div>
 
-        {/* Right column — AI analysis */}
-        <div className="space-y-3 text-sm">
+        {/* ── Counter-AI marginalia column ────────────────────────── */}
+        <aside className="space-y-4 md:border-l md:border-rule md:pl-7 text-[13px] leading-[1.6]">
           {clause.yourSide && (
             <div>
-              <div className="font-medium text-primary mb-1">Ваша сторона</div>
-              <p className="text-foreground/80">{clause.yourSide.description}</p>
+              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-semibold text-primary">
+                <span className="inline-block h-px w-3 bg-primary" aria-hidden />
+                Ваша сторона
+              </div>
+              <p className="text-ink-quiet">{clause.yourSide.description}</p>
               {clause.yourSide.consequence && (
-                <p className="text-xs text-foreground/70 mt-1">
-                  ⚠ {clause.yourSide.consequence}
+                <p className="mt-1.5 text-xs italic text-ink-quiet">
+                  {clause.yourSide.consequence}
+                </p>
+              )}
+              {clause.yourSide.legalReference && (
+                <p className="mt-1.5 text-[11px] font-mono uppercase tracking-wide text-foreground/40">
+                  {clause.yourSide.legalReference}
                 </p>
               )}
             </div>
           )}
           {clause.theirSide && (
             <div>
-              {/* Sage accent for the other party */}
-              <div
-                className="font-medium mb-1"
-                style={{ color: "#6E7F62" }}
-              >
+              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] font-semibold text-accent">
+                <span className="inline-block h-px w-3 bg-accent" aria-hidden />
                 Другая сторона
               </div>
-              <p className="text-foreground/80">{clause.theirSide.theirGain}</p>
+              <p className="text-ink-quiet">{clause.theirSide.theirGain}</p>
               {clause.theirSide.compromise && (
-                <p className="text-xs mt-1">
-                  💡 Компромисс: {clause.theirSide.compromise}
-                </p>
+                <div className="mt-2 border-l border-accent/40 pl-3">
+                  <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-accent/80">
+                    Компромисс
+                  </div>
+                  <p className="mt-0.5 text-foreground/85">
+                    {clause.theirSide.compromise}
+                  </p>
+                </div>
               )}
             </div>
           )}
-        </div>
+        </aside>
       </div>
 
-      {/* Action row */}
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <Button
-          size="sm"
-          variant={lastVote === "AGREE" ? "primary" : "ghost"}
-          onClick={() => void onAction(clause.id, "AGREE")}
-          disabled={!myParticipantId}
-        >
-          ✓ Согласен
-        </Button>
-        <Button
-          size="sm"
-          variant={lastVote === "DISAGREE" ? "primary" : "ghost"}
-          onClick={() => void onAction(clause.id, "DISAGREE")}
-          disabled={!myParticipantId}
-        >
-          ✗ Не согласен
-        </Button>
-      </div>
+      {/* ── Action row + thread ──────────────────────────────────── */}
+      {(comments.length > 0 || myParticipantId) && (
+        <div className="mt-5 pt-4 border-t border-rule">
+          {myParticipantId && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void onAction(clause.id, "AGREE")}
+                className={
+                  lastVote === "AGREE"
+                    ? buttonClass({ variant: "primary", size: "sm" })
+                    : buttonClass({ variant: "ghost", size: "sm" })
+                }
+              >
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                Согласен
+              </button>
+              <button
+                type="button"
+                onClick={() => void onAction(clause.id, "DISAGREE")}
+                className={
+                  lastVote === "DISAGREE"
+                    ? buttonClass({ variant: "primary", size: "sm" })
+                    : buttonClass({ variant: "ghost", size: "sm" })
+                }
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                Не согласен
+              </button>
+              <span className="ml-1 inline-flex items-center gap-1 text-xs text-ink-quiet">
+                <MessageSquare className="h-3 w-3" aria-hidden="true" />
+                {comments.length > 0
+                  ? `${comments.length} ${comments.length === 1 ? "комментарий" : comments.length < 5 ? "комментария" : "комментариев"}`
+                  : "обсудить"}
+              </span>
+            </div>
+          )}
 
-      {/* Comment thread */}
-      {clause.actions.filter((a) => a.kind === "COMMENT").length > 0 && (
-        <ul className="mt-3 space-y-1 text-xs">
-          {clause.actions
-            .filter((a) => a.kind === "COMMENT")
-            .map((a) => (
-              <li key={a.id} className="text-foreground/80">
-                <strong>
-                  {a.participant.guestName ??
-                    (a.participant.role === "SENDER"
-                      ? "Отправитель"
-                      : "Получатель")}
-                  :
-                </strong>{" "}
-                {a.body}
-              </li>
-            ))}
-        </ul>
-      )}
-
-      {/* Comment input — only shown when user has a participant identity */}
-      {myParticipantId && (
-        <div className="mt-2 flex gap-2">
-          <input
-            type="text"
-            value={commentDraft}
-            onChange={(e) => setCommentDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && commentDraft.trim()) {
-                void onAction(clause.id, "COMMENT", commentDraft).then(() =>
-                  setCommentDraft("")
+          {comments.length > 0 && (
+            <ul className="mt-3 space-y-2">
+              {comments.map((a) => {
+                const who =
+                  a.participant.guestName ??
+                  (a.participant.role === "SENDER"
+                    ? "Отправитель"
+                    : "Получатель");
+                return (
+                  <li
+                    key={a.id}
+                    className="text-[13px] leading-[1.55] text-foreground/85"
+                  >
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-primary/80">
+                      {who}
+                    </span>
+                    <span className="ml-2">{a.body}</span>
+                  </li>
                 );
-              }
-            }}
-            placeholder="Оставить комментарий…"
-            className="flex-1 rounded border border-border bg-card px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!commentDraft.trim()}
-            onClick={() => {
-              void onAction(clause.id, "COMMENT", commentDraft).then(() =>
-                setCommentDraft("")
-              );
-            }}
-          >
-            Отправить
-          </Button>
+              })}
+            </ul>
+          )}
+
+          {myParticipantId && (
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="text"
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && commentDraft.trim()) {
+                    void onAction(clause.id, "COMMENT", commentDraft).then(
+                      () => setCommentDraft("")
+                    );
+                  }
+                }}
+                placeholder="Добавить комментарий…"
+                className="flex-1 rounded-md border-0 border-b border-rule bg-transparent px-0 py-1.5 text-sm text-foreground placeholder:text-ink-quiet/70 focus:border-primary focus:outline-none focus:ring-0 transition-colors"
+              />
+              <button
+                type="button"
+                disabled={!commentDraft.trim()}
+                onClick={() => {
+                  void onAction(clause.id, "COMMENT", commentDraft).then(() =>
+                    setCommentDraft("")
+                  );
+                }}
+                className="text-xs font-semibold text-primary hover:text-primary-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Отправить
+              </button>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </article>
   );
 }

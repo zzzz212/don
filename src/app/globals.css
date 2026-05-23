@@ -34,6 +34,13 @@
      visual sense than a solid neutral (cards-on-surface, dividers). */
   --border-soft: color-mix(in oklch, var(--foreground) 8%, transparent);
   --border-strong: color-mix(in oklch, var(--foreground) 16%, transparent);
+  /* Editorial accents — used by Deal Room, marginalia, and other
+     long-form surfaces where the design wants to read as set type
+     rather than dashboard chrome. `rule` is a true hairline divider
+     (lighter than border); `ink-quiet` is body-prose colour, dimmer
+     than foreground so headings can sit at full intensity. */
+  --rule: color-mix(in oklch, var(--foreground) 12%, transparent);
+  --ink-quiet: color-mix(in oklch, var(--foreground) 78%, transparent);
   /* Hero / landing decorative gradients — overridden in dark */
   --hero-grad-from: #ebe0cd;
   --hero-grad-via: #f5eddf;
@@ -77,6 +84,8 @@
   --ring: #e08966;
   --border-soft: color-mix(in oklch, var(--foreground) 10%, transparent);
   --border-strong: color-mix(in oklch, var(--foreground) 22%, transparent);
+  --rule: color-mix(in oklch, var(--foreground) 16%, transparent);
+  --ink-quiet: color-mix(in oklch, var(--foreground) 72%, transparent);
   --hero-grad-from: #1a1612;
   --hero-grad-via: #221c16;
   --hero-grad-to: #1a1612;
@@ -114,6 +123,8 @@
   --color-ring: var(--ring);
   --color-border-soft: var(--border-soft);
   --color-border-strong: var(--border-strong);
+  --color-rule: var(--rule);
+  --color-ink-quiet: var(--ink-quiet);
   /* Geist via next/font (--font-geist-sans / --font-geist-mono) — falls
      back to Inter if next/font hasn't loaded yet (early SSR paint) and
      then to system-ui. */
@@ -430,6 +441,39 @@ select:focus-visible {
     0 0 0 1px rgba(255, 255, 255, 0.06),
     0 1px 3px rgba(0, 0, 0, 0.6),
     0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Paper-grain texture — subtle stochastic noise overlay used on
+   editorial surfaces (Deal Room, hero banners) so they read as printed
+   paper rather than flat dashboard fills. The SVG is inlined as a data
+   URL: 200x200 fractal-noise tile, blended at low opacity. No request,
+   no extra asset. Apply with the `.paper-grain` class on a positioned
+   container; the pseudo-element handles the overlay so it can't intercept
+   pointer events.
+
+   The same data URL works in both themes — the blend mode + opacity
+   carry the contrast difference. */
+.paper-grain {
+  position: relative;
+  isolation: isolate;
+}
+.paper-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+.dark .paper-grain::after {
+  opacity: 0.06;
+  mix-blend-mode: screen;
+}
+.paper-grain > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Print styles for PDF export */
