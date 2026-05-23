@@ -4,9 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { OrgSwitcher } from "@/components/org-switcher";
+import { Logo } from "@/components/logo";
+import { buttonClass } from "@/components/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { CommandPalette } from "@/components/command-palette";
+import { AccountMenu } from "@/components/account-menu";
+import { useT } from "@/components/i18n-provider";
 import {
-  Scale,
   FileText,
   LayoutDashboard,
   FolderOpen,
@@ -14,20 +21,25 @@ import {
   Menu,
   X,
   LogOut,
+  Building2,
+  Users,
 } from "lucide-react";
-
-const navigation = [
-  { name: "Дашборд", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Анализ договора", href: "/analyze", icon: FileText },
-  { name: "Шаблоны", href: "/templates", icon: FolderOpen },
-  { name: "AI-консультант", href: "/chat", icon: MessageCircle },
-];
 
 export function Header() {
   const pathname = usePathname();
   const isLanding = pathname === "/";
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
+  const t = useT();
+
+  const navigation = [
+    { name: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
+    { name: t("nav.analyze"), href: "/analyze", icon: FileText },
+    { name: t("nav.templates"), href: "/templates", icon: FolderOpen },
+    { name: t("nav.counterparty"), href: "/counterparty", icon: Building2 },
+    { name: t("nav.chat"), href: "/chat", icon: MessageCircle },
+    { name: t("nav.network"), href: "/network", icon: Users },
+  ];
 
   const user = session?.user;
   const initials = user?.name
@@ -40,35 +52,37 @@ export function Header() {
     : user?.email?.[0]?.toUpperCase() || "U";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-white/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-5 w-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-foreground">
-              ЮрИИст
-            </span>
-          </Link>
+        <div className="flex h-16 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href="/" className="flex shrink-0 items-center">
+              <Logo size={34} wordmark={t("brand.name")} />
+            </Link>
+            {!isLanding && user && <OrgSwitcher />}
+          </div>
 
           {/* Desktop navigation */}
           {!isLanding && (
-            <nav className="hidden md:flex items-center gap-1">
+            <nav
+              className="hidden lg:flex items-center gap-0.5"
+              aria-label={t("nav.primary")}
+            >
               {navigation.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-primary-light text-primary-dark"
                         : "text-muted hover:text-foreground hover:bg-surface"
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                     {item.name}
                   </Link>
                 );
@@ -76,61 +90,59 @@ export function Header() {
             </nav>
           )}
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isLanding && !user ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <ThemeToggle />
                 <Link
                   href="/login"
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className={buttonClass({ variant: "ghost", size: "sm" })}
                 >
-                  Войти
+                  {t("auth.login")}
                 </Link>
                 <Link
                   href="/register"
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                  className={buttonClass({ variant: "primary", size: "sm" })}
                 >
-                  Регистрация
+                  {t("auth.register")}
                 </Link>
               </div>
             ) : isLanding && user ? (
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline text-sm text-muted">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <ThemeToggle />
+                <span className="hidden md:inline text-sm text-muted truncate max-w-[12rem]">
                   {user.name || user.email}
                 </span>
-                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                <div
+                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-fg"
+                  aria-hidden="true"
+                >
                   {initials}
                 </div>
                 <Link
                   href="/dashboard"
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+                  className={buttonClass({ variant: "primary", size: "sm" })}
                 >
-                  В кабинет
+                  {t("nav.openApp")}
                 </Link>
               </div>
             ) : (
               <>
-                <span className="hidden sm:inline text-sm text-muted">
-                  {user?.name || user?.email || "Бесплатный тариф"}
-                </span>
-                <div className="hidden sm:flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-                  {initials}
-                </div>
-                <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
-                  title="Выйти"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
+                <CommandPalette />
+                <ThemeToggle />
+                <AccountMenu />
                 {/* Mobile hamburger */}
                 <button
                   onClick={() => setMobileOpen(!mobileOpen)}
-                  className="md:hidden flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
+                  aria-label={mobileOpen ? t("nav.menuClose") : t("nav.menuOpen")}
+                  aria-expanded={mobileOpen}
+                  aria-controls="mobile-nav"
+                  className="lg:hidden flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground transition-colors"
                 >
                   {mobileOpen ? (
-                    <X className="h-5 w-5" />
+                    <X className="h-5 w-5" aria-hidden="true" />
                   ) : (
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-5 w-5" aria-hidden="true" />
                   )}
                 </button>
               </>
@@ -140,9 +152,19 @@ export function Header() {
       </div>
 
       {/* Mobile menu */}
-      {mobileOpen && !isLanding && (
-        <div className="md:hidden border-t border-border bg-white animate-fade-in">
+      <AnimatePresence>
+        {mobileOpen && !isLanding && (
+        <motion.div
+          id="mobile-nav"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0, transition: { duration: 0.18 } }}
+          transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.7 }}
+          className="lg:hidden overflow-hidden border-t border-border bg-card"
+        >
           <div className="px-4 py-3 space-y-1">
+            {/* OrgSwitcher already lives in the header bar (compact avatar
+                form on narrow widths) — no need to duplicate it here. */}
             {navigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
@@ -150,38 +172,43 @@ export function Header() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary-light text-primary-dark"
                       : "text-muted hover:text-foreground hover:bg-surface"
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
                   {item.name}
                 </Link>
               );
             })}
-            <div className="border-t border-border pt-3 mt-2">
+            <div className="border-t border-border pt-3 mt-2 space-y-1">
               <div className="flex items-center gap-3 px-3 mb-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-fg"
+                  aria-hidden="true"
+                >
                   {initials}
                 </div>
                 <span className="text-sm text-foreground truncate">
-                  {user?.name || user?.email || "Пользователь"}
+                  {user?.name || user?.email || t("plan.free")}
                 </span>
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted hover:bg-surface hover:text-foreground transition-colors"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-muted hover:bg-surface hover:text-foreground transition-colors"
               >
-                <LogOut className="h-4 w-4" />
-                Выйти
+                <LogOut className="h-5 w-5" aria-hidden="true" />
+                {t("auth.logout")}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

@@ -1,28 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatAI, getActiveProvider } from "@/lib/ai/client";
+import { streamChat, getActiveProvider } from "@/lib/ai/client";
+import { CHAT_SYSTEM } from "@/lib/ai/prompts";
+import { logUsage } from "@/lib/ai/usage";
+import { pickTier } from "@/lib/ai/tier-policy";
+import { SSE_HEADERS, streamToSSE } from "@/lib/ai/sse";
+import type { StreamEvent } from "@/lib/ai/types";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
+import { reportError } from "@/lib/telemetry";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
+import { getEffectiveUserPlan } from "@/lib/plans";
+import { captureEvent } from "@/lib/analytics/server";
 
-const SYSTEM_PROMPT = `Ты — опытный юрист-консультант, специализирующийся на российском законодательстве. Ты помогаешь предпринимателям и малому бизнесу разобраться в юридических вопросах.
-
-ПРАВИЛА:
-1. Отвечай на русском языке
-2. Ссылайся на конкретные статьи законов (ГК РФ, ТК РФ, НК РФ, КоАП РФ и др.)
-3. Давай практичные, применимые советы
-4. Структурируй ответ: ключевые моменты, детали, рекомендация
-5. Если вопрос неоднозначен — укажи варианты и оговорки
-6. В конце КАЖДОГО ответа добавляй дисклеймер: "⚠️ Данный ответ носит информационный характер и не является юридической консультацией."
-7. Если вопрос не связан с юриспруденцией — вежливо сообщи, что специализируешься только на правовых вопросах
-
-Отвечай структурированно, используя markdown для форматирования (жирный текст, списки, нумерация).`;
+// Streaming chat with long answers (Sonnet on PRO can generate 1500+
+// tokens, ~40-60s). Hobby plan caps this at 60s anyway, but on Pro
+// the headroom keeps long legal explanations from getting cut off.
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-    const rl = rateLimit(ip, "chat");
+    const rl = await rateLimit(ip, "chat");
     if (!rl.ok) {
       return NextResponse.json(
-        { error: "Слишком много запросов. Подождите немного." },
-        { status: 429 }
+        {
+          error: "Слишком много запросов. Подождите немного.",
+          code: "RATE_LIMITED",
+          resetAt: rl.resetAt,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(rl.limit),
+            "X-RateLimit-Remaining": String(rl.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+          },
+        }
       );
     }
 
@@ -35,24 +49,101 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If no AI provider — return demo indicator
-    const provider = getActiveProvider();
-    if (provider === "demo") {
+    if (getActiveProvider() === "demo") {
       return NextResponse.json({ demo: true });
     }
 
-    const response = await chatAI(
-      SYSTEM_PROMPT,
-      messages.map((m: { role: string; content: string }) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      2048
-    );
+    const session = await auth();
+    const userId = session?.user?.id ?? null;
+    const orgId = userId
+      ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
+      : null;
 
-    return NextResponse.json({ message: response.text });
+    // Workspace VIEWERs are read-only — no AI quota spend.
+    if (userId && orgId) {
+      const m = await getMembership(userId, orgId);
+      if (m?.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Роль «Наблюдатель» не позволяет пользоваться чатом-юристом." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Resolve the user's effective plan so the chat tier picker can
+    // pick Sonnet for paying users / Haiku for FREE. Anonymous = FREE.
+    let effectivePlan: string | null = null;
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { plan: true, trialEndsAt: true },
+      });
+      effectivePlan = getEffectiveUserPlan({
+        plan: user?.plan,
+        trialEndsAt: user?.trialEndsAt ?? null,
+      }).plan;
+    }
+
+    // Track at the request level, not per token. One event per user
+    // message is the unit a funnel actually cares about.
+    void captureEvent({
+      userId,
+      orgId,
+      event: "chat_message_sent",
+      properties: { messagesInThread: messages.length },
+    });
+
+    // (RAG removed — see commit dropping /legal. The 6-article seed
+    // wasn't enough corpus for citation to be useful, and Anthropic's
+    // base model already knows ГК РФ well enough to answer freely.
+    // pgvector + Voyage stay in place for the per-user contract
+    // semantic search on the dashboard.)
+
+    // The browser cancels the fetch when the user navigates away or hits
+    // stop. request.signal is forwarded into the AI SDK so we stop the
+    // upstream call and stop billing tokens.
+    const signal = request.signal;
+
+    // Wrap the provider stream so that:
+    //   1. usage events are recorded to AiUsage on the way through
+    //   2. error events get telemetry attribution
+    //   3. delta / done events pass through untouched to the client
+    async function* withTelemetry(): AsyncGenerator<StreamEvent> {
+      const source = streamChat({
+        system: CHAT_SYSTEM,
+        messages: messages.map((m: { role: string; content: string }) => ({
+          role:
+            m.role === "assistant"
+              ? ("assistant" as const)
+              : ("user" as const),
+          content: m.content,
+        })),
+        model: pickTier("chat", effectivePlan),
+        maxTokens: 2048,
+        signal,
+      });
+
+      for await (const event of source) {
+        if (event.kind === "usage") {
+          // Fire-and-forget DB write so we don't block the stream.
+          void logUsage(userId, orgId, event.usage, "chat");
+        }
+        if (event.kind === "error") {
+          await reportError(new Error(event.message), {
+            op: "chat.stream",
+            userId,
+          });
+        }
+        yield event;
+      }
+    }
+
+    return new Response(streamToSSE(withTelemetry()), {
+      status: 200,
+      headers: SSE_HEADERS,
+    });
   } catch (error) {
-    console.error("Chat error:", error);
+    await reportError(error, { op: "chat" });
     return NextResponse.json(
       { error: "Ошибка при обработке запроса. Попробуйте позже." },
       { status: 500 }

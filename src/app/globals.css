@@ -1,20 +1,104 @@
 @import "tailwindcss";
 
+/* Class-based dark mode. Tailwind 4 default is prefers-color-scheme;
+   we want the user's explicit choice (with prefers-color-scheme as the
+   initial value) to take precedence — that requires a class-based
+   variant matching either the .dark element itself or any descendant. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* "Тёплый минимализм" palette — terracotta accent on warm cream canvas.
+   The product reads as paper, not corporate dashboard. Hex is the single
+   source of truth; color-mix() derives the translucent tokens. The
+   .dark block re-binds every variable for the warm-charcoal theme. */
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --primary-light: #dbeafe;
-  --accent: #0ea5e9;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --card: #ffffff;
-  --card-hover: #f8fafc;
-  --surface: #f1f5f9;
+  --background: #f5eddf;
+  --foreground: #1f1b16;
+  --primary: #c2613f;
+  --primary-dark: #a24e30;
+  --primary-light: #f4dcc9;
+  --primary-fg: #fcf7ef;
+  --accent: #6e7f62;
+  --success: #4a7c56;
+  --success-light: #e0ead7;
+  --warning: #b88421;
+  --warning-light: #f4e3c2;
+  --danger: #9b2d26;
+  --danger-light: #f0d6cf;
+  --muted: #6b6258;
+  --border: #e3d8c5;
+  --card: #fbf5ec;
+  --card-hover: #f0e5d2;
+  --surface: #ebe0cd;
+  --ring: #c2613f;
+  /* Translucent border tokens — for places where a hairline makes more
+     visual sense than a solid neutral (cards-on-surface, dividers). */
+  --border-soft: color-mix(in oklch, var(--foreground) 8%, transparent);
+  --border-strong: color-mix(in oklch, var(--foreground) 16%, transparent);
+  /* Editorial accents — used by Deal Room, marginalia, and other
+     long-form surfaces where the design wants to read as set type
+     rather than dashboard chrome. `rule` is a true hairline divider
+     (lighter than border); `ink-quiet` is body-prose colour, dimmer
+     than foreground so headings can sit at full intensity. */
+  --rule: color-mix(in oklch, var(--foreground) 12%, transparent);
+  --ink-quiet: color-mix(in oklch, var(--foreground) 78%, transparent);
+  /* Hero / landing decorative gradients — overridden in dark */
+  --hero-grad-from: #ebe0cd;
+  --hero-grad-via: #f5eddf;
+  --hero-grad-to: #fbf5ec;
+  --hero-radial: rgba(194, 97, 63, 0.10);
+  /* Shadow values defined as plain vars so they cascade with theme —
+     Tailwind 4's @theme inline references them by var() and the .dark
+     override re-binds them at runtime. Tinted with warm ink — rgba based
+     on a brown-ink hue so shadows reinforce the paper feel instead of
+     bleeding cold grey across the cream surface. */
+  --shadow-2xs-value: 0 1px 1px rgba(96, 56, 26, 0.05);
+  --shadow-xs-value: 0 1px 2px rgba(96, 56, 26, 0.06);
+  --shadow-sm-value: 0 1px 2px rgba(96, 56, 26, 0.06), 0 1px 3px rgba(96, 56, 26, 0.05);
+  --shadow-md-value: 0 2px 6px rgba(96, 56, 26, 0.07), 0 6px 16px rgba(96, 56, 26, 0.07);
+  --shadow-lg-value: 0 6px 14px rgba(96, 56, 26, 0.08), 0 18px 36px rgba(96, 56, 26, 0.08);
+  --shadow-xl-value: 0 10px 24px rgba(96, 56, 26, 0.09), 0 28px 56px rgba(96, 56, 26, 0.10);
+  --shadow-2xl-value: 0 18px 40px rgba(96, 56, 26, 0.11), 0 36px 72px rgba(96, 56, 26, 0.14);
+}
+
+.dark {
+  /* Warm charcoal — coffee-toned dark, never blue. Terracotta primary
+     lifts toward soft clay so it doesn't burn at low luminance. */
+  --background: #1a1612;
+  --foreground: #ede5d7;
+  --primary: #e08966;
+  --primary-dark: #eda68c;
+  --primary-light: rgba(224, 137, 102, 0.18);
+  --primary-fg: #1a1612;
+  --accent: #a8b598;
+  --success: #6bac7a;
+  --success-light: rgba(107, 172, 122, 0.16);
+  --warning: #deb55f;
+  --warning-light: rgba(222, 181, 95, 0.16);
+  --danger: #d67b6e;
+  --danger-light: rgba(214, 123, 110, 0.16);
+  --muted: #a99f90;
+  --border: #322b22;
+  --card: #221c16;
+  --card-hover: #2a2319;
+  --surface: #1f1a14;
+  --ring: #e08966;
+  --border-soft: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --border-strong: color-mix(in oklch, var(--foreground) 22%, transparent);
+  --rule: color-mix(in oklch, var(--foreground) 16%, transparent);
+  --ink-quiet: color-mix(in oklch, var(--foreground) 72%, transparent);
+  --hero-grad-from: #1a1612;
+  --hero-grad-via: #221c16;
+  --hero-grad-to: #1a1612;
+  --hero-radial: rgba(224, 137, 102, 0.14);
+  /* Dark-mode shadows are deeper black-tinted + a 1px inset cream hint
+     so cards "lift" off the warm canvas without reading as muddy. */
+  --shadow-2xs-value: 0 1px 1px oklch(0 0 0 / 30%);
+  --shadow-xs-value: 0 1px 2px oklch(0 0 0 / 35%);
+  --shadow-sm-value: 0 1px 2px oklch(0 0 0 / 40%), inset 0 0 0 1px oklch(1 0 0 / 4%);
+  --shadow-md-value: 0 2px 6px oklch(0 0 0 / 45%), inset 0 0 0 1px oklch(1 0 0 / 5%);
+  --shadow-lg-value: 0 8px 24px oklch(0 0 0 / 50%), inset 0 0 0 1px oklch(1 0 0 / 6%);
+  --shadow-xl-value: 0 16px 40px oklch(0 0 0 / 55%), inset 0 0 0 1px oklch(1 0 0 / 6%);
+  --shadow-2xl-value: 0 24px 64px oklch(0 0 0 / 60%), inset 0 0 0 1px oklch(1 0 0 / 7%);
 }
 
 @theme inline {
@@ -23,23 +107,101 @@
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
   --color-primary-light: var(--primary-light);
+  --color-primary-fg: var(--primary-fg);
   --color-accent: var(--accent);
   --color-success: var(--success);
+  --color-success-light: var(--success-light);
   --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
   --color-danger: var(--danger);
+  --color-danger-light: var(--danger-light);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-card: var(--card);
   --color-card-hover: var(--card-hover);
   --color-surface: var(--surface);
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "SF Mono", "Fira Code", monospace;
+  --color-ring: var(--ring);
+  --color-border-soft: var(--border-soft);
+  --color-border-strong: var(--border-strong);
+  --color-rule: var(--rule);
+  --color-ink-quiet: var(--ink-quiet);
+  /* Geist via next/font (--font-geist-sans / --font-geist-mono) — falls
+     back to Inter if next/font hasn't loaded yet (early SSR paint) and
+     then to system-ui. */
+  --font-sans: var(--font-geist-sans), "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), "SF Mono", "Fira Code", monospace;
+  /* Serif for display headings (h1/h2) — the деловой-модерн accent. */
+  --font-serif: var(--font-source-serif), "Source Serif 4", Georgia, "Times New Roman", serif;
+  /* Tighter heading tracking — Tailwind defaults are tuned for body
+     copy; bumped headings need a hair of negative letter-spacing to
+     read as deliberate display type. */
+  --tracking-tight: -0.02em;
+  --tracking-tighter: -0.03em;
+  /* Tightened radii — Tailwind's defaults (xl .75rem / 2xl 1rem) read
+     as the rounded "AI-template" look; pulled in so containers feel
+     composed rather than bubbly. */
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.625rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
+  /* Softer, more premium shadows. Tailwind 4 defaults are too high-
+     contrast — they read as "Material" rather than "fine document".
+     Light: a barely-there 1px hairline + a soft diffuse drop. Dark:
+     ditto, plus a 1px white inner border so cards feel "lifted off"
+     the dark canvas instead of "stamped into" it. */
+  --shadow-2xs: var(--shadow-2xs-value);
+  --shadow-xs: var(--shadow-xs-value);
+  --shadow-sm: var(--shadow-sm-value);
+  --shadow-md: var(--shadow-md-value);
+  --shadow-lg: var(--shadow-lg-value);
+  --shadow-xl: var(--shadow-xl-value);
+  --shadow-2xl: var(--shadow-2xl-value);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Display headings carry the serif — the деловой-модерн accent. */
+h1,
+h2 {
+  font-family: var(--font-serif);
+}
+
+/* Decorative hero gradient — wired to theme variables so it adapts in dark mode. */
+.bg-hero-gradient {
+  background:
+    radial-gradient(circle at 30% 20%, var(--hero-radial), transparent 50%),
+    linear-gradient(to bottom right, var(--hero-grad-from), var(--hero-grad-via), var(--hero-grad-to));
+}
+
+/* Honour user OS preference for reduced motion — skip decorative animations. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Always-visible focus rings for keyboard navigation. Mouse users keep
+   no-ring (focus-visible polyfill) — :focus-visible is now well-supported. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Form fields manage their own focus styling at the wrapper level
+   (focus-within:border-primary, focus-within:ring-*) — opt them out of
+   the global :focus-visible outline so we don't double up the ring. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 @keyframes fade-in {
@@ -85,6 +247,235 @@ body {
 .stagger-4 { animation-delay: 0.4s; opacity: 0; }
 .stagger-5 { animation-delay: 0.5s; opacity: 0; }
 
+/* Skeleton "shimmer" — richer signal than a flat pulse. A linear
+   gradient sweeps left-to-right across the placeholder block, with the
+   midpoint slightly brighter than the surface base. Falls back cleanly
+   under prefers-reduced-motion (animation is disabled, the static base
+   colour stays). */
+@keyframes skeleton-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-shimmer {
+  background-color: var(--surface);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--foreground) 6%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+/* Skip-to-content link for keyboard / screen-reader users — invisible
+   until focused, then anchored top-left for clear keyboard discovery. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transform: translateY(-200%);
+  transition: transform 0.15s ease-out;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Visually-hidden — content stays in DOM for screen readers but is
+   removed from the visual flow. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Legal page typography (Privacy / Terms / Offer).
+   Tailored to long Russian legal text: comfortable line height, restrained
+   heading sizes, and clear hierarchy without visual noise. */
+.prose-legal {
+  color: var(--foreground);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.prose-legal p {
+  margin: 0 0 1rem 0;
+}
+.prose-legal h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+  margin: 2.5rem 0 1rem 0;
+  scroll-margin-top: 5rem;
+}
+.prose-legal h2:first-child {
+  margin-top: 0;
+}
+.prose-legal h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 1.75rem 0 0.5rem 0;
+  scroll-margin-top: 5rem;
+}
+.prose-legal ul, .prose-legal ol {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+.prose-legal ul {
+  list-style: disc;
+}
+.prose-legal ol {
+  list-style: decimal;
+}
+.prose-legal li {
+  margin: 0.25rem 0;
+}
+.prose-legal li > p {
+  margin: 0;
+}
+.prose-legal a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-legal a:hover {
+  color: var(--primary-dark);
+}
+.prose-legal strong {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.prose-legal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.5rem 0;
+  font-size: 0.875rem;
+}
+.prose-legal th, .prose-legal td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.prose-legal th {
+  background: var(--surface);
+  font-weight: 600;
+}
+.prose-legal blockquote {
+  border-left: 3px solid var(--primary);
+  background: var(--primary-light);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--foreground);
+}
+.prose-legal blockquote p:last-child {
+  margin-bottom: 0;
+}
+.prose-legal code {
+  background: var(--surface);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* Generated-document preview chrome — Times-style serif so legal copy
+   feels familiar to lawyers reviewing it. White paper background even
+   in dark mode (printable surface).
+   Children are explicitly pinned to ink-black so a stray Tailwind
+   text-foreground / text-muted (which binds to the *theme* variable)
+   inside the rendered content can't bleed into a milky-grey reading
+   experience on the white paper. */
+.document-preview,
+.document-preview * {
+  color: #0f172a;
+}
+.document-preview {
+  font-family: "Times New Roman", "Liberation Serif", Georgia, serif;
+  background: #ffffff;
+  /* Native form widgets / scrollbars also get the light treatment so a
+     dark-mode browser doesn't render them with white text on white. */
+  color-scheme: light;
+}
+.document-preview p {
+  text-indent: 1.25em;
+}
+.document-preview h2,
+.document-preview h3 {
+  text-indent: 0;
+  /* Generated documents stay on their own Times serif — don't inherit
+     the app's display serif. */
+  font-family: inherit;
+}
+
+/* Document "page" wrapper — always white paper regardless of theme,
+   with a softer ring instead of a heavy 2xl-shadow (which on dark mode
+   reads as a muddy halo around the page). */
+.document-page {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(15, 23, 42, 0.08);
+}
+.dark .document-page {
+  /* Subtle inner border + soft outer glow so the page reads as "lifted"
+     above the dark canvas without the gritty 2xl-black-shadow look. */
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Paper-grain texture — subtle stochastic noise overlay used on
+   editorial surfaces (Deal Room, hero banners) so they read as printed
+   paper rather than flat dashboard fills. The SVG is inlined as a data
+   URL: 200x200 fractal-noise tile, blended at low opacity. No request,
+   no extra asset. Apply with the `.paper-grain` class on a positioned
+   container; the pseudo-element handles the overlay so it can't intercept
+   pointer events.
+
+   The same data URL works in both themes — the blend mode + opacity
+   carry the contrast difference. */
+.paper-grain {
+  position: relative;
+  isolation: isolate;
+}
+.paper-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+.dark .paper-grain::after {
+  opacity: 0.06;
+  mix-blend-mode: screen;
+}
+.paper-grain > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Print styles for PDF export */
 @media print {
   header, footer {
@@ -93,6 +484,7 @@ body {
 
   body {
     background: white !important;
+    color: #0f172a !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

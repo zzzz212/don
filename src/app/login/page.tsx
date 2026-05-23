@@ -1,11 +1,21 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import Link from "next/link";
-import { Scale, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
+import { Logo } from "@/components/logo";
+import { Mail, Lock, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { loginUser, loginWithGoogle, isGoogleAuthEnabled } from "@/lib/auth-actions";
 
 export default function LoginPage() {
+  const formId = useId();
+  const emailId = `${formId}-email`;
+  const emailErrId = `${formId}-email-err`;
+  const passwordId = `${formId}-password`;
+  const passwordErrId = `${formId}-password-err`;
+  const totpId = `${formId}-totp`;
+  const totpErrId = `${formId}-totp-err`;
+  const formErrId = `${formId}-form-err`;
+
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [googleEnabled, setGoogleEnabled] = useState(false);
@@ -15,6 +25,11 @@ export default function LoginPage() {
   }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  // Two-step state: when /api/auth/check-2fa says requires2FA=true, we
+  // show the TOTP input and submit again with all three fields.
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const totpInputRef = useRef<HTMLInputElement>(null);
 
   const validateField = (name: string, value: string) => {
     const errors: Record<string, string> = { ...fieldErrors };
@@ -70,27 +85,68 @@ export default function LoginPage() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       errors.email = "Некорректный формат email";
     if (!password) errors.password = "Введите пароль";
+    if (requires2FA && totpCode.replace(/\s/g, "").length !== 6) {
+      errors.totpCode = "Введите 6-значный код";
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setTouched({ email: true, password: true });
+      setTouched({ email: true, password: true, totpCode: true });
       return;
     }
 
     setIsLoading(true);
 
+    // Step 1 (only on first submit): preflight check whether 2FA is
+    // required for this account. We do this BEFORE signIn so we can
+    // distinguish "wrong creds" from "creds OK but TOTP needed" — the
+    // signIn call alone collapses both into a single "no" response.
+    if (!requires2FA) {
+      try {
+        const r = await fetch("/api/auth/check-2fa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        const json = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          setError(json.error ?? "Ошибка входа");
+          setIsLoading(false);
+          return;
+        }
+        if (json.requires2FA) {
+          setRequires2FA(true);
+          setIsLoading(false);
+          // Auto-focus the TOTP input so the user can type immediately.
+          setTimeout(() => totpInputRef.current?.focus(), 50);
+          return;
+        }
+      } catch {
+        setError("Сеть недоступна");
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Step 2 (when requires2FA already true) or first-and-only step
+    // (when 2FA isn't enabled): actual signIn with all available
+    // fields. The credentials provider re-verifies email + password +
+    // TOTP server-side; we don't trust the preflight alone.
+    formData.set("totpCode", totpCode.replace(/\s/g, ""));
     const result = await loginUser(formData);
 
     if (result?.error) {
-      setError(result.error);
+      setError(
+        requires2FA ? "Неверный код 2FA. Попробуйте ещё раз." : result.error
+      );
       setIsLoading(false);
     }
   };
 
   const inputClass = (field: string) =>
-    `w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
+    `w-full rounded-xl border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
       touched[field] && fieldErrors[field]
-        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+        ? "border-danger/40 focus:border-danger focus:ring-danger/20"
         : "border-border focus:border-primary focus:ring-primary/20"
     }`;
 
@@ -100,15 +156,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-6 w-6" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-foreground">
-              ЮрИИст
-            </span>
+            <Logo size={44} wordmark="Яксо" />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
-            Войдите в аккаунт
+          <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-foreground">
+            С возвращением
           </h1>
           <p className="mt-2 text-sm text-muted">
             Нет аккаунта?{" "}
@@ -124,8 +175,12 @@ export default function LoginPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           {/* Error */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div
+              id={formErrId}
+              role="alert"
+              className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               {error}
             </div>
           )}
@@ -136,7 +191,7 @@ export default function LoginPage() {
               <form action={loginWithGoogle}>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-white py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -162,61 +217,138 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
+              <label
+                htmlFor={emailId}
+                className="mb-1.5 block text-sm font-medium text-foreground"
+              >
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Mail
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={emailId}
                   name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   placeholder="you@company.ru"
+                  aria-invalid={Boolean(touched.email && fieldErrors.email) || undefined}
+                  aria-describedby={touched.email && fieldErrors.email ? emailErrId : undefined}
                   onBlur={handleBlur}
                   onChange={handleChange}
                   className={inputClass("email")}
                 />
               </div>
               {touched.email && fieldErrors.email && (
-                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                <p id={emailErrId} className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.email}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
-                Пароль
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor={passwordId}
+                  className="block text-sm font-medium text-foreground"
+                >
+                  Пароль
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-primary hover:text-primary-dark"
+                >
+                  Забыли пароль?
+                </Link>
+              </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Lock
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={passwordId}
                   name="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   placeholder="Введите пароль"
+                  aria-invalid={Boolean(touched.password && fieldErrors.password) || undefined}
+                  aria-describedby={touched.password && fieldErrors.password ? passwordErrId : undefined}
                   onBlur={handleBlur}
                   onChange={handleChange}
                   className={inputClass("password")}
                 />
               </div>
               {touched.password && fieldErrors.password && (
-                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                <p id={passwordErrId} className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.password}
                 </p>
               )}
             </div>
 
+            {requires2FA && (
+              <div className="animate-fade-in">
+                <label
+                  htmlFor={totpId}
+                  className="mb-1.5 block text-sm font-medium text-foreground"
+                >
+                  Код из приложения 2FA
+                </label>
+                <div className="relative">
+                  <ShieldCheck
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
+                  <input
+                    id={totpId}
+                    ref={totpInputRef}
+                    name="totpCode"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="123 456"
+                    value={totpCode}
+                    onChange={(e) =>
+                      setTotpCode(
+                        e.target.value.replace(/\D/g, "").slice(0, 6)
+                      )
+                    }
+                    aria-invalid={Boolean(touched.totpCode && fieldErrors.totpCode) || undefined}
+                    aria-describedby={touched.totpCode && fieldErrors.totpCode ? totpErrId : undefined}
+                    className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    maxLength={6}
+                    required
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-muted">
+                  Откройте Google Authenticator / Authy / 1Password и
+                  введите 6-значный код для Яксо.
+                </p>
+                {touched.totpCode && fieldErrors.totpCode && (
+                  <p id={totpErrId} className="mt-1.5 text-xs text-danger">
+                    {fieldErrors.totpCode}
+                  </p>
+                )}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+              aria-busy={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Входим...
                 </>
+              ) : requires2FA ? (
+                "Подтвердить код 2FA"
               ) : (
                 "Войти"
               )}
@@ -234,10 +366,16 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted">
+        <p className="mt-6 text-center text-xs text-muted leading-relaxed">
           Входя в сервис, вы принимаете{" "}
-          <span className="underline">условия использования</span> и{" "}
-          <span className="underline">политику конфиденциальности</span>
+          <Link href="/terms" className="underline hover:text-foreground">
+            Пользовательское соглашение
+          </Link>{" "}
+          и{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Политику конфиденциальности
+          </Link>
+          .
         </p>
       </div>
     </div>

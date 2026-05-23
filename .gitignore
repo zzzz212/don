@@ -30,12 +30,20 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — .env.local для секретных ключей (не в git)
+# env files — все варианты с секретами держим вне git.
+# .env.example остаётся как шаблон с пустыми значениями.
+.env
 .env.local
+.env.development.local
 .env.production
+.env.production.local
+.env.*.local
 
 # vercel
 .vercel
+
+# Claude Code per-project state (memory, worktrees, local settings)
+.claude/
 
 # typescript
 *.tsbuildinfo
