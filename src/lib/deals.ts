@@ -78,29 +78,52 @@ export interface CreateDealResult {
 export async function createDealFromDocument(
   args: CreateDealArgs
 ): Promise<CreateDealResult> {
+  // Owner check is scoped to BOTH userId AND orgId. A user who is a
+  // member of multiple workspaces could otherwise create a deal in
+  // workspace A referencing a document from workspace B — broken
+  // org-scoping in downstream queries.
   const doc = await prisma.document.findFirst({
-    where: { id: args.documentId, userId: args.ownerId },
+    where: { id: args.documentId, userId: args.ownerId, orgId: args.orgId },
     include: { analysis: true },
   });
   if (!doc) throw new Error("Document not found or not owned by sender");
   if (!doc.analysis) throw new Error("Document has not been analysed yet");
 
-  // Analysis.risks is a JSON string column. Parse and treat as risks[].
+  // Analysis.risks is a JSON string column. Parse and verify shape —
+  // a malformed-but-valid JSON value (e.g. legacy '"string"' or '{}')
+  // would otherwise crash .map() at the call site with a TypeError.
   let parsedRisks: AnalysisRisk[];
   try {
-    parsedRisks = JSON.parse(doc.analysis.risks) as AnalysisRisk[];
-  } catch {
-    throw new Error("Analysis.risks is malformed JSON");
+    const raw: unknown = JSON.parse(doc.analysis.risks);
+    if (!Array.isArray(raw)) {
+      throw new Error("Analysis.risks is not an array");
+    }
+    parsedRisks = raw as AnalysisRisk[];
+  } catch (err) {
+    throw new Error(
+      err instanceof Error && err.message.includes("not an array")
+        ? "Analysis.risks is not an array"
+        : "Analysis.risks is malformed JSON"
+    );
   }
 
   // Unique inviteToken via retry. Collisions on 192-bit are
-  // astronomically unlikely but the @@unique constraint will catch it.
+  // astronomically unlikely but the @unique constraint will catch it.
+  // The loop verifies the LAST generated token, not just the first three —
+  // breaking out the moment a non-colliding token appears, throwing on
+  // exhaustion rather than silently using an unverified token.
   let token = generateInviteToken();
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let attempt = 0;
+  while (true) {
     const existing = await prisma.deal.findUnique({
       where: { inviteToken: token },
+      select: { id: true },
     });
     if (!existing) break;
+    attempt += 1;
+    if (attempt >= 5) {
+      throw new Error("Failed to generate unique inviteToken after 5 attempts");
+    }
     token = generateInviteToken();
   }
 

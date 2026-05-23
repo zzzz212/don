@@ -55,6 +55,31 @@ describe("reconcileClauseStatus", () => {
     ).toBe("DISPUTED");
   });
 
+  it("ignores COMMENT and PROPOSE_EDIT actions when computing status", () => {
+    // Both participants only commented + proposed edits — no AGREE/DISAGREE.
+    // Should stay PENDING despite the activity.
+    const actions: ClauseActionInput[] = [
+      { participantId: "sender", kind: "COMMENT", createdAt: new Date(0) },
+      { participantId: "receiver", kind: "COMMENT", createdAt: new Date(1000) },
+      { participantId: "sender", kind: "PROPOSE_EDIT", createdAt: new Date(2000) },
+      { participantId: "receiver", kind: "PROPOSE_EDIT", createdAt: new Date(3000) },
+    ];
+    expect(reconcileClauseStatus(actions, "sender", "receiver")).toBe("PENDING");
+  });
+
+  it("AGREE wins over a later COMMENT (vote is not overridden by chatter)", () => {
+    // Both participants AGREE, then both leave comments. The comments
+    // must not flip the status back to PENDING — votes only react to
+    // AGREE/DISAGREE actions.
+    const actions: ClauseActionInput[] = [
+      { participantId: "sender", kind: "AGREE", createdAt: new Date(0) },
+      { participantId: "receiver", kind: "AGREE", createdAt: new Date(1000) },
+      { participantId: "sender", kind: "COMMENT", createdAt: new Date(2000) },
+      { participantId: "receiver", kind: "COMMENT", createdAt: new Date(3000) },
+    ];
+    expect(reconcileClauseStatus(actions, "sender", "receiver")).toBe("AGREED");
+  });
+
   it("uses the LATEST action per participant (overrides earlier votes)", () => {
     // Three actions in time order — receiver first DISAGREEs then AGREEs.
     // Spacing the timestamps so the LATEST AGREE wins.
