@@ -1,5 +1,46 @@
 import { describe, it, expect } from "vitest";
-import { AnalysisRiskSchema } from "../ai/schemas/analyze";
+import { AnalysisRiskSchema, AnalysisResultSchema } from "../ai/schemas/analyze";
+
+describe("AnalysisResultSchema score coercion (Anthropic string-number regression)", () => {
+  const baseResult = {
+    summary: "ok",
+    contractType: "услуг",
+    parties: "А и Б",
+    verdict: "sign" as const,
+    verdictReason: "...",
+    risks: [],
+    notarization: { required: false, reason: "" },
+    registration: { required: false, reason: "" },
+    missingClauses: [],
+    preSigningChecklist: [],
+  };
+
+  it("accepts score as a plain number", () => {
+    const r = AnalysisResultSchema.safeParse({ ...baseResult, score: 7 });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.score).toBe(7);
+  });
+
+  it("coerces score from a quoted string '8' to number 8", () => {
+    // Production incident: Anthropic occasionally returns `"score": "8"`
+    // — a quoted number — under high-token-pressure prompts. Without
+    // z.coerce, that single wrinkle 500's the whole analyze flow.
+    const r = AnalysisResultSchema.safeParse({ ...baseResult, score: "8" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.score).toBe(8);
+  });
+
+  it("still rejects non-numeric score strings", () => {
+    const r = AnalysisResultSchema.safeParse({ ...baseResult, score: "high" });
+    expect(r.success).toBe(false);
+  });
+
+  it("still enforces the 1..10 integer range after coercion", () => {
+    expect(AnalysisResultSchema.safeParse({ ...baseResult, score: "15" }).success).toBe(false);
+    expect(AnalysisResultSchema.safeParse({ ...baseResult, score: "0" }).success).toBe(false);
+    expect(AnalysisResultSchema.safeParse({ ...baseResult, score: "5.5" }).success).toBe(false);
+  });
+});
 
 describe("AnalysisRiskSchema with counterPerspective", () => {
   const baseRisk = {

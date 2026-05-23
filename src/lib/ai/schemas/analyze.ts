@@ -59,7 +59,13 @@ export const BalanceSchema = z.object({
 });
 
 export const AnalysisResultSchema = z.object({
-  score: z.number().int().min(1).max(10),
+  // `coerce` converts a quoted number like "8" → 8 before validation.
+  // Anthropic occasionally serialises numeric JSON values as strings
+  // under high-token-pressure prompts; without coerce, that single
+  // wrinkle nukes the entire analysis even though the model "got it
+  // right" semantically. The generated JSON schema stays `{type: "number"}`
+  // so Gemini path is unaffected (foot-gun #42).
+  score: z.coerce.number().int().min(1).max(10),
   summary: z.string(),
   contractType: z.string(),
   parties: z.string(),
