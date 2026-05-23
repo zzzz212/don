@@ -98,7 +98,7 @@ export function DocumentSearchBar() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
           ref={inputRef}
@@ -106,7 +106,7 @@ export function DocumentSearchBar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => data && setOpen(true)}
-          placeholder="Найти договор по смыслу — например, «неустойка 0,1% в день»"
+          placeholder="Поиск по договорам"
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/60 focus:outline-none"
         />
         {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}

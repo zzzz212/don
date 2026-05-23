@@ -15,7 +15,6 @@ import {
   Clock,
   Loader2,
   Save,
-  Briefcase,
   FileText,
   MessageSquare,
   ChevronRight,
@@ -421,14 +420,14 @@ function DirectoryTab({
 }) {
   return (
     <div>
-      <div className="relative mb-5">
+      <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Имя, специализация или направление практики"
-          className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          placeholder="Имя, специализация или практика"
+          className="w-full rounded-lg border border-border bg-card py-1.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
         />
       </div>
 
@@ -442,76 +441,66 @@ function DirectoryTab({
           <p className="text-sm text-muted">
             {query
               ? "Никого не нашли по этому запросу."
-              : "В каталоге пока никого нет. Откройте свой профиль для поиска во вкладке «Мой профиль»."}
+              : "В каталоге пока никого нет. Откройте свой профиль во вкладке «Профиль»."}
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
           {entries.map((e) => (
-            <div
+            <li
               key={e.userId}
-              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-card-hover"
             >
               <Link
                 href={`/network/users/${e.userId}`}
-                className="flex items-start gap-3 transition-opacity hover:opacity-80"
+                className="flex min-w-0 flex-1 items-center gap-3"
               >
                 <Avatar name={e.displayName} image={e.image} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foreground">
+                  <p className="truncate text-sm font-semibold text-foreground">
                     {e.displayName}
                   </p>
-                  {e.headline && (
-                    <p className="truncate text-xs text-muted">{e.headline}</p>
-                  )}
+                  <p className="mt-0.5 truncate text-xs text-muted">
+                    {[e.headline, e.specialization].filter(Boolean).join(" · ") ||
+                      "Без описания"}
+                  </p>
                 </div>
               </Link>
-              {e.specialization && (
-                <p className="flex items-center gap-1.5 text-xs text-muted">
-                  <Briefcase className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{e.specialization}</span>
-                </p>
-              )}
-              {e.bio && (
-                <p className="line-clamp-3 text-xs leading-relaxed text-muted">
-                  {e.bio}
-                </p>
-              )}
-              <div className="mt-auto pt-1">
+              <div className="shrink-0">
                 {e.connection === "connected" ? (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-success-light px-3 py-1.5 text-xs font-semibold text-success">
-                    <Check className="h-3.5 w-3.5" />
-                    Вы связаны
+                  <span className="inline-flex items-center gap-1 rounded-md bg-success-light px-2 py-1 text-xs font-medium text-success">
+                    <Check className="h-3 w-3" aria-hidden="true" />
+                    Связаны
                   </span>
                 ) : e.connection === "outgoing" ? (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-muted">
-                    <Clock className="h-3.5 w-3.5" />
-                    Запрос отправлен
+                  <span className="inline-flex items-center gap-1 text-xs text-muted">
+                    <Clock className="h-3 w-3" aria-hidden="true" />
+                    Отправлено
                   </span>
                 ) : e.connection === "incoming" ? (
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-warning-light px-3 py-1.5 text-xs font-semibold text-warning">
-                    <Clock className="h-3.5 w-3.5" />
-                    Ждёт вашего ответа — см. «Связи»
+                  <span className="inline-flex items-center gap-1 rounded-md bg-warning-light px-2 py-1 text-xs font-medium text-warning">
+                    <Clock className="h-3 w-3" aria-hidden="true" />
+                    Ждёт ответа
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => onConnect(e.userId)}
                     disabled={busy === e.userId}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
                   >
                     {busy === e.userId ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                     ) : (
-                      <UserPlus className="h-3.5 w-3.5" />
+                      <UserPlus className="h-3 w-3" aria-hidden="true" />
                     )}
                     Связаться
                   </button>
                 )}
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

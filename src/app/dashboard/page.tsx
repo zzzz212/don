@@ -262,20 +262,23 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="space-y-6 px-6 py-6 sm:px-8">
-        {/* KPI strip — borderless divided row instead of three floating
-            cards. The numbers carry the display serif so they read as
-            editorial, not "AI-template card". */}
-        <div className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          {stats.map((s) => (
-            <div key={s.label} className="px-6 py-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted">
-                {s.label}
-              </p>
-              <p className="mt-1 font-serif text-3xl font-semibold leading-none text-foreground">
+      <div className="space-y-5 px-6 py-6 sm:px-8">
+        {/* KPI strip — compact inline row instead of three full-width
+            cards. Each metric is a single line: value (serif) + dim
+            label, separated by dots on wide screens, stacked on narrow. */}
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm">
+          {stats.map((s, i) => (
+            <span key={s.label} className="inline-flex items-baseline gap-2">
+              <span className="font-serif text-xl font-semibold leading-none text-foreground tabular-nums">
                 {s.value}
-              </p>
-            </div>
+              </span>
+              <span className="text-muted">{s.label.toLowerCase()}</span>
+              {i < stats.length - 1 && (
+                <span aria-hidden="true" className="hidden text-muted/40 sm:inline">
+                  ·
+                </span>
+              )}
+            </span>
           ))}
         </div>
 
@@ -394,35 +397,29 @@ export default function DashboardPage() {
                   <div
                     key={doc.id}
                     data-active={cursor === idx}
-                    className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-foreground/10 sm:gap-4 sm:px-6"
+                    className="group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-card-hover data-[active=true]:bg-card-hover data-[active=true]:ring-1 data-[active=true]:ring-inset data-[active=true]:ring-foreground/10 sm:px-5"
                   >
                     <Link
                       href={`/report/${doc.id}`}
-                      className="flex min-w-0 flex-1 items-center gap-4"
+                      className="flex min-w-0 flex-1 items-center gap-3"
                     >
-                      <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface text-muted"
+                      <FileText
+                        className="h-4 w-4 shrink-0 text-muted"
                         aria-hidden="true"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </div>
+                      />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-foreground">
+                        <p className="truncate text-sm font-medium text-foreground">
                           {doc.fileName}
                         </p>
-                        <div className="mt-0.5 flex items-center gap-3 text-xs text-muted">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" aria-hidden="true" />
-                            {timeAgo(doc.createdAt)}
-                          </span>
-                          <span>{doc.risksCount} рисков</span>
-                        </div>
+                        <p className="mt-0.5 text-xs text-muted">
+                          {timeAgo(doc.createdAt)} · {doc.risksCount} рисков
+                        </p>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         <RiskBadge level={doc.topRisk} />
                         <span
                           className={cn(
-                            "font-serif text-lg font-semibold tabular-nums",
+                            "text-sm font-semibold tabular-nums",
                             doc.score >= 7
                               ? "text-success"
                               : doc.score >= 4
@@ -431,10 +428,10 @@ export default function DashboardPage() {
                           )}
                         >
                           {doc.score}
-                          <span className="text-sm text-muted">/10</span>
+                          <span className="text-muted">/10</span>
                         </span>
                         <ArrowRight
-                          className="h-4 w-4 text-muted"
+                          className="h-3.5 w-3.5 text-muted opacity-0 transition-opacity group-hover:opacity-100"
                           aria-hidden="true"
                         />
                       </div>
@@ -442,11 +439,11 @@ export default function DashboardPage() {
                     <button
                       onClick={() => deleteDocument(doc.id, "analysis")}
                       disabled={deleting === doc.id}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-danger disabled:opacity-50"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted opacity-0 transition-all hover:bg-surface hover:text-danger group-hover:opacity-100 disabled:opacity-50"
                       aria-label="Удалить анализ"
                       title="Удалить анализ"
                     >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
                   </div>
                 ))}
