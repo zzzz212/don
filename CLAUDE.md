@@ -7,18 +7,18 @@
 
 ```
 Привет. Я работаю над Яксо — Russian legal-tech SaaS на Next.js 16 +
-Prisma + Neon Postgres. ~150 коммитов, production https://yakso.ru,
+Prisma + Neon Postgres. ~170 коммитов, production https://yakso.ru,
 активная ветка `claude/sprint-8-ui-polish`, мерж в `main` через PR #7.
 Полная картина — в CLAUDE.md в корне репо.
 
 ПЕРВОЕ ДЕЙСТВИЕ В НОВОЙ СЕССИИ
 
-1. Прочитай CLAUDE.md целиком (~1000 строк). Там вся архитектура, схема,
-   foot-guns, env vars, дебаг-рецепты, бизнес-roadmap.
+1. Прочитай CLAUDE.md целиком (~1500 строк). Там вся архитектура, схема,
+   foot-guns (#1-#50), env vars, дебаг-рецепты, бизнес-roadmap.
 
 2. Подтверди 7-9 буллетами:
-   – Что построено (top-level overview одним абзацем-конспектом)
-   – Минимум 7 критичных foot-guns
+   – Что построено (top-level overview одним абзацем-конспектом, ВКЛЮЧАЯ Deal Room из Sprint 14)
+   – Минимум 7 критичных foot-guns (особенно #47 — Opus tool_use wrapping)
    – Текущая ветка и production URL
    – AI tier policy (FREE→Haiku, PRO→Sonnet, BUSINESS→Opus только в analyze)
    – User-scoped план (НЕ Organization.plan)
@@ -31,42 +31,100 @@ Prisma + Neon Postgres. ~150 коммитов, production https://yakso.ru,
 
 ═══ ПРАВИЛА РАБОТЫ В ЭТОЙ СЕССИИ ═══
 
-🔌 ПЛАГИНЫ И SKILLS — ОБЯЗАТЕЛЬНО В КАЖДОЙ ЗАДАЧЕ НА КАЖДОМ ЭТАПЕ:
-- ВСЕГДА в начале задачи проверь список доступных skills и invoke
-  каждый, к которому есть хотя бы 1% релевантности. Это не опция,
-  не «если сложная задача», а железное правило для ЛЮБОЙ задачи —
-  даже «простой вопрос» или «маленький fix».
-- ПЛАГИН SUPERPOWERS — приоритет №1. Перед любым действием спроси
-  себя: «какой superpowers skill сейчас применим?» и invoke его.
-  Типовая прогонка для разных классов задач:
-    • Любая задача (даже вопрос) → superpowers:using-superpowers
-    • Что-то создаём/строим/меняем поведение → superpowers:brainstorming
-      ПЕРЕД кодом
-    • Есть план/спека на >1 шаг → superpowers:writing-plans, потом
-      superpowers:executing-plans или subagent-driven-development
-    • Несколько независимых подзадач → superpowers:dispatching-parallel-agents
-    • Реализация фичи/багфикса → superpowers:test-driven-development
-    • Любой баг / упавший тест / странное поведение →
-      superpowers:systematic-debugging ПЕРЕД фиксом
-    • Перед коммитом «готово/работает/прошло» →
-      superpowers:verification-before-completion
-    • Готовая фича/PR → superpowers:requesting-code-review
-    • Получил ревью → superpowers:receiving-code-review
-    • Изоляция от текущего workspace → superpowers:using-git-worktrees
-    • Закрываем ветку → superpowers:finishing-a-development-branch
-    • Создаём/редактируем skill → superpowers:writing-skills
-- Помимо superpowers — задействуй и остальные доступные tools:
-  frontend-design (UI), code-review / security-review, claude-api,
-  verify, run, context7 для свежих доков библиотек, claude-md-management
-  при структурных правках CLAUDE.md, telegram:* по запросу и т.д.
+🔌 ПЛАГИНЫ И SKILLS — ПОЛНЫЙ РЕЕСТР, ОБЯЗАТЕЛЬНО ПРОВЕРЯТЬ КАЖДЫЙ:
+
+ВСЕГДА в начале задачи проверь список доступных skills и invoke каждый,
+к которому есть хотя бы 1% релевантности. Это не опция, не «если
+сложная задача», а железное правило для ЛЮБОЙ задачи — даже «простой
+вопрос» или «маленький fix».
+
+▸ superpowers (ПРИОРИТЕТ №1 — pre-flight для любой задачи):
+  • superpowers:using-superpowers — в начале ЛЮБОЙ задачи / вопроса
+  • superpowers:brainstorming — ПЕРЕД любым новым кодом / фичей / поведением
+  • superpowers:writing-plans — есть спека / план на >1 шаг
+  • superpowers:executing-plans — параллельная сессия по готовому плану
+  • superpowers:subagent-driven-development — план в текущей сессии, fresh subagent per task
+  • superpowers:test-driven-development — реализация фичи / багфикса, написание test'а ПЕРЕД кодом
+  • superpowers:systematic-debugging — ЛЮБОЙ баг / упавший тест / странное поведение ПЕРЕД фиксом
+  • superpowers:verification-before-completion — перед "готово / работает / прошло" / commit / PR
+  • superpowers:requesting-code-review — готовая фича / PR, прошу ревью
+  • superpowers:receiving-code-review — получил ревью, перед implement'ом fix'ов
+  • superpowers:dispatching-parallel-agents — 2+ независимых подзадач параллельно
+  • superpowers:using-git-worktrees — нужна изоляция от текущего workspace
+  • superpowers:finishing-a-development-branch — закрываю ветку, готовлю merge / PR
+  • superpowers:writing-skills — создаю / редактирую skill (редко в этом проекте)
+
+▸ frontend-design:frontend-design — создаю / меняю web-интерфейс с фокусом
+  на дизайн (component, page, application). UI polish тоже сюда.
+
+▸ claude-md-management:
+  • claude-md-management:revise-claude-md — обновляю CLAUDE.md по итогам сессии
+  • claude-md-management:claude-md-improver — аудит / улучшение существующего CLAUDE.md
+
+▸ code-review (built-in CLI):
+  • code-review:code-review — кодревью текущего diff / PR (low/medium/high effort)
+  • code-review — алиас, тот же tool без префикса
+  • review — slash-command вариант (для конкретного PR)
+
+▸ security-review — security-аудит pending changes в ветке (отдельный
+  pass от обычного code-review, фокус на OWASP top 10 / leak / auth).
+
+▸ verify — запустить app и руками проверить что change реально работает.
+  Использовать когда tsc / тесты прошли, но feature-correctness не доказана.
+
+▸ run — запустить app для скриншота / визуальной проверки. Выбирает
+  правильный launcher для типа проекта (Next.js dev server здесь).
+
+▸ claude-api — building / debugging / migrating Claude API & Anthropic SDK
+  кода. Включает prompt caching, model migrations (4.5→4.6→4.7), tool use,
+  thinking, batch, files, citations, memory. Применяется когда трогаем
+  `src/lib/ai/providers/anthropic.ts` и подобное.
+
+▸ plugin:context7:context7 — current docs по библиотекам / SDK / API /
+  CLI / cloud services. Use ВМЕСТО web search для library docs (Next.js,
+  React, Prisma, Tailwind, etc.) — свежее и точнее чем training data.
+
+▸ plugin:telegram:telegram — Telegram bot integration (если пользователь
+  настроил /telegram:configure и /telegram:access). Reply на сообщения,
+  download attachments. Не запрашивай /telegram:access от своего имени.
+
+▸ telegram:* (admin skills) — управление Telegram-каналом, доступом,
+  pairing. Запускаются ТОЛЬКО когда пользователь сам просит.
+
+▸ Прочие CLI-skills:
+  • init — инициализирует CLAUDE.md для нового проекта (не для этого)
+  • fewer-permission-prompts — анализ transcript'ов на read-only commands
+  • update-config — настройка hooks / permissions / env vars в settings.json
+  • keybindings-help — кастомизация Claude Code shortcuts (~/.claude/keybindings.json)
+  • loop — recurring task на интервале (используется для polling / babysit)
+  • schedule — cron-расписание для remote agents
+
+▸ MCP-серверы доступны как deferred tools (load через ToolSearch):
+  • plugin:context7:context7 — см. выше (docs)
+  • plugin:telegram:telegram — см. выше (messaging)
+  • claude_ai_Google_Drive — auth + read/write GDrive (если нужно)
+  • bybit / bybit-prod — crypto trading; в этом проекте не применимы,
+    игнорируй
+
+▸ Built-in inline tools (всегда доступны без ToolSearch):
+  Read, Edit, Write, Glob, Grep, Bash, PowerShell, Agent, AskUserQuestion,
+  ScheduleWakeup, ShareOnboardingGuide, Skill, ToolSearch
+
+ПРИОРИТИЗАЦИЯ:
+- Процесс-skills (brainstorming, debugging, TDD) → СНАЧАЛА, они задают КАК
+- Implementation-skills (frontend-design, claude-api) → ПОТОМ, они задают ЧТО
+- "Build X" → brainstorming → writing-plans → implementation
+- "Fix bug Y" → systematic-debugging → implementation
+- Перед коммитом ВСЕГДА verification-before-completion
+
+ПРОТОКОЛ ПЕРЕД ОТВЕТОМ:
 - Skill-checklist'ы → разворачивай в TodoWrite по пункту на задачу.
-- Перед ответом проговори: «Использую [skill] чтобы [цель]» —
-  и только потом действуй. Тишина = ты skip'нул skills.
-- Rationalize'ы вида «это слишком просто», «я и так знаю», «overkill»,
-  «сначала по-быстрому посмотрю файлы» — запрещены. Это red flag из
-  using-superpowers, и означает что я skip'аю обязательный шаг.
-- Это правило ВЫШЕ привычки «сразу читать код» и «отвечать коротко».
-  Сначала skills — потом всё остальное.
+- Перед действием проговори: «Использую [skill] чтобы [цель]».
+  Тишина = ты skip'нул skills.
+- Rationalize'ы запрещены: «это слишком просто», «я и так знаю»,
+  «overkill», «сначала по-быстрому посмотрю файлы». Это red flag —
+  означает skip обязательного шага.
+- Skills — выше привычки «сразу читать код» и «отвечать коротко».
 
 КАЧЕСТВО КОДА — SENIOR BAR:
 - Никаких `any`. Валидация на границах (zod). Явный error-handling.
@@ -124,13 +182,12 @@ NEXT.JS 16 (НЕ та Next.js что помнит твоё обучение):
 
 # Яксо — состояние проекта
 
-**Дата последнего обновления**: 2026-05-21 (после Sprint 13 — переход
-от «делового модерна» к «тёплому минимализму»: cream-палитра + terracotta
-primary + warm-ink + warm-сепия тени; полная переписка лендинга
-структурой и тоном — split-hero с live sample-card, новая копия, snесли
-fake-stats и feature-dump'ы; прокидка по 27 auth-экранам через токены +
-PageHeader; brand-chrome favicon/PWA/OG + email-шаблоны под новый
-палитр).
+**Дата последнего обновления**: 2026-05-24 (после Sprint 14 «Deal Room
+MVP» — Network-first pivot + полный design-polish: editorial Deal Room,
+bespoke SVG-иллюстрации, refined empty-states, slim dashboard. Sprint 14
+spec / план / 16 коммитов разработки + 4 hot-fix-коммита под Opus
+tool_use wrapping incident + 4 коммита design-polish round 1-2 → итого
+~25 коммитов поверх Sprint 13).
 
 | | |
 |---|---|
@@ -139,19 +196,24 @@ PageHeader; brand-chrome favicon/PWA/OG + email-шаблоны под новый
 | **Active branch** | `claude/sprint-8-ui-polish` (мерж в `main` через PR #7) |
 | **Main branch** | `claude/complete-previous-tasks-rzcSp` (та, что зовём «main») |
 | **Stack** | Next.js 16 / React 19 / TypeScript / Prisma + Neon Postgres (pgvector) / NextAuth v5 beta.30 / Tailwind 4 (CSS-first + @custom-variant) / Geist + Source Serif 4 / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus) с prompt caching |
-| **Тесты** | 389 unit-тестов через vitest (`npm test`) |
+| **Тесты** | 417 unit-тестов через vitest (`npm test`) |
 
 Russian legal-tech SaaS: AI-анализ договоров с verdict и per-risk apply-fix
-+ 20 шаблонов генерации + AI-refine + чат-юрист + проверка контрагентов
-(DaData/ЕГРЮЛ работают; ФССП — env-gated провайдер под `FSSP_AUTH_KEY`,
-КАД — заглушка) + workspaces + ЮKassa-биллинг + 2FA + audit log +
-admin-панель + PostHog + dark mode + i18n + ⌘K + AccountMenu + onboarding
-+ кастомные 404/500/OG + /blog с 9 cornerstone-статьями + /help FAQ +
-/sample-report preview + sitemap/robots/JSON-LD + Vercel cron для
-lifecycle-писем + сеть между пользователями (профили / связи / ревью
-договоров / личные сообщения) + установка как PWA на телефон + массовая
-проверка договоров + платформенная оболочка (sidebar + page-header) на
-всех authenticated экранах.
++ **Deal Room MVP (Sprint 14)** — двусторонняя переговорная по договору
+с anonymous receiver flow без логина, Counter-AI (one-sided AI inference
+о позиции второй стороны), agree/disagree/comment per-clause, public
+`/deal/[token]` URL, branded OG-preview — + 20 шаблонов генерации +
+AI-refine + чат-юрист + проверка контрагентов (DaData/ЕГРЮЛ работают;
+ФССП — env-gated провайдер под `FSSP_AUTH_KEY`, КАД — заглушка) +
+workspaces + ЮKassa-биллинг + 2FA + audit log + admin-панель + PostHog +
+dark mode + i18n + ⌘K + AccountMenu + onboarding + кастомные 404/500/OG
++ /blog с 9 cornerstone-статьями + /help FAQ + /sample-report preview +
+sitemap/robots/JSON-LD + Vercel cron для lifecycle-писем + сеть между
+пользователями («Связи» — профили / подключения / ревью / личные
+сообщения) + установка как PWA на телефон + массовая проверка договоров
++ платформенная оболочка (sidebar + page-header) на всех authenticated
+экранах + editorial design system (paper-grain texture, hairline rules,
+serif marginalia, bespoke SVG illustrations).
 
 ---
 
@@ -257,6 +319,104 @@ lifecycle-писем + сеть между пользователями (про�
   `network` (30/мин) на content-POST'ах. Уведомления (Resend):
   `connection-request`, `document-shared`, `network-message` (последнее
   ТОЛЬКО на первое сообщение в треде — иначе спам). Foot-gun #36.
+- В sidebar nav и /network header переименовано «Сеть» → «Связи», EN
+  `Contacts`. Внутренняя таба «Связи» → «Подключения» чтобы не было
+  Связи→Связи crumb-trail.
+
+### Deal Room (Sprint 14) — `src/lib/deals.ts` + `src/lib/deal-session.ts`
+
+**Network-first pivot** — Яксо переориентирован с «AI читает договор»
+на «переговорная для договоров». Receiver-first entry: контрагент
+открывает invite-ссылку без логина и видит AI-разбор плюс кнопки
+agree/disagree/comment per-clause. Spec: `docs/superpowers/specs/
+2026-05-23-sprint-14-deal-room-design.md`. Plan: соседний файл в
+`docs/superpowers/plans/`.
+
+**Модели Prisma** (после миграции через `prisma db push`):
+- `Deal` — id, ownerId, orgId, documentId, title, status (ACTIVE | AGREED),
+  inviteToken (192-bit hex, @unique non-nullable). Один SENDER + один
+  RECEIVER на Deal через `@@unique([dealId, role])` на DealParticipant.
+- `DealParticipant` — role (SENDER | RECEIVER), userId? (set для SENDER
+  всегда; для RECEIVER если он залогинится), sessionId? (cookie-bound,
+  set когда anonymous receiver открывает link первый раз — atomic
+  claim через updateMany), guestName?, guestEmail?, lastSeenAt.
+- `DealClause` — ord, text, riskLevel, yourSide (Json — снимок
+  AnalysisRisk описание + consequence + recommendation + legalReference;
+  recommendedText НЕ хранится тут, см. foot-gun #50), theirSide
+  (Json? — Counter-AI inference: theirGain + optional compromise),
+  status (PENDING | AGREED | DISPUTED | RESOLVED).
+- `ClauseAction` — kind (AGREE | DISAGREE | COMMENT | PROPOSE_EDIT),
+  body?, participantId, createdAt. История голосов и комментариев.
+
+**AI**: расширение `AnalysisRiskSchema` в `src/lib/ai/schemas/analyze.ts`
+добавляет `counterPerspective: CounterPerspectiveSchema.optional()`.
+Поле необязательное → старые анализы парсятся без него. Counter-AI
+**промпт-инструкция была вкл'ючена в Sprint 14 Task 3, но затем
+выключена** — модель копировала JSON-пример как top-level response.
+Schema-поле осталось, prompt-инструкция вернётся в Sprint 15 в правильной
+inline-форме (см. foot-gun #51). Plus `z.coerce.number()` на `score`
+для устойчивости к Anthropic'овской квази-числовой сериализации
+(foot-gun #48).
+
+**Сервис-слой** (`src/lib/deals.ts`):
+- `generateInviteToken()` — `randomBytes(24).toString("hex")`, 48-char.
+- `reconcileClauseStatus(actions, senderId, receiverId)` — pure logic:
+  latest AGREE/DISAGREE per participant, COMMENT/PROPOSE_EDIT
+  игнорируются. Both AGREE → AGREED, любой DISAGREE → DISPUTED, иначе
+  PENDING. Покрыто 8 unit-тестами.
+- `createDealFromDocument(args)` — org-scoped owner check (foot-gun
+  замечание из ревью Task 4: WHERE userId AND orgId — иначе мульти-
+  workspace юзер может прикрепить чужой документ), Array.isArray guard
+  на parsed Analysis.risks, bounded retry на коллизию inviteToken (до 5
+  попыток с throw), одна `$transaction` для Deal + 2 DealParticipants
+  + N DealClauses.
+
+**Session identity** (`src/lib/deal-session.ts`):
+- `DEAL_SESSION_COOKIE = "yakso_deal_session"`, 128-bit hex.
+- Cookie path = `"/"` (НЕ `"/deal"` — foot-gun #49). Cookie должна
+  передаваться И на /deal/[token] страницу И на /api/deals/by-token/*
+  POST'ы. httpOnly + sameSite=lax + 90 days + secure в prod.
+
+**API роуты**:
+- Sender (authed, VIEWER гарданы по foot-gun #37):
+  - POST /api/deals — создаёт Deal + invite email. Rate limit
+    `deals.create` (10/мин). Audit `deal.created` с key `email` (не
+    `counterpartyEmail` — foot-gun #26 redaction).
+  - GET /api/deals — список deal'ов в активном org. Возвращает
+    `inviteToken` для dashboard-link'ов.
+  - GET /api/deals/[id] — full deal payload (sender perspective).
+  - POST /api/deals/[id]/clauses/[clauseId]/actions — sender action,
+    реконсилит clause status и promote/demote deal.status.
+- Receiver (anonymous, session-bound):
+  - GET /api/deals/by-token/[token] — атомарный claim RECEIVER через
+    `updateMany WHERE sessionId IS NULL AND userId IS NULL`; если
+    authed-owner — возвращает SENDER perspective (дверь reuse одного
+    URL для обеих ролей). Rate limit token-scoped (`deals.action` 60/мин).
+    **owner.email НЕ возвращается** — PII protection. **document.rawText
+    НЕ возвращается** — foot-gun #50.
+  - POST /api/deals/by-token/[token]/identify — set guestName. Требует
+    что sessionId уже забит на participant (anti-hijack — foot-gun #50).
+    Rate limit per-session.
+  - POST /api/deals/by-token/[token]/clauses/[clauseId]/actions —
+    receiver action, session→participant binding обязательна.
+
+**UI** (`/deal/[token]`):
+- Editorial design: title page как фронтиспис договора (две стороны с
+  initial-кругами + центральная hairline), § 01 marginalia clause
+  numbers в serif tabular, Counter-AI справа через hairline rule,
+  компромисс в margin note. StatusBar — 2px hairline progress.
+  Motion-stagger на clauses (motion/react, 50ms increments).
+- IdentifyModal: bottom-border-only input (НЕ боксированный field —
+  feels like signing a document).
+- `/deal/[token]/opengraph-image.tsx` — branded OG-preview (letterhead +
+  serif title + italic «от <sender>» + terracotta dot + yakso.ru).
+  Когда ссылку шарят в Telegram/WhatsApp — выглядит как обложка договора.
+
+**Bespoke SVG**: `src/components/deal-room-illustration.tsx` — два
+контрактных листа со скрепляющей terracotta-нитью и сургучной печатью.
+currentColor + CSS vars → theme-aware. Используется на dashboard
+empty-state (когда есть docs но нет deals — slim promo card) и на
+landing в Deal Room band.
 
 ### PWA — установка на телефон (Sprint 10)
 
@@ -846,6 +1006,72 @@ auth-страницах. Это не «сайт с навбаром», это п
     display-заголовков — `font-semibold tracking-tight`. Variable
     Source Serif при semibold уже передаёт достаточную плотность.
 
+47. **Anthropic Opus 4.7 заворачивает tool_use payload в
+    `{"result": {...}}`** когда tool назван `submit_result` или
+    description начинается с "Submit the structured result". Модель
+    трактует schema как описание объекта `result` вместо top-level
+    shape. Sonnet/Haiku этого не делают.
+    Защита в `src/lib/ai/providers/anthropic.ts`: (a) tool теперь
+    `record_response` с описанием "Provide the response fields…as
+    direct top-level properties. Do NOT nest them under any wrapper
+    key"; (b) defensive `isResultWrapper` unwrap на случай регресса —
+    распознаёт ровно `{ result: object }` shape (один ключ, non-null
+    object) и не может false-positive (ни одна схема в `src/lib/ai/
+    schemas/` не имеет top-level `result`). 8 unit-тестов пинят
+    контракт. Production-инцидент 2026-05-24: Sprint 14 deploy ломал
+    весь analyze flow до фикса.
+
+48. **Anthropic иногда сериализует numeric JSON как строку** —
+    `{"score": "8"}` вместо `8`. Под высокой токен-нагрузкой / у
+    конкретных моделей. Schema на `analyze.ts` использует
+    `z.coerce.number().int().min(1).max(10)` — конвертит без потери
+    range-валидации. JSON Schema, отдаваемая Anthropic / Gemini, всё
+    равно `{type: "integer"}`, fallback-цепочка не страдает.
+
+49. **Deal session cookie path = `"/"`, НЕ `"/deal"`** — кука должна
+    travel'ить и на page navigation `/deal/[token]`, И на POST
+    `/api/deals/by-token/[token]/(identify|clauses/…/actions)`. С
+    path `/deal` cookie не отправлялась на `/api/...` → каждый POST
+    минтил новый sessionId → identify и actions возвращали 403. Не
+    меняй scope назад.
+
+50. **На /api/deals/by-token GET НЕ возвращай sensitive поля**:
+    - `document.rawText` — invite token == access control; форвард
+      ссылки давал бы полный текст договора любому.
+    - `owner.email` — PII; только `owner.name`.
+    - `recommendedText` внутри `yourSide` — это negotiating position
+      sender'а, не показывается receiver'у до согласования. В
+      `createDealFromDocument` оно сознательно НЕ хранится в `yourSide`
+      JSON (см. Sprint 14 спецификацию).
+    Дополнительно: identify endpoint требует чтобы sessionId уже был
+    забит на receiver row (anti-hijack — атакер с токеном не мог бы
+    pre-claim слот до того как настоящий получатель откроет ссылку).
+
+51. **Tool descriptions подсказывают модели shape ответа**, не только
+    функцию. Tool name `submit_result` + description «Submit the
+    structured result» → Opus 4.7 копирует «result» как wrapper key
+    (см. #47). Tool name `record_response` + description «Provide the
+    response fields…as direct top-level properties. Do NOT nest them
+    under any wrapper key» — модель отвечает плоско. То же касается
+    JSON-примеров В САМОМ ПРОМПТЕ — изолированный `ПРИМЕР: { "foo":
+    {...} }` блок ближе к концу system prompt'а в Sprint 14 Task 3
+    привёл к тому, что Opus echo'ил пример как top-level ответ. Не
+    показывай JSON-примеры в виде отдельных верхнеуровневых блоков —
+    встраивай поля inline в bullet-описание схемы.
+
+52. **`/api/documents/[id]` GET возвращает И `id`, И `documentId`**
+    (как альяс). `/api/analyze` возвращает `{ documentId, ... }`, и
+    report page `/report/[id]` читает `analysis.documentId` чтобы
+    рендерить collaboration-кнопки. Без alias на reload кнопки
+    PublicShare / SendForReview / DeadlineScan / SendAsDeal тихо
+    исчезают. Не убирай alias.
+
+53. **AccountMenu placement prop**: dropdown в sidebar нижнем рейле
+    должен `placement="up"` И `absolute left-0` (а не `right-0`).
+    Триггер в bottom-LEFT viewport'а, `top-full right-0` улетал
+    одновременно ВНИЗ за экран и ВЛЕВО за край. Mobile top-bar — default
+    `down` + `right-0` (anchor правый верхний угол).
+
 ---
 
 ## 🐛 Дебаг — когда что-то не работает
@@ -918,15 +1144,48 @@ GROUP BY model;
 ### 🔥 Бизнес-блокеры (см. roadmap ниже)
 
 - ЮKassa: `YOOKASSA_SHOP_ID`/`_SECRET_KEY` не выставлены → checkout 503.
+- `GEMINI_API_KEY` не выставлен в Vercel → fallback-цепочка фактически
+  только Anthropic+Groq, и Groq режется TPM-лимитом 12k на длинных
+  договорах → analyze падает на «All providers failed» если Anthropic
+  flake'нёт. Бесплатно: `aistudio.google.com/apikey`, set в Vercel
+  Project Settings → Environment Variables → Production.
 - Расчётный счёт ИП не открыт → `OPERATOR.bank*` пустые → банковский
   блок оферты скрыт.
 - Уведомление в Роскомнадзор не подано → `OPERATOR.rknOperatorNumber`
   не заполнен.
-- Resend domain не подтверждён → welcome / password-reset не уходят на
-  реальных юзеров.
+- Resend domain не подтверждён → welcome / password-reset / deal-invite
+  не уходят на реальных юзеров.
 - Домен `yakso.ru` не подключён к Vercel → ссылки в письмах / OG /
-  `/r/[token]` ведут на 404.
+  `/r/[token]` / `/deal/[token]` ведут на 404.
 - 0 каналов привлечения (SEO/PPC/партнёрки/комьюнити).
+
+### 🌐 Sprint 15-16 (Deal Room evolution)
+
+- **Sprint 15** — Inbox + realtime + IA reorg:
+  - Realtime presence (Liveblocks или `@vercel/pubsub`) — cursors +
+    online dots + live action streaming в Deal Room.
+  - Sidebar 6→3 reorg: Deal Rooms / Drafts & Templates / Tools collapse.
+  - Inbox-style главный экран (заменяет `/dashboard`): "Ждут вас /
+    Ждут их / Готово" вместо документ-карточек.
+  - Tools section collapse: Counterparty / Bulk / Chat / Compare /
+    Deadlines уходят под Tools nav.
+  - Real two-sided Counter-AI (когда обе стороны заполняют свою
+    позицию) — replace one-sided AI inference.
+  - DECLINED / EXPIRED статусы Deal'а + UX отказа.
+- **Sprint 16** — Public-facing + monetization:
+  - Лендинг переписать вокруг live Deal Room demo (current Sprint 14
+    band — promo proxy, не полный pivot).
+  - `/sample-report` → `/sample-deal` static showcase.
+  - Pricing model invert: Receiver (free, unlimited) / Solo Sender
+    (1990₽) / Pro Sender (4990₽) / Business (14990₽). Backfill
+    существующих подписок.
+  - Email-capture phase 2 (hybrid receiver entry): read-without-login,
+    email-magic-link для actions.
+  - Audit-trail для финального DOCX (когда обе стороны AGREE — kombo
+    DOCX + лог действий, готовый к подписанию).
+  - Counter-AI prompt-инструкция вернуть, но inline в существующем
+    «В risks[]…» bullet-листе, без отдельного top-level JSON-примера
+    (foot-gun #47/#51).
 
 ### 🚀 Расширения продукта
 
@@ -1136,7 +1395,104 @@ add-on usage pricing.
 
 ## 📋 Полный список коммитов (новейшие сверху)
 
-### Sprint 13 — «тёплый минимализм» (последний заход)
+### Sprint 14 + design polish — «Deal Room + editorial» (последний заход)
+
+PR #7, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено.
+
+```
+8b96a1f Polish round 2: motion-stagger clauses, refresh empty-states, /report editorial touches, landing Deal Room band
+9583167 Editorial Deal Room redesign + bespoke illustration + branded OG
+579d9fc Lighter dashboard + Каталог: slim KPI strip, tight rows, compact search
+9eee9e9 Dashboard polish — account menu anchor, slim usage strip, rename Сеть → Связи
+3927777 Fix three post-Sprint-14 prod issues
+d7a7314 Revert Counter-AI prompt block — model copied JSON example as full response
+5920b5e Instrument Anthropic provider to dump raw tool_use.input
+264c290 Unwrap Anthropic tool_use {result: {...}} envelope (Opus 4.7 regression)
+d9a1ae2 Coerce analyze score from string to number (Anthropic JSON serialisation drift)
+3d64f4b Close three Sprint 14 final-review findings before merge
+0deacce Wire Deal creation into report page + add Active Deals to dashboard
+3dcf1d4 Add Deal Room page UI: two-column layout, clause cards, identify modal, status bar
+443bd34 Flesh out deal-invite email body with personal message + value props
+dbd9020 Fix critical Deal Room receiver bugs: cookie path, PII leak, claim race
+db04b96 Add receiver API: anonymous /deal/[token] endpoints
+d945944 Demote deal.status from AGREED to ACTIVE when a clause flips back open
+5cf8116 Add sender clause-action endpoint
+6413937 Harden POST /api/deals: VIEWER guard, status mapping, audit redaction, email XSS fix
+4884942 Add sender API: POST /api/deals, GET /api/deals, GET /api/deals/[id]
+60bbbaf Add anonymous deal session identity (cookie-based)
+83d591c Clarify DealParticipant.sessionId lifecycle in schema comment
+b8da7b8 Harden createDealFromDocument: org-scoped owner check, non-array JSON guard, bounded retry
+64d2972 Add Deal service layer: token gen, status reconciliation, deal creation
+7e203ef Translate prompt section header to Russian for consistency
+28f39fd Tell analyze prompt to generate counterPerspective per risk
+31f44a4 Tighten Counter-AI rejection test + drop unused import
+7cf80b5 Extend analyze schema with Counter-AI counterPerspective field
+7f8e4a6 Clarify Deal.inviteToken comment — foot-gun #38 only applies to nullable @unique
+3918013 Add Deal Room schema — Deal, DealParticipant, DealClause, ClauseAction
+ff348c3 Plan Sprint 14 — Deal Room MVP implementation steps
+5f604b9 Spec Sprint 14 — Deal Room MVP
+```
+
+Три волны:
+
+**1. Sprint 14 core (3918013 → 3d64f4b, 17 коммитов).** Spec / план через
+`superpowers:brainstorming` + `writing-plans`, исполнение через
+`subagent-driven-development` (fresh subagent per task + spec compliance +
+code quality review). 4 модели Prisma + Counter-AI schema extension + 6
+API роутов + UI + email + integration. Spec compliance reviews находили
+проблемы и закрывали их (~9 security-grade fixes в ходе работы):
+- Task 4 review: org-scoped owner check, Array.isArray guard, bounded
+  retry, RECEIVER cookie lifecycle invariant clarified
+- Task 6 review: XSS в email body (escapeHtml на user-controlled fields),
+  VIEWER guard, status mapping 404/422 вместо 500, key `email` not
+  `counterpartyEmail` для redact()
+- Task 7 review: deal-status demote AGREED→ACTIVE когда clause flips
+- Task 8 review (security-focused): cookie path `/` not `/deal`,
+  receiver claim atomic updateMany, owner.email PII drop
+- Final review: document.rawText leak fix, identify-hijack guard +
+  rate-limit, recommendedText leak из yourSide JSON
+
+**2. Production hot-fixes (d9a1ae2 → 3927777, 6 коммитов).** После
+deploy Sprint 14 на prod analyze упал с zod-ошибкой:
+- 1-й тур: думал что Anthropic возвращает `"score": "8"` (string) →
+  добавил `z.coerce.number()` (d9a1ae2)
+- 2-й тур: ВСЕ поля undefined → подумал что Counter-AI prompt block
+  с `ПРИМЕР:` сбил модель → откатил блок (d7a7314)
+- 3-й тур: identical error → понял что guess'ы не работают →
+  `superpowers:systematic-debugging`. Добавил instrumentation,
+  попросил production log (5920b5e). Log показал
+  `input_keys: ['result']` → Opus 4.7 wraps tool_use в `{result:{...}}`
+  из-за tool name `submit_result`. Defensive unwrap (264c290) +
+  permanent fix через переименование tool в `record_response` +
+  переписанное description (вошло в полировку, см. ниже). 3 prod-баг'а
+  одного коммита 3927777: AccountMenu anchor улетал, usage widget
+  четыре строки Безлимит, Сеть как nav-item → Связи переименование.
+
+**3. Design polish (9eee9e9 → 8b96a1f, 4 коммита).** Через
+`frontend-design`:
+- Round 1 (9eee9e9 + 579d9fc): AccountMenu placement prop, hidden
+  usage widget на Business, рестайл КPI / search / document rows под
+  warm minimalism, Каталог Связей list-style вместо card grid.
+- Round 2 (9583167 + 8b96a1f): editorial Deal Room (title page,
+  marginalia clause numbers, hairline rules, paper-grain), bespoke
+  SVG illustration (`<DealRoomIllustration>`), branded OG для
+  /deal/[token], refresh empty-states (общий editorial vocabulary),
+  /report subtle hairlines + ink-quiet, landing Deal Room band между
+  «Что мы ловим» и «Как это работает», motion-stagger на Deal Room
+  clauses. Token additions: `--rule`, `--ink-quiet`, `.paper-grain`
+  utility (inline SVG fractalNoise).
+
+Acceptance Sprint 14 (spec criteria 1-8): static gates ✅ — `tsc`,
+417 тестов, `next build`. Manual smoke flow: sender → receiver flow →
+agree/disagree → AGREED transition. Известные deferred-задачи на
+Sprint 15: real two-sided Counter-AI (когда обе стороны заполняют свою
+позицию), realtime presence (Liveblocks / @vercel/pubsub), inbox-style
+dashboard, sidebar 6→3, email-capture phase 2, audit-trail на финальный
+DOCX. Sprint 16: новый landing под Network thesis (текущая Deal Room
+band — proxy), pricing model invert (Receiver free / Solo / Pro /
+Business), `/sample-report` → `/sample-deal`.
+
+### Sprint 13 — «тёплый минимализм»
 
 PR #7, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено.
 
@@ -1410,14 +1766,31 @@ bdc0e4c Hard-reload after workspace switch
 
 ### Sprint-итоги по убыванию
 
-- **Sprint 13** (закрыт, этот заход, 2026-05-21) — «тёплый минимализм».
+- **Sprint 14 + design polish** (закрыт, этот заход, 2026-05-24) —
+  **Network-first pivot + Deal Room MVP**. Через
+  `superpowers:brainstorming → writing-plans → subagent-driven-development`:
+  4 Prisma модели (Deal/DealParticipant/DealClause/ClauseAction),
+  Counter-AI schema extension, 6 API роутов (3 sender + 3 receiver
+  anonymous), `/deal/[token]` page, invite email, integration в
+  /report и dashboard. Production-инцидент: Opus 4.7 wraps tool_use в
+  `{result:{...}}` (foot-gun #47) — найден через
+  `systematic-debugging` instrumentation, фикс: rename tool +
+  defensive unwrap. Полный design-polish round 1+2 через
+  `frontend-design`: editorial Deal Room (paper-grain, hairline rules,
+  marginalia clause numerals), bespoke `<DealRoomIllustration>`,
+  branded OG `/deal/[token]/opengraph-image.tsx`, refresh empty-states
+  (общий editorial vocabulary), slim dashboard (KPI strip / usage /
+  document rows). Tokens added: `--rule`, `--ink-quiet`, `.paper-grain`.
+  Сеть → Связи renamed. **~25 коммитов**, `tsc` / 417 тестов /
+  `next build` зелёные. PR #7 НЕ смержен.
+- **Sprint 13** (закрыт, 2026-05-21) — «тёплый минимализм».
   Палитра ушла от глубокого синего на cool off-white к terracotta на
   cream warm-ink. Лендинг переписан с нуля: split-hero с live
   sample-card, новый headline с italic terracotta, снесли fake-stats и
   feature-dump'ы. Прокидка через 27 auth-экранов автоматически (токены
   + serif h1 в PageHeader). Brand chrome (favicon/PWA/OG, обе) и email
   шаблоны перерисованы под палитру. Пять коммитов 2A-2E. `tsc` /
-  389 тестов / `next build` зелёные. PR #7 НЕ смержен.
+  389 тестов / `next build` зелёные.
 - **Sprint 12** — Sprint 12 был эффективно re-skin (палитра + Geist +
   Source Serif + кнопки) + платформенная оболочка
   (AppShell+Sidebar+PageHeader+MenuButton). После 1G пользователь
@@ -1481,10 +1854,21 @@ bdc0e4c Hard-reload after workspace switch
   он только legacy mirror.
 - **Anthropic без `GEMINI_API_KEY` опасен** — при падении Anthropic Groq
   не вытягивает analyze по TPM-лимиту (12k free vs ~24k нужно). Ставь
-  Gemini key хотя бы как страховку.
+  Gemini key в Vercel env (бесплатный, `aistudio.google.com/apikey`)
+  хотя бы как страховку. Текущий boot-лог в Vercel: `gemini=✗` —
+  цепочка фактически Anthropic-OR-Groq, без middle-tier защиты.
+- **Opus tool_use wrapping** — foot-gun #47/#51. Если когда-нибудь
+  поменяешь tool name в `src/lib/ai/providers/anthropic.ts` или
+  description — проверь что Opus не начинает обратно заворачивать в
+  `{result: {...}}`. Defensive `isResultWrapper` unwrap остаётся, но
+  лучше не полагаться на него как на единственный слой.
+- **Deal Room production smoke** (sender flow → receiver opens
+  /deal/[token] → identify → agree/disagree → status flips → both
+  AGREE → AGREED). Перед PR merge — пройти ручным smoke'ом, см.
+  acceptance criteria в spec'е Sprint 14.
 - **CI** — GitHub Actions гоняет `lint` / `tsc --noEmit` / `vitest` /
   `next build` на каждый PR и пуш в `main`.
-- **Тесты — 389.** Перед commit: `npx tsc --noEmit && npm test`. Перед
+- **Тесты — 417.** Перед commit: `npx tsc --noEmit && npm test`. Перед
   push: `npx next build` (нужны `DATABASE_URL` и `AUTH_SECRET` — см.
   опенинг-промт).
 
