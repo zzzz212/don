@@ -9,6 +9,17 @@ export type RiskLevel = z.infer<typeof RiskLevelSchema>;
 export const VerdictSchema = z.enum(["sign", "negotiate", "do_not_sign"]);
 export type Verdict = z.infer<typeof VerdictSchema>;
 
+// Counter-AI: what the other side of the contract gains from a risky
+// clause, and an optional compromise wording. One-sided inference in
+// Sprint 14 — the AI simulates the other party; real two-sided input
+// lands in Sprint 17+. Both fields are stored as JSON on DealClause so
+// they survive even if analyze schema changes later.
+export const CounterPerspectiveSchema = z.object({
+  theirGain: z.string(),
+  compromise: z.string().optional(),
+});
+export type CounterPerspective = z.infer<typeof CounterPerspectiveSchema>;
+
 export const AnalysisRiskSchema = z.object({
   clauseNumber: z.string(),
   clauseTitle: z.string(),
@@ -23,6 +34,10 @@ export const AnalysisRiskSchema = z.object({
   originalText: z.string(),
   recommendedText: z.string(),
   recommendation: z.string(),
+  // Counter-AI (Sprint 14). Optional so analyses persisted before this
+  // field existed still parse cleanly — same back-compat treatment as
+  // `consequence`.
+  counterPerspective: CounterPerspectiveSchema.optional(),
 });
 
 export const NotarizationSchema = z.object({
