@@ -934,8 +934,10 @@ model Deal {
   // Sprint 15 adds DECLINED and EXPIRED.
   status      String   @default("ACTIVE")
   // 192-bit hex (48 chars) used as the public `/deal/[token]` URL.
-  // Uniqueness enforced in application code (foot-gun #38 — nullable
-  // unique on Postgres trips Prisma db push), backed by @@index.
+  // DB-enforced uniqueness via @unique (safe here because the field is
+  // non-nullable — foot-gun #38 only applies to nullable unique columns).
+  // Callers still wrap creation in a small retry loop to be defensive
+  // against the astronomically unlikely collision.
   inviteToken String   @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
