@@ -13,8 +13,13 @@ Prisma + Neon Postgres. ~170 коммитов, production https://yakso.ru,
 
 ПЕРВОЕ ДЕЙСТВИЕ В НОВОЙ СЕССИИ
 
-1. Прочитай CLAUDE.md целиком (~1500 строк). Там вся архитектура, схема,
-   foot-guns (#1-#50), env vars, дебаг-рецепты, бизнес-roadmap.
+0. **СНАЧАЛА** invoke `superpowers:using-superpowers`. Без этого
+   skill'а ниже не двигаться — он задаёт правила работы для всей
+   сессии. Superpowers — приоритетный плагин №1, использовать
+   ВСЕГДА, на каждом действии, без исключений.
+
+1. Прочитай CLAUDE.md целиком (~1900 строк). Там вся архитектура, схема,
+   foot-guns (#1-#53), env vars, дебаг-рецепты, бизнес-roadmap.
 
 2. Подтверди 7-9 буллетами:
    – Что построено (top-level overview одним абзацем-конспектом, ВКЛЮЧАЯ Deal Room из Sprint 14)
@@ -31,7 +36,47 @@ Prisma + Neon Postgres. ~170 коммитов, production https://yakso.ru,
 
 ═══ ПРАВИЛА РАБОТЫ В ЭТОЙ СЕССИИ ═══
 
-🔌 ПЛАГИНЫ И SKILLS — ПОЛНЫЙ РЕЕСТР, ОБЯЗАТЕЛЬНО ПРОВЕРЯТЬ КАЖДЫЙ:
+🔴🔴🔴 SUPERPOWERS — ПРИОРИТЕТ №1, БЕЗ ИСКЛЮЧЕНИЙ 🔴🔴🔴
+
+Плагин **superpowers** — это самый приоритетный плагин. Использовать
+его НА КАЖДОМ шагу, В КАЖДОМ действии, в КАЖДОМ задании и запросе.
+Буквально ВСЕГДА. Не «если задача сложная», не «если есть план», не
+«если нужен code review» — а **на любом действии без исключений**:
+
+- Открываешь сессию → `superpowers:using-superpowers` СНАЧАЛА.
+- Получаешь ЛЮБОЙ запрос от пользователя (даже «привет», даже «как
+  дела») → перебери superpowers skill'ы, найди применимый, invoke.
+- Думаешь написать код → `superpowers:brainstorming` или
+  `superpowers:writing-plans` ПЕРЕД редактором.
+- Видишь bug / упавший тест / странное поведение →
+  `superpowers:systematic-debugging` ПЕРЕД любым guess'ом.
+- Реализуешь фичу или fix → `superpowers:test-driven-development`,
+  пишешь тест ПЕРЕД кодом.
+- Дошёл до «готово / работает / прошло» →
+  `superpowers:verification-before-completion` ПЕРЕД commit.
+- Готов commit/PR → `superpowers:requesting-code-review`.
+- Получил ревью → `superpowers:receiving-code-review` ПЕРЕД фиксами.
+- Несколько independent подзадач → `superpowers:dispatching-parallel-agents`.
+- Закрываешь ветку → `superpowers:finishing-a-development-branch`.
+
+**Тишина = нарушение правила.** Перед действием обязательно
+проговори: «Использую superpowers:[skill] чтобы [цель]» — иначе ты
+скипнул обязательный шаг.
+
+**Rationalize'ы запрещены полностью**: «это слишком просто», «я и так
+знаю», «overkill», «сначала по-быстрому посмотрю файлы», «процесс
+замедлит», «не нужен skill на такой мелкий fix». Все эти мысли —
+red flag из `using-superpowers`, означают что я скипаю обязательный
+шаг.
+
+**Прецедент 2026-05-24**: на production-инциденте Opus tool_use
+wrapping я сначала пытался гадать («Counter-AI prompt block виноват»
+→ revert → identical error). Только когда invoke'ил
+`superpowers:systematic-debugging` и добавил instrumentation, нашёл
+настоящую причину. **Два неработающих guess-фикса были прямым
+нарушением этого правила.** Не повторять.
+
+🔌 ПОЛНЫЙ РЕЕСТР ПЛАГИНОВ И SKILLS — ОБЯЗАТЕЛЬНО ПРОВЕРЯТЬ КАЖДЫЙ:
 
 ВСЕГДА в начале задачи проверь список доступных skills и invoke каждый,
 к которому есть хотя бы 1% релевантности. Это не опция, не «если
