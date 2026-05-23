@@ -135,8 +135,13 @@ export async function createDealFromDocument(
       description: risk.description,
       consequence: risk.consequence ?? null,
       recommendation: risk.recommendation,
-      recommendedText: risk.recommendedText,
       legalReference: risk.legalReference,
+      // NB: risk.recommendedText is intentionally NOT stored on the
+      // clause. The clause is exposed to the receiver via the public
+      // by-token endpoint, and the sender's proposed replacement text
+      // is a negotiating position — leaking it up-front gives away
+      // their opening offer. If the sender needs it, the original
+      // Analysis row still has it.
     } as Prisma.InputJsonValue,
     // Prisma requires Prisma.JsonNull (not plain null) for nullable
     // JSON columns when explicitly setting null (foot-gun: JSON? fields).

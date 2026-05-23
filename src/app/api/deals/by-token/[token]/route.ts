@@ -50,7 +50,11 @@ export async function GET(
             },
           },
         },
-        document: { select: { fileName: true, rawText: true } },
+        // ONLY fileName — never rawText. The invite token is the only
+        // access control on this endpoint; leaking the full contract body
+        // would let anyone with a forwarded link read the document the
+        // sender chose to share via Deal Room (and only Deal Room).
+        document: { select: { fileName: true } },
         // Only the owner's display name leaves this endpoint. Email is
         // PII and must not be exposed to anonymous viewers via the
         // public token URL (anyone with the link could read it).
