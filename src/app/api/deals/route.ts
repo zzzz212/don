@@ -153,6 +153,7 @@ export async function GET() {
         id: d.id,
         title: d.title,
         status: d.status,
+        inviteToken: d.inviteToken,
         clauseCount: d._count.clauses,
         receiver: d.participants[0] ?? null,
         createdAt: d.createdAt,

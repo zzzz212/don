@@ -9,6 +9,7 @@ import { AnalysisCard, type RiskItem } from "@/components/analysis-card";
 import { SendForReview } from "@/components/send-for-review";
 import { DeadlineScanButton } from "@/components/deadline-scan-button";
 import { PublicShareButton } from "@/components/public-share-button";
+import { SendAsDeal } from "@/components/send-as-deal";
 import { buttonClass } from "@/components/button";
 import { MenuButton, type MenuItem } from "@/components/menu-button";
 import {
@@ -30,6 +31,7 @@ import {
   Users,
   RefreshCw,
   MoreHorizontal,
+  Handshake,
 } from "lucide-react";
 
 interface NotarizationInfo {
@@ -78,6 +80,7 @@ export default function ReportPage({
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const [reanalyzing, setReanalyzing] = useState(false);
+  const [dealOpen, setDealOpen] = useState(false);
   const loadedRef = useRef(false);
 
   // Apply-fix flow: a Set of risk indices the user has accepted, and
@@ -344,21 +347,30 @@ export default function ReportPage({
               <DeadlineScanButton documentId={analysis.documentId} />
             )}
 
-            {/* Overflow — secondary exports and the rerun-the-analysis
-                escape hatch. Hidden behind a single trigger to keep the
-                header band readable on narrow screens. */}
+            {/* Overflow — deal, secondary exports, and the rerun-the-
+                analysis escape hatch. Hidden behind a single trigger to
+                keep the header band readable on narrow screens. */}
             {(() => {
-              const overflow: MenuItem[] = [
-                {
-                  label:
-                    exporting === "pdf"
-                      ? "Готовим PDF…"
-                      : "Скачать PDF",
-                  icon: Download,
-                  onClick: handleExportPDF,
-                  disabled: exporting === "pdf",
-                },
-              ];
+              const overflow: MenuItem[] = [];
+              // "Send as deal" is the primary collaborative action — put
+              // it first so it's the first thing the user sees in the
+              // overflow menu after they've reviewed the risks.
+              if (analysis.documentId) {
+                overflow.push({
+                  label: "Отправить второй стороне",
+                  icon: Handshake,
+                  onClick: () => setDealOpen(true),
+                });
+              }
+              overflow.push({
+                label:
+                  exporting === "pdf"
+                    ? "Готовим PDF…"
+                    : "Скачать PDF",
+                icon: Download,
+                onClick: handleExportPDF,
+                disabled: exporting === "pdf",
+              });
               if (analysis.hasOriginal) {
                 overflow.push({
                   label: "Скачать оригинал",
@@ -773,6 +785,15 @@ export default function ReportPage({
             </Link>
           </div>
       </div>
+
+      {/* Deal Room invite modal — rendered outside the scrollable content
+          so it sits above the sticky apply-fix toolbar (z-50) at z-[120]. */}
+      {dealOpen && analysis.documentId && (
+        <SendAsDeal
+          documentId={analysis.documentId}
+          onClose={() => setDealOpen(false)}
+        />
+      )}
     </AppShell>
   );
 }

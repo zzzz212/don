@@ -42,6 +42,16 @@ interface GeneratedDocItem {
   createdAt: string;
 }
 
+interface ActiveDealItem {
+  id: string;
+  title: string;
+  status: string;
+  inviteToken: string;
+  clauseCount: number;
+  receiver: { guestName: string | null; guestEmail: string | null; lastSeenAt: string } | null;
+  updatedAt: string;
+}
+
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
   const minutes = Math.floor(diff / 60000);
@@ -59,6 +69,7 @@ export default function DashboardPage() {
   const toast = useToast();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocItem[]>([]);
+  const [activeDeals, setActiveDeals] = useState<ActiveDealItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"analyses" | "generated">("analyses");
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -106,12 +117,19 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [analysesRes, generatedRes] = await Promise.all([
+        const [analysesRes, generatedRes, dealsRes] = await Promise.all([
           fetch("/api/documents"),
           fetch("/api/generated"),
+          fetch("/api/deals"),
         ]);
         if (analysesRes.ok) setDocuments(await analysesRes.json());
         if (generatedRes.ok) setGeneratedDocs(await generatedRes.json());
+        if (dealsRes.ok) {
+          const dealsData = (await dealsRes.json()) as { deals: ActiveDealItem[] };
+          // Only show ACTIVE deals in the dashboard section — completed
+          // deals are accessible via /deal/[token] directly.
+          setActiveDeals(dealsData.deals.filter((d) => d.status === "ACTIVE"));
+        }
       } catch {
         // silently fail — show empty state
       }
@@ -264,6 +282,43 @@ export default function DashboardPage() {
         {/* Search + plan usage */}
         <DocumentSearchBar />
         <UsageWidget />
+
+        {/* Active Deal Rooms — shown only when the user has sent at
+            least one deal invite. Positioned above the document tabs so
+            it's immediately visible without scrolling. Hidden while the
+            main data is still loading to avoid a flash of empty state. */}
+        {!loading && activeDeals.length > 0 && (
+          <section>
+            <h2 className="font-serif text-xl font-semibold tracking-tight mb-3">
+              Активные сделки
+            </h2>
+            <ul className="space-y-2">
+              {activeDeals.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-card-hover"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium text-foreground">
+                      {d.title}
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted">
+                      Контрагент:{" "}
+                      {d.receiver?.guestName ?? d.receiver?.guestEmail ?? "ожидает открытия"}{" "}
+                      · {d.clauseCount} {d.clauseCount === 1 ? "пункт" : d.clauseCount < 5 ? "пункта" : "пунктов"}
+                    </div>
+                  </div>
+                  <Link
+                    href={`/deal/${d.inviteToken}`}
+                    className="ml-4 shrink-0 text-sm font-semibold text-primary hover:underline"
+                  >
+                    Открыть →
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Tabs — underline-only, ink-coloured active line (the brand-
             blue underline was too "marketing" for an app screen). */}
