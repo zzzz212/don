@@ -1,11 +1,21 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import Link from "next/link";
-import { Scale, Mail, Lock, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
+import { Logo } from "@/components/logo";
+import { Mail, Lock, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { loginUser, loginWithGoogle, isGoogleAuthEnabled } from "@/lib/auth-actions";
 
 export default function LoginPage() {
+  const formId = useId();
+  const emailId = `${formId}-email`;
+  const emailErrId = `${formId}-email-err`;
+  const passwordId = `${formId}-password`;
+  const passwordErrId = `${formId}-password-err`;
+  const totpId = `${formId}-totp`;
+  const totpErrId = `${formId}-totp-err`;
+  const formErrId = `${formId}-form-err`;
+
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [googleEnabled, setGoogleEnabled] = useState(false);
@@ -134,9 +144,9 @@ export default function LoginPage() {
   };
 
   const inputClass = (field: string) =>
-    `w-full rounded-xl border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
+    `w-full rounded-xl border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:outline-none focus:ring-2 ${
       touched[field] && fieldErrors[field]
-        ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+        ? "border-danger/40 focus:border-danger focus:ring-danger/20"
         : "border-border focus:border-primary focus:ring-primary/20"
     }`;
 
@@ -146,15 +156,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-6 w-6" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-foreground">
-              ЮрИИст
-            </span>
+            <Logo size={44} wordmark="Яксо" />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
-            Войдите в аккаунт
+          <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-foreground">
+            С возвращением
           </h1>
           <p className="mt-2 text-sm text-muted">
             Нет аккаунта?{" "}
@@ -170,8 +175,12 @@ export default function LoginPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           {/* Error */}
           {error && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div
+              id={formErrId}
+              role="alert"
+              className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
               {error}
             </div>
           )}
@@ -182,7 +191,7 @@ export default function LoginPage() {
               <form action={loginWithGoogle}>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-white py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-card py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -208,23 +217,33 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">
+              <label
+                htmlFor={emailId}
+                className="mb-1.5 block text-sm font-medium text-foreground"
+              >
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Mail
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={emailId}
                   name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   placeholder="you@company.ru"
+                  aria-invalid={Boolean(touched.email && fieldErrors.email) || undefined}
+                  aria-describedby={touched.email && fieldErrors.email ? emailErrId : undefined}
                   onBlur={handleBlur}
                   onChange={handleChange}
                   className={inputClass("email")}
                 />
               </div>
               {touched.email && fieldErrors.email && (
-                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                <p id={emailErrId} className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.email}
                 </p>
               )}
@@ -232,7 +251,10 @@ export default function LoginPage() {
 
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <label className="block text-sm font-medium text-foreground">
+                <label
+                  htmlFor={passwordId}
+                  className="block text-sm font-medium text-foreground"
+                >
                   Пароль
                 </label>
                 <Link
@@ -243,19 +265,26 @@ export default function LoginPage() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <Lock
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                  aria-hidden="true"
+                />
                 <input
+                  id={passwordId}
                   name="password"
                   type="password"
+                  autoComplete="current-password"
                   required
                   placeholder="Введите пароль"
+                  aria-invalid={Boolean(touched.password && fieldErrors.password) || undefined}
+                  aria-describedby={touched.password && fieldErrors.password ? passwordErrId : undefined}
                   onBlur={handleBlur}
                   onChange={handleChange}
                   className={inputClass("password")}
                 />
               </div>
               {touched.password && fieldErrors.password && (
-                <p className="mt-1.5 text-xs text-red-500 animate-fade-in">
+                <p id={passwordErrId} className="mt-1.5 text-xs text-danger animate-fade-in">
                   {fieldErrors.password}
                 </p>
               )}
@@ -263,12 +292,19 @@ export default function LoginPage() {
 
             {requires2FA && (
               <div className="animate-fade-in">
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                <label
+                  htmlFor={totpId}
+                  className="mb-1.5 block text-sm font-medium text-foreground"
+                >
                   Код из приложения 2FA
                 </label>
                 <div className="relative">
-                  <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <ShieldCheck
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
                   <input
+                    id={totpId}
                     ref={totpInputRef}
                     name="totpCode"
                     type="text"
@@ -281,17 +317,19 @@ export default function LoginPage() {
                         e.target.value.replace(/\D/g, "").slice(0, 6)
                       )
                     }
-                    className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    aria-invalid={Boolean(touched.totpCode && fieldErrors.totpCode) || undefined}
+                    aria-describedby={touched.totpCode && fieldErrors.totpCode ? totpErrId : undefined}
+                    className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     maxLength={6}
                     required
                   />
                 </div>
                 <p className="mt-1.5 text-xs text-muted">
                   Откройте Google Authenticator / Authy / 1Password и
-                  введите 6-значный код для ЮрИИст.
+                  введите 6-значный код для Яксо.
                 </p>
                 {touched.totpCode && fieldErrors.totpCode && (
-                  <p className="mt-1.5 text-xs text-red-500">
+                  <p id={totpErrId} className="mt-1.5 text-xs text-danger">
                     {fieldErrors.totpCode}
                   </p>
                 )}
@@ -301,11 +339,12 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+              aria-busy={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Входим...
                 </>
               ) : requires2FA ? (

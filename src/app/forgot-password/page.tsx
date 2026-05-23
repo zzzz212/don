@@ -1,11 +1,14 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
-import { Scale, Mail, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Logo } from "@/components/logo";
+import { Mail, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { requestPasswordReset } from "@/lib/auth-actions";
 
 export default function ForgotPasswordPage() {
+  const formId = useId();
+  const emailId = `${formId}-email`;
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
@@ -34,14 +37,9 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-6 w-6" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-foreground">
-              ЮрИИст
-            </span>
+            <Logo size={44} wordmark="Яксо" />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
+          <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-foreground">
             Восстановление пароля
           </h1>
           <p className="mt-2 text-sm text-muted">
@@ -78,26 +76,37 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               {error && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
+                <div
+                  role="alert"
+                  className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in"
+                >
+                  <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  <label
+                    htmlFor={emailId}
+                    className="mb-1.5 block text-sm font-medium text-foreground"
+                  >
                     Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                    <Mail
+                      className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                      aria-hidden="true"
+                    />
                     <input
+                      id={emailId}
                       name="email"
                       type="email"
+                      autoComplete="email"
                       required
                       autoFocus
                       placeholder="you@company.ru"
-                      className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -105,11 +114,12 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                  aria-busy={isLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                       Отправляем...
                     </>
                   ) : (

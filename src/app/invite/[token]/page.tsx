@@ -99,7 +99,7 @@ export default function InviteAcceptPage({
     <div className="flex min-h-full flex-col">
       <Header />
 
-      <main className="flex-1 bg-surface/30">
+      <main id="main-content" className="flex-1 bg-surface/30">
         <div className="mx-auto max-w-md px-4 py-16 sm:px-6">
           {loading ? (
             <div className="flex flex-col items-center gap-3 py-12">
@@ -107,7 +107,7 @@ export default function InviteAcceptPage({
               <p className="text-sm text-muted">Загружаем приглашение…</p>
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+            <div className="rounded-2xl border border-danger/30 bg-danger-light p-8 text-center">
               <AlertTriangle className="mx-auto h-10 w-10 text-danger" />
               <h1 className="mt-4 text-lg font-bold text-foreground">
                 Не получилось
@@ -121,7 +121,7 @@ export default function InviteAcceptPage({
               </Link>
             </div>
           ) : accepted ? (
-            <div className="rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
+            <div className="rounded-2xl border border-success/30 bg-success-light p-8 text-center">
               <CheckCircle className="mx-auto h-10 w-10 text-success" />
               <h1 className="mt-4 text-lg font-bold text-foreground">
                 Добро пожаловать!

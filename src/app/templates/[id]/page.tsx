@@ -3,14 +3,13 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { CounterpartyFieldInput } from "@/components/counterparty-field-input";
 import { useToast } from "@/components/toast";
 import { getTemplate, type TemplateField } from "@/lib/templates";
 import { generateContract } from "@/lib/contracts/templates";
 import {
-  ArrowLeft,
   Sparkles,
   Loader2,
   CheckCircle,
@@ -26,12 +25,9 @@ export default function TemplateFillPageWrapper() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full flex-col">
-          <Header />
-          <main className="flex flex-1 items-center justify-center">
+        <AppShell>
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
-          </main>
-        </div>
+          </AppShell>
       }
     >
       <TemplateFillPage />
@@ -127,9 +123,7 @@ function TemplateFillPage() {
 
   if (!template) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground">
               Шаблон не найден
@@ -141,8 +135,7 @@ function TemplateFillPage() {
               Вернуться к шаблонам
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
@@ -270,21 +263,17 @@ function TemplateFillPage() {
     }
   };
 
+  // Live preview — generateContract is pure deterministic interpolation,
+  // so re-deriving the document on every keystroke costs nothing.
+  const livePreview = generateContract(template.id, formData);
+
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
-          <Link
-            href="/templates"
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Все шаблоны
-          </Link>
-
+    <AppShell>
+      <PageHeader
+        title={template.name}
+        description={template.description}
+      />
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:max-w-6xl lg:px-8">
           {!editDocLoaded ? (
             <div className="animate-fade-in flex flex-col items-center justify-center py-24">
               <Loader2 className="h-8 w-8 animate-spin text-muted" />
@@ -294,14 +283,6 @@ function TemplateFillPage() {
             </div>
           ) : !generatedDoc ? (
             <div className="animate-in fade-in duration-300">
-              {/* Template header */}
-              <div className="mb-8">
-                <h1 className="text-2xl font-bold text-foreground">
-                  {template.name}
-                </h1>
-                <p className="mt-2 text-muted">{template.description}</p>
-              </div>
-
               {editDocId && (
                 <div className="mb-6 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary-light/30 px-4 py-3 text-sm text-primary-dark">
                   <GitBranch className="h-4 w-4 shrink-0" />
@@ -312,6 +293,7 @@ function TemplateFillPage() {
                 </div>
               )}
 
+              <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
               {/* Form */}
               <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
                 {renderFormByGroups(template.fields, formData, handleChange)}
@@ -342,18 +324,35 @@ function TemplateFillPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Live preview — updates on every keystroke (deterministic
+                  generation). Side-by-side on lg, stacked below. */}
+              <div className="mt-6 lg:mt-0 lg:sticky lg:top-20">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                  Предпросмотр
+                </p>
+                <div className="document-page max-h-[72vh] overflow-y-auto rounded-lg">
+                  <div className="document-preview p-6 sm:p-8">
+                    <pre className="whitespace-pre-wrap break-words font-serif text-[12px] leading-6">
+                      {livePreview}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+              </div>
             </div>
           ) : (
             /* Generated document */
             <div className="animate-in fade-in duration-500">
               {/* Success header */}
-              <div className="mb-6 flex items-center gap-3 rounded-xl bg-green-50 border border-green-200 p-4">
+              <div className="mb-6 flex items-center gap-3 rounded-xl bg-success-light border border-success/30 p-4">
                 <CheckCircle className="h-5 w-5 text-success shrink-0" />
                 <div>
-                  <p className="font-semibold text-green-800">
+                  <p className="font-semibold text-success">
                     Документ успешно сгенерирован
                   </p>
-                  <p className="text-sm text-green-700">
+                  <p className="text-sm text-success">
                     Проверьте содержание и скачайте готовый документ
                   </p>
                 </div>
@@ -368,7 +367,7 @@ function TemplateFillPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
                   >
                     {copied ? (
                       <>
@@ -392,12 +391,14 @@ function TemplateFillPage() {
                 </div>
               </div>
 
-              {/* Document preview in A4 format */}
+              {/* Document preview in A4 format. .document-page keeps the
+                  paper literal-white in both themes with a soft theme-
+                  aware shadow (no muddy halo on dark canvas). */}
               <div className="flex justify-center my-6">
                 <div className="w-full max-w-2xl">
-                  <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
-                    <div className="p-8 sm:p-12">
-                      <pre className="whitespace-pre-wrap font-serif text-[13px] leading-7 text-foreground break-words">
+                  <div className="document-page rounded-lg overflow-hidden">
+                    <div className="document-preview p-6 sm:p-10 lg:p-12">
+                      <pre className="whitespace-pre-wrap font-serif text-[13px] leading-7 break-words">
                         {generatedDoc}
                       </pre>
                     </div>
@@ -409,7 +410,7 @@ function TemplateFillPage() {
               <div className="mt-6 flex justify-center gap-3">
                 <button
                   onClick={() => setGeneratedDoc(null)}
-                  className="rounded-xl border border-border bg-white px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
                 >
                   Редактировать данные
                 </button>
@@ -423,10 +424,7 @@ function TemplateFillPage() {
             </div>
           )}
         </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
 
@@ -498,13 +496,13 @@ function renderField(
           onChange={(e) => handleChange(field.id, e.target.value)}
           placeholder={field.placeholder}
           rows={3}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
         />
       ) : field.type === "select" ? (
         <select
           value={formData[field.id] || ""}
           onChange={(e) => handleChange(field.id, e.target.value)}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <option value="">Выберите...</option>
           {field.options?.map((opt) => (
@@ -525,7 +523,7 @@ function renderField(
           value={formData[field.id] || ""}
           onChange={(e) => handleChange(field.id, e.target.value)}
           placeholder={field.placeholder}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       )}
     </div>

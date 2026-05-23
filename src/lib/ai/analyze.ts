@@ -16,6 +16,9 @@ import { generateDemoAnalysis } from "./providers/demo";
 import { logUsage } from "./usage";
 import type { Usage } from "./types";
 import { dedupRisks, byRiskSeverity } from "./dedup";
+import { scoreAndVerdictFromCounts as calibrate } from "./score-calibration";
+import { pickTier } from "./tier-policy";
+import { verifyRiskQuotes } from "./quote-verify";
 
 export type {
   AnalysisRisk,
@@ -32,17 +35,27 @@ const PREAMBLE_CHARS = 8_000;
 export async function analyzeContract(
   contractText: string,
   userId: string | null = null,
-  orgId: string | null = null
+  orgId: string | null = null,
+  /** Effective plan of the workspace owner. Drives the tier selector
+   *  via tier-policy.ts — FREE/PRO get Sonnet, BUSINESS escalates to
+   *  Opus on this step. Null = treat as FREE (safer for cost). */
+  plan: string | null | undefined = null
 ): Promise<AnalysisResult> {
   if (getActiveProvider() === "demo") {
     return generateDemoAnalysis(contractText);
   }
 
-  if (isShortDocument(contractText)) {
-    return analyzeSinglePass(contractText, userId, orgId);
-  }
+  const tier = pickTier("analyze", plan);
 
-  return analyzeMultiPass(contractText, userId, orgId);
+  const result = isShortDocument(contractText)
+    ? await analyzeSinglePass(contractText, userId, orgId, tier)
+    : await analyzeMultiPass(contractText, userId, orgId, tier);
+
+  // Snap each risk's quote to the contract's exact wording where it
+  // differs only in whitespace — the report's apply-fix matches the
+  // quote with an exact substring check, so a stray line break in the
+  // model's citation would otherwise silently disable the fix button.
+  return { ...result, risks: verifyRiskQuotes(contractText, result.risks) };
 }
 
 // ── Short doc: single pass against the full ANALYZE prompt ──────────
@@ -50,14 +63,22 @@ export async function analyzeContract(
 async function analyzeSinglePass(
   text: string,
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  tier: "fast" | "smart" | "deep"
 ): Promise<AnalysisResult> {
+  // 8192 because the schema now carries verdict + verdictReason on top
+  // of the original risks/missingClauses/checklist arrays, AND the
+  // system prompt got the 14-trap checklist + a worked example. With
+  // 4096 the model occasionally truncates the JSON object mid-array
+  // and zod rejects the half-built result with "expected array,
+  // received undefined" on the trailing fields. 8192 leaves plenty of
+  // headroom on both Sonnet and Opus (their output cap is 8192).
   const result = await generate({
     schema: AnalysisResultSchema,
     system: ANALYZE_CONTRACT_SYSTEM,
     prompt: `Проанализируй следующий договор и найди все юридические риски:\n\n${text}`,
-    model: "smart",
-    maxTokens: 4096,
+    model: tier,
+    maxTokens: 8192,
     temperature: 0.1,
   });
 
@@ -70,18 +91,23 @@ async function analyzeSinglePass(
 async function analyzeMultiPass(
   text: string,
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  tier: "fast" | "smart" | "deep"
 ): Promise<AnalysisResult> {
   const chunks = chunkContract(text);
 
   // Map phase: extract risks per chunk in parallel, capped concurrency.
+  // Per-chunk extraction is intentionally pinned to "smart" (Sonnet)
+  // even when the top-level tier is "deep" — Opus on every chunk would
+  // be wildly expensive and the marginal accuracy gain is tiny on
+  // single-chunk extraction. The reduce step gets the higher tier.
   const chunkRisks = await mapChunks(chunks, userId, orgId);
 
   // Flatten + dedup; sort by severity.
   const allRisks = dedupRisks(chunkRisks).sort(byRiskSeverity);
 
   // Reduce phase: ask AI to fill structural fields based on preamble + risks.
-  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId);
+  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId, tier);
 
   return {
     ...synthesis,
@@ -119,12 +145,17 @@ async function extractRisksForChunk(
   userId: string | null,
   orgId: string | null
 ): Promise<AnalysisRisk[]> {
+  // 4096 instead of 2048: with the expanded prompt (14 traps + worked
+  // example) a chunk that genuinely contains 4-5 risks blows past 2k
+  // output tokens, and the trailing risk gets cut. The risks array
+  // is the only top-level field in ChunkRisksSchema so a partial
+  // response means the entire chunk's worth of work is lost.
   const result = await generate({
     schema: ChunkRisksSchema,
     system: EXTRACT_CHUNK_SYSTEM,
     prompt: `Фрагмент договора (фрагмент ${chunk.index + 1}, символы ${chunk.startChar}-${chunk.endChar}):\n\n${chunk.text}`,
     model: "smart",
-    maxTokens: 2048,
+    maxTokens: 4096,
     temperature: 0.1,
   });
 
@@ -136,7 +167,8 @@ async function synthesizeStructure(
   fullText: string,
   risks: AnalysisRisk[],
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  tier: "fast" | "smart" | "deep"
 ) {
   const preamble = fullText.slice(0, PREAMBLE_CHARS);
   const counts = {
@@ -177,8 +209,13 @@ ${riskList || "(рисков не найдено)"}
       schema: SynthesisSchema,
       system: SYNTHESIZE_SYSTEM,
       prompt,
-      model: "smart",
-      maxTokens: 2048,
+      model: tier,
+      // Synthesis output is small in the happy path (≈ 300-500 tokens
+      // — type + parties + verdict + missingClauses + checklist) but
+      // the addition of verdict / verdictReason / longer reasoning
+      // bumped real responses to ~1500 tokens. Bumping to 4096 leaves
+      // 2x headroom against truncation on Sonnet.
+      maxTokens: 4096,
       temperature: 0.1,
     });
 
@@ -195,28 +232,32 @@ function fallbackSynthesis(
   counts: { critical: number; medium: number; low: number },
   total: number
 ) {
-  const score = Math.max(
-    1,
-    Math.min(
-      10,
-      Math.round(10 - counts.critical * 2 - counts.medium - counts.low * 0.5)
-    )
-  );
+  // Same calibration table the prompt uses, applied deterministically
+  // when synthesis fails. Lifted into one helper so prompt and fallback
+  // never drift apart.
+  const { score, verdict, verdictReason } = calibrate(counts);
 
-  const verdict =
-    counts.critical > 0
+  const summary =
+    verdict === "do_not_sign"
       ? `Договор содержит ${counts.critical} критичных и ${counts.medium} средних рисков. Подписывать в текущей редакции не рекомендуется.`
-      : counts.medium > 0
+      : verdict === "negotiate"
         ? `Договор содержит ${counts.medium} замечаний средней значимости, рекомендуется устранить до подписания.`
         : `Явных рисков по автоматической проверке не обнаружено (${total} замечаний).`;
 
   return {
     score,
-    summary: verdict,
+    summary,
     contractType: "Не определён автоматически",
     parties:
       preamble.match(/именуем\w+\s+в\s+дальнейшем\s+«[^»]+»/g)?.join(", ") ??
       "Стороны не определены автоматически",
+    verdict,
+    verdictReason,
+    balance: {
+      favor: "balanced" as const,
+      comment:
+        "Автоматическая оценка баланса сторон не завершилась — проверьте договор на односторонние права и санкции вручную.",
+    },
     notarization: {
       required: false,
       reason:
@@ -240,9 +281,6 @@ function fallbackSynthesis(
     ],
   };
 }
-
-// Re-export for tests / callers that want to inspect chunks separately.
-export { chunkContract } from "./chunking";
 
 // Internal usage type re-export to keep symbol surface stable.
 export type { Usage };

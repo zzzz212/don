@@ -82,7 +82,12 @@ export async function POST(
       role?: unknown;
     };
 
-    const role: Role = body.role === "ADMIN" ? "ADMIN" : "MEMBER";
+    const role: Role =
+      body.role === "ADMIN"
+        ? "ADMIN"
+        : body.role === "VIEWER"
+          ? "VIEWER"
+          : "MEMBER";
     if (role === "ADMIN" && me.role !== "OWNER") {
       // Quietly downgrade — admins can invite admins-of-equal-rank but not
       // promote to OWNER. This MVP doesn't expose OWNER as an invite role.

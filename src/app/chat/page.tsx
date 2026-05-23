@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
   Send,
   Scale,
@@ -444,29 +444,16 @@ export default function ChatPage() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex flex-1 flex-col bg-surface/30">
+    <AppShell>
+      <PageHeader
+        title="AI-консультант"
+        description="Задайте вопрос о законодательстве РФ — модель ответит со ссылками на статьи законов."
+      />
         {isEmpty ? (
           /* Empty state — welcome + suggested questions */
           <div className="flex flex-1 flex-col">
             <div className="flex-1 overflow-y-auto">
               <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-                {/* Welcome */}
-                <div className="mb-10 text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-700 shadow-lg shadow-primary/20">
-                    <MessageCircle className="h-8 w-8 text-white" />
-                  </div>
-                  <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-                    Юридический AI-консультант
-                  </h1>
-                  <p className="mt-2 text-muted max-w-lg mx-auto">
-                    Задайте вопрос о законодательстве РФ — получите понятный ответ
-                    с ссылками на статьи законов за секунды
-                  </p>
-                </div>
-
                 {/* Suggested questions grid */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {suggestedQuestions.map((category, i) => (
@@ -488,7 +475,7 @@ export default function ChatPage() {
                           <button
                             key={q}
                             onClick={() => handleQuestionClick(q)}
-                            className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-left text-sm text-foreground transition-all hover:border-primary/30 hover:bg-primary-light/30 hover:shadow-sm"
+                            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-all hover:border-primary/30 hover:bg-primary-light/30 hover:shadow-sm"
                           >
                             {q}
                           </button>
@@ -501,7 +488,7 @@ export default function ChatPage() {
             </div>
 
             {/* Input bar (empty state) */}
-            <div className="border-t border-border bg-white p-4">
+            <div className="border-t border-border bg-card p-4">
               <div className="mx-auto max-w-3xl">
                 <div className="flex items-end gap-3 rounded-2xl border border-border bg-surface/50 p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
                   <textarea
@@ -542,8 +529,8 @@ export default function ChatPage() {
                       )}
                     >
                       {message.role === "assistant" && (
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-700 mt-1">
-                          <Scale className="h-4 w-4 text-white" />
+                        <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary">
+                          <Scale className="h-4 w-4 text-primary-fg" />
                         </div>
                       )}
                       <div
@@ -646,7 +633,7 @@ export default function ChatPage() {
             </div>
 
             {/* Input bar (chat state) */}
-            <div className="border-t border-border bg-white p-4">
+            <div className="border-t border-border bg-card p-4">
               <div className="mx-auto max-w-3xl">
                 <div className="flex items-end gap-3 rounded-2xl border border-border bg-surface/50 p-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
                   <textarea
@@ -688,9 +675,6 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-      </main>
-
-      {isEmpty && <Disclaimer />}
-    </div>
+    </AppShell>
   );
 }

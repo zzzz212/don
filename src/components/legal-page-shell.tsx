@@ -1,4 +1,4 @@
-// Shared chrome for the public legal pages (/privacy, /terms, /offer).
+﻿// Shared chrome for the public legal pages (/privacy, /terms, /offer).
 // Renders header + footer (so anonymous visitors land on a familiar layout
 // even when they came from outside via a ЮKassa receipt link), a sticky
 // table of contents on desktop, and prose-styled body content.
@@ -42,7 +42,7 @@ export function LegalPageShell({
   children,
 }: Props) {
   return (
-    <div className="flex min-h-full flex-col bg-white">
+    <div className="flex min-h-full flex-col bg-card">
       <Header />
 
       <main className="flex-1">
@@ -53,11 +53,13 @@ export function LegalPageShell({
                 ← На главную
               </Link>
             </p>
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               {title}
             </h1>
             {description && (
-              <p className="mt-3 text-base text-muted">{description}</p>
+              <p className="mt-4 text-lg leading-relaxed text-foreground/70">
+                {description}
+              </p>
             )}
             <p className="mt-4 text-sm text-muted">
               Дата вступления в силу: {formatDate(effectiveDate)}

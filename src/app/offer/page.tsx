@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPageShell } from "@/components/legal-page-shell";
 import {
   BRAND,
@@ -12,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: `Публичная оферта — ${BRAND.name}`,
   description:
-    "Публичная оферта на оказание услуг сервиса ЮрИИст. Тарифы, порядок оплаты, возврата и расторжения договора.",
+    "Публичная оферта на оказание услуг сервиса Яксо. Тарифы, порядок оплаты, возврата и расторжения договора.",
   robots: { index: true, follow: true },
 };
 
@@ -33,14 +34,21 @@ const TOC = [
   { id: "details", title: "Реквизиты исполнителя" },
 ];
 
-const PRICE_PRO = new Intl.NumberFormat("ru-RU").format(PRICING_RUB.PRO);
-const PRICE_BUSINESS = new Intl.NumberFormat("ru-RU").format(PRICING_RUB.BUSINESS);
+const PRICE_PRO_SOLO = new Intl.NumberFormat("ru-RU").format(
+  PRICING_RUB.PRO_SOLO
+);
+const PRICE_PRO_TEAM = new Intl.NumberFormat("ru-RU").format(
+  PRICING_RUB.PRO_TEAM
+);
+const PRICE_BUSINESS = new Intl.NumberFormat("ru-RU").format(
+  PRICING_RUB.BUSINESS
+);
 
 export default function OfferPage() {
   return (
     <LegalPageShell
       title="Публичная оферта"
-      description="Договор-оферта на возмездное оказание услуг по предоставлению доступа к сервису ЮрИИст."
+      description="Договор-оферта на возмездное оказание услуг по предоставлению доступа к сервису Яксо."
       toc={TOC}
     >
       <h2 id="preamble">1. Преамбула</h2>
@@ -122,23 +130,33 @@ export default function OfferPage() {
           <tr>
             <td>Старт</td>
             <td>0 (бесплатно)</td>
-            <td>Знакомство с Сервисом, ограниченный функционал</td>
+            <td>Знакомство с Сервисом: 10 анализов договоров и 5 генераций документов в месяц</td>
           </tr>
           <tr>
-            <td>Про</td>
-            <td>{PRICE_PRO}</td>
-            <td>Безлимитный анализ и генерация документов, OCR, приоритетная поддержка</td>
+            <td>Pro Solo</td>
+            <td>{PRICE_PRO_SOLO}</td>
+            <td>До 100 анализов договоров в месяц, безлимит на генерацию и чат, OCR, приоритетная поддержка</td>
+          </tr>
+          <tr>
+            <td>Pro Team</td>
+            <td>{PRICE_PRO_TEAM}</td>
+            <td>До 5 участников рабочего пространства, общий пул из 500 анализов в месяц, командные функции</td>
           </tr>
           <tr>
             <td>Бизнес</td>
             <td>{PRICE_BUSINESS}</td>
-            <td>Возможности тарифа «Про» + до 10 участников рабочего пространства, командные функции</td>
+            <td>Безлимитные анализы (на модели Opus) и генерация, расширенная история, персональный менеджер</td>
+          </tr>
+          <tr>
+            <td>Enterprise</td>
+            <td>По запросу</td>
+            <td>SLA, on-premise / частное облако, индивидуальные условия по данным. От 20 рабочих мест</td>
           </tr>
         </tbody>
       </table>
       <p>
         Подробный перечень функций каждого Тарифа доступен на странице{" "}
-        <a href="/#pricing">тарифов</a>. Перечень функций может изменяться
+        <Link href="/#pricing">тарифов</Link>. Перечень функций может изменяться
         Исполнителем в одностороннем порядке с уведомлением Заказчика.
         Для уже оплаченных Расчётных периодов состав Тарифа фиксируется на
         дату оплаты.
@@ -328,12 +346,8 @@ export default function OfferPage() {
       <p>
         <strong>Наименование:</strong> {OPERATOR.legalName}<br />
         <strong>ИНН:</strong> {OPERATOR.inn}<br />
-        <strong>ОГРН/ОГРНИП:</strong> {OPERATOR.ogrn}<br />
-        <strong>Адрес (юридический):</strong> {OPERATOR.registeredAddress}<br />
-        <strong>Расчётный счёт:</strong> {OPERATOR.bankAccount}<br />
-        <strong>Банк:</strong> {OPERATOR.bankName}<br />
-        <strong>БИК:</strong> {OPERATOR.bankBic}<br />
-        <strong>Корр. счёт:</strong> {OPERATOR.bankCorrespondentAccount}<br />
+        <strong>ОГРНИП:</strong> {OPERATOR.ogrn}<br />
+        <strong>Адрес:</strong> {OPERATOR.registeredAddress}<br />
         <strong>Email для платежей и актов:</strong>{" "}
         <a href={`mailto:${CONTACTS.legal}`}>{CONTACTS.legal}</a><br />
         <strong>Email для поддержки:</strong>{" "}

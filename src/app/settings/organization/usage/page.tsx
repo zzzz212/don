@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
-  TrendingUp,
   FileSearch,
   FileText,
   MessageCircle,
@@ -56,8 +53,10 @@ interface UsageResponse {
 
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 const FEATURE_META: Record<
@@ -126,29 +125,12 @@ export default function OrgUsagePage() {
   }, [orgId]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
+      <PageHeader
+        title="Использование workspace"
+        description="Кто и сколько потратил квоты в этом месяце."
+      />
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/settings/organization"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К настройкам workspace
-          </Link>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <TrendingUp className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Использование workspace
-              </h1>
-              <p className="text-sm text-muted">
-                Кто и сколько потратил квоты в этом месяце.
-              </p>
-            </div>
-          </div>
 
           {loading && (
             <div className="flex items-center justify-center py-16">
@@ -157,7 +139,7 @@ export default function OrgUsagePage() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -179,11 +161,11 @@ export default function OrgUsagePage() {
                         ) : (
                           <Crown className="h-4 w-4" />
                         )}
-                        {PLAN_LABEL[data.plan.effective]}
+                        {PLAN_LABEL[data.plan.effective] ?? data.plan.effective}
                       </span>
                       {data.plan.isTrial &&
                         typeof data.plan.trialDaysLeft === "number" && (
-                          <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-700">
+                          <span className="rounded-md bg-warning-light px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-warning">
                             Триал {data.plan.trialDaysLeft}д
                           </span>
                         )}
@@ -261,7 +243,7 @@ export default function OrgUsagePage() {
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                       <thead>
                         <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-muted">
                           <th className="py-2 pr-3">Участник</th>
@@ -282,7 +264,7 @@ export default function OrgUsagePage() {
                             <td className="py-3 pr-3">
                               <div className="flex items-center gap-2">
                                 {i === 0 && m.total > 0 && (
-                                  <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                                  <Trophy className="h-3.5 w-3.5 shrink-0 text-warning" />
                                 )}
                                 <div>
                                   <div className="font-medium text-foreground">
@@ -349,15 +331,13 @@ export default function OrgUsagePage() {
                           </td>
                         </tr>
                       </tfoot>
-                    </table>
+                    </table></div>
                   </div>
                 )}
               </section>
             </div>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

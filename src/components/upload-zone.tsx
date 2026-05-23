@@ -94,10 +94,12 @@ export function UploadZone({
             </div>
           </div>
           <button
+            type="button"
             onClick={clearFile}
+            aria-label="Удалить выбранный файл"
             className="rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-foreground"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -122,6 +124,7 @@ export function UploadZone({
         type="file"
         accept={accept}
         onChange={handleFileInput}
+        aria-label="Выбрать файл для загрузки"
         className="absolute inset-0 cursor-pointer opacity-0"
       />
       <div className="flex flex-col items-center gap-3">

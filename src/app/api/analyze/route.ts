@@ -16,8 +16,23 @@ import {
 import { logOcrUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks } from "@/lib/document-search";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
+import { consumeReferralBonus } from "@/lib/referral";
 import { captureEvent } from "@/lib/analytics/server";
+
+// Vercel function timeout. Default Hobby = 60s, Pro = 300s, Enterprise =
+// 900s. We ask for 300 because:
+//   • A typical analysis on Sonnet runs 20-60s for a single-pass short
+//     contract.
+//   • Map-reduce on a long contract (40+ KB) does 5-10 chunks of
+//     ~15s each + a synthesis step → easily 80-150s wall-clock.
+//   • Anthropic streaming would dodge the timeout, but our analyze
+//     path needs the full structured result before persisting, so we
+//     can't trade structure for streaming here.
+// Hobby plan caps this at 60 regardless. The Pro plan ($20/mo) is the
+// production-grade choice; on Hobby long contracts will still time out
+// and the user should chunk them manually or wait for Vercel upgrade.
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,9 +64,27 @@ export async function POST(request: NextRequest) {
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
 
-    // Plan-based quota check (anonymous users skip; rate limit already applied)
+    // Workspace VIEWERs are read-only — they may see shared documents and
+    // discussions but not spend the workspace's AI quota.
+    if (userId && orgId) {
+      const m = await getMembership(userId, orgId);
+      if (m?.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Роль «Наблюдатель» не позволяет запускать анализ договоров." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Plan-based quota check (anonymous users skip; rate limit already applied).
+    // Also captured for the model-tier selector below — same effective plan
+    // (FREE / PRO / BUSINESS) drives both quota AND which Claude model runs.
+    let effectivePlan: string | null = null;
     if (orgId) {
       const quota = await checkQuotaSafe(orgId, "analyze");
+      if (quota) {
+        effectivePlan = quota.plan;
+      }
       if (quota && !quota.allowed) {
         return NextResponse.json(
           {
@@ -244,7 +277,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysis = await analyzeContract(contractText, userId ?? null, orgId);
+    const analysis = await analyzeContract(
+      contractText,
+      userId ?? null,
+      orgId,
+      effectivePlan
+    );
 
     // Upload original file to object storage in parallel with DB save below.
     // Storage failure must not fail the request — the user still gets their
@@ -282,6 +320,8 @@ export async function POST(request: NextRequest) {
           const metadata = JSON.stringify({
             contractType: analysis.contractType,
             parties: analysis.parties,
+            verdict: analysis.verdict,
+            verdictReason: analysis.verdictReason,
             notarization: analysis.notarization,
             registration: analysis.registration,
             missingClauses: analysis.missingClauses,
@@ -354,6 +394,12 @@ export async function POST(request: NextRequest) {
         savedToDb: documentId !== null,
       },
     });
+
+    // Referral bonus: when this analysis ran past the FREE monthly base,
+    // draw one credit from the workspace owner's bonus pool.
+    if (orgId) {
+      await consumeReferralBonus(orgId);
+    }
     if (usedOcr) {
       void captureEvent({
         userId: userId ?? null,
@@ -381,8 +427,21 @@ export async function POST(request: NextRequest) {
       event: "analysis_failed",
       properties: { reason: (error as Error).message?.slice(0, 100) ?? "unknown" },
     });
+    // Diagnostic surface: in addition to the user-facing string, ship a
+    // truncated `detail` field with the real exception message. Lets the
+    // browser-side DevTools tab (and us, when triaging) see "Anthropic
+    // 401 invalid api key" or "Prisma timeout" without digging Vercel
+    // logs. PII risk is low — we're throwing internal exceptions, not
+    // user-supplied data.
+    const detail =
+      error instanceof Error
+        ? `${error.name}: ${error.message}`.slice(0, 500)
+        : String(error).slice(0, 500);
     return NextResponse.json(
-      { error: "Ошибка при анализе документа. Попробуйте позже." },
+      {
+        error: "Ошибка при анализе документа. Попробуйте позже.",
+        detail,
+      },
       { status: 500 }
     );
   }

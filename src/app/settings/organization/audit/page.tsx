@@ -1,15 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
-  ShieldCheck,
   Filter,
 } from "lucide-react";
 
@@ -62,6 +59,13 @@ const ACTION_LABELS: Record<string, string> = {
   "auth.password_reset": "Сброшен пароль",
   "auth.2fa_enabled": "Включена 2FA",
   "auth.2fa_disabled": "Отключена 2FA",
+  "account.signup_consent_granted": "Принято согласие на обработку ПДн",
+  "email.trial_expiring_sent": "Письмо об окончании триала",
+  "email.trial_expired_sent": "Письмо о завершении триала",
+  "email.inactive_reengagement_sent": "Реактивационное письмо",
+  "email.checkout_abandoned_sent": "Письмо о недозавершённом платеже",
+  "deal.created": "Создана сделка",
+  "deal.clause_action": "Действие в сделке",
 };
 
 const ACTION_GROUPS: Array<{ label: string; values: string[] }> = [
@@ -123,8 +127,6 @@ export default function AuditLogPage() {
   const [actionFilter, setActionFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
-  useEffect(() => setPage(1), [actionFilter]);
-
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
@@ -156,30 +158,12 @@ export default function AuditLogPage() {
   }, [orgId, actionFilter, page]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
+      <PageHeader
+        title="Журнал событий"
+        description="Все значимые действия в этом workspace — кто, когда, что изменил."
+      />
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/settings/organization"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К настройкам workspace
-          </Link>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <ShieldCheck className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Журнал событий
-              </h1>
-              <p className="text-sm text-muted">
-                Все значимые действия в этом workspace — кто, когда, что
-                изменил.
-              </p>
-            </div>
-          </div>
 
           {/* Filter chips */}
           <div className="mb-6 flex flex-wrap items-center gap-2">
@@ -194,11 +178,14 @@ export default function AuditLogPage() {
                 <button
                   key={g.label}
                   type="button"
-                  onClick={() => setActionFilter(g.values)}
+                  onClick={() => {
+                    setActionFilter(g.values);
+                    setPage(1);
+                  }}
                   className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     active
                       ? "bg-primary text-white"
-                      : "border border-border bg-white text-foreground hover:bg-surface"
+                      : "border border-border bg-card text-foreground hover:bg-surface"
                   }`}
                 >
                   {g.label}
@@ -214,7 +201,7 @@ export default function AuditLogPage() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -226,7 +213,7 @@ export default function AuditLogPage() {
                 {data.total.toLocaleString("ru-RU")} событий
               </p>
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-border bg-surface/50 text-left text-xs font-semibold uppercase tracking-wider text-muted">
                       <th className="px-4 py-3">Время</th>
@@ -306,7 +293,7 @@ export default function AuditLogPage() {
                       );
                     })}
                   </tbody>
-                </table>
+                </table></div>
               </div>
 
               {data.pageCount > 1 && (
@@ -319,7 +306,7 @@ export default function AuditLogPage() {
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={data.page <= 1}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       ← Назад
                     </button>
@@ -329,7 +316,7 @@ export default function AuditLogPage() {
                         setPage((p) => Math.min(data.pageCount, p + 1))
                       }
                       disabled={data.page >= data.pageCount}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       Вперёд →
                     </button>
@@ -339,8 +326,6 @@ export default function AuditLogPage() {
             </>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

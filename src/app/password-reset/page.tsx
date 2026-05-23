@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useId, useState } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  Scale,
   Lock,
   Loader2,
   AlertCircle,
@@ -16,6 +16,9 @@ function PasswordResetForm() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params.get("token") ?? "";
+  const formId = useId();
+  const passId = `${formId}-pass`;
+  const confirmId = `${formId}-confirm`;
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +27,7 @@ function PasswordResetForm() {
   if (!token) {
     return (
       <div className="rounded-2xl border border-border bg-card p-8 shadow-sm text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-light text-danger">
           <AlertCircle className="h-6 w-6" />
         </div>
         <h2 className="text-lg font-semibold text-foreground">
@@ -91,44 +94,63 @@ function PasswordResetForm() {
   return (
     <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
       {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 animate-fade-in">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div
+          role="alert"
+          className="mb-4 flex items-center gap-2 rounded-lg bg-danger-light border border-danger/30 px-4 py-3 text-sm text-danger animate-fade-in"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">
+          <label
+            htmlFor={passId}
+            className="mb-1.5 block text-sm font-medium text-foreground"
+          >
             Новый пароль
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <Lock
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              aria-hidden="true"
+            />
             <input
+              id={passId}
               name="password"
               type="password"
+              autoComplete="new-password"
               required
               minLength={6}
               autoFocus
               placeholder="Минимум 6 символов"
-              className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-foreground">
+          <label
+            htmlFor={confirmId}
+            className="mb-1.5 block text-sm font-medium text-foreground"
+          >
             Повторите пароль
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <Lock
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+              aria-hidden="true"
+            />
             <input
+              id={confirmId}
               name="confirm"
               type="password"
+              autoComplete="new-password"
               required
               minLength={6}
               placeholder="Введите пароль ещё раз"
-              className="w-full rounded-xl border border-border bg-white py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-xl border border-border bg-card py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
         </div>
@@ -136,11 +158,12 @@ function PasswordResetForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+          aria-busy={isLoading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
         >
           {isLoading ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Сохраняем...
             </>
           ) : (
@@ -167,14 +190,9 @@ export default function PasswordResetPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white">
-              <Scale className="h-6 w-6" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-foreground">
-              ЮрИИст
-            </span>
+            <Logo size={44} wordmark="Яксо" />
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-foreground">
+          <h1 className="mt-6 font-serif text-3xl font-semibold tracking-tight text-foreground">
             Новый пароль
           </h1>
           <p className="mt-2 text-sm text-muted">

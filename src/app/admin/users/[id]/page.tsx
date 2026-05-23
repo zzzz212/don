@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
   Sparkles,
@@ -71,10 +68,17 @@ interface UserDetail {
   }>;
 }
 
+// Plan tier label set kept in sync with src/lib/legal-info.ts PLAN_LABEL.
+// We mirror it locally rather than import to avoid pulling a server-only
+// module into this "use client" page.
+type AdminPlanCode = "FREE" | "PRO_SOLO" | "PRO_TEAM" | "BUSINESS";
+
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 function formatDateTime(iso: string): string {
@@ -98,10 +102,10 @@ function formatDate(iso: string): string {
 function PaymentStatus({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUCCEEDED: { label: "Оплачено", cls: "bg-success/10 text-success" },
-    PENDING: { label: "Ожидает", cls: "bg-amber-100 text-amber-800" },
-    WAITING_FOR_CAPTURE: { label: "Ожидает захвата", cls: "bg-amber-100 text-amber-800" },
+    PENDING: { label: "Ожидает", cls: "bg-warning-light text-warning" },
+    WAITING_FOR_CAPTURE: { label: "Ожидает захвата", cls: "bg-warning-light text-warning" },
     CANCELED: { label: "Отменён", cls: "bg-surface text-muted" },
-    FAILED: { label: "Ошибка", cls: "bg-red-100 text-red-700" },
+    FAILED: { label: "Ошибка", cls: "bg-danger-light text-danger" },
   };
   const e = map[status] ?? { label: status, cls: "bg-surface text-muted" };
   return (
@@ -173,7 +177,7 @@ export default function AdminUserDetailPage() {
 
   const handleChangePlan = async (
     orgId: string,
-    plan: "FREE" | "PRO" | "BUSINESS"
+    plan: AdminPlanCode
   ) => {
     if (
       !confirm(
@@ -202,17 +206,8 @@ export default function AdminUserDetailPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/admin/users"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К списку пользователей
-          </Link>
-
           {loading && (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted" />
@@ -220,7 +215,7 @@ export default function AdminUserDetailPage() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -335,7 +330,7 @@ export default function AdminUserDetailPage() {
                     <CreditCard className="h-4 w-4" />
                     Платежи (последние 30 дней)
                   </h2>
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-wider text-muted">
                         <th className="py-2 pr-3">Дата</th>
@@ -362,7 +357,7 @@ export default function AdminUserDetailPage() {
                           <td className="py-2 pr-3">
                             <PaymentStatus status={p.status} />
                             {p.failureReason && (
-                              <p className="mt-1 text-xs text-red-600">
+                              <p className="mt-1 text-xs text-danger">
                                 {p.failureReason}
                               </p>
                             )}
@@ -370,15 +365,13 @@ export default function AdminUserDetailPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 </section>
               )}
             </div>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
 
@@ -398,7 +391,7 @@ interface WorkspaceCardProps {
   isOwner: boolean;
   acting: string | null;
   onExtendTrial: (days: number) => void;
-  onChangePlan: (plan: "FREE" | "PRO" | "BUSINESS") => void;
+  onChangePlan: (plan: AdminPlanCode) => void;
 }
 
 function WorkspaceCard({
@@ -409,11 +402,21 @@ function WorkspaceCard({
   onChangePlan,
 }: WorkspaceCardProps) {
   const { org, role } = membership;
-  const planChip = org.plan === "PRO" ? "bg-primary-light text-primary-dark" : org.plan === "BUSINESS" ? "bg-amber-100 text-amber-800" : "bg-surface text-muted";
+  const planChip =
+    org.plan === "BUSINESS"
+      ? "bg-warning-light text-warning"
+      : org.plan === "PRO_SOLO" ||
+          org.plan === "PRO_TEAM" ||
+          org.plan === "PRO"
+        ? "bg-primary-light text-primary-dark"
+        : "bg-surface text-muted";
   const PlanIcon =
     org.plan === "FREE" ? Zap : Crown;
-  const trialActive =
-    !!org.trialEndsAt && new Date(org.trialEndsAt).getTime() > Date.now();
+  // Date.now() in render trips react-hooks/purity, but for an admin-only
+  // "trial still active?" badge the re-render instability is benign — the
+  // value only flips at the exact expiry instant.
+  // eslint-disable-next-line react-hooks/purity
+  const trialActive = !!org.trialEndsAt && new Date(org.trialEndsAt).getTime() > Date.now();
 
   return (
     <div className="rounded-xl border border-border bg-surface/30 p-4">
@@ -431,7 +434,7 @@ function WorkspaceCard({
               {role}
             </span>
             {trialActive && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+              <span className="inline-flex items-center gap-1 rounded-md bg-warning-light px-2 py-0.5 text-xs font-semibold text-warning">
                 <Sparkles className="h-3 w-3" />
                 Триал до {formatDate(org.trialEndsAt!)}
               </span>
@@ -455,22 +458,23 @@ function WorkspaceCard({
               type="button"
               onClick={() => onExtendTrial(7)}
               disabled={acting === `trial-${org.id}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-warning/40 bg-warning-light px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-warning-light disabled:opacity-50"
             >
               <Calendar className="h-3.5 w-3.5" />+7 дней триала
             </button>
             <select
               defaultValue={org.plan}
               onChange={(e) => {
-                const v = e.target.value as "FREE" | "PRO" | "BUSINESS";
+                const v = e.target.value as AdminPlanCode;
                 if (v !== org.plan) onChangePlan(v);
               }}
               disabled={acting === `plan-${org.id}`}
-              className="rounded-lg border border-border bg-white px-2 py-1.5 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
+              className="rounded-lg border border-border bg-card px-2 py-1.5 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
               title="Сменить тариф вручную (без оплаты)"
             >
               <option value="FREE">→ Старт</option>
-              <option value="PRO">→ Про</option>
+              <option value="PRO_SOLO">→ Pro Solo</option>
+              <option value="PRO_TEAM">→ Pro Team</option>
               <option value="BUSINESS">→ Бизнес</option>
             </select>
           </div>

@@ -21,6 +21,7 @@ import {
   BRAND,
   PRICING_KOPECKS,
   PRICING_RUB,
+  PLAN_LABEL,
   type PaidPlan,
   isPaidPlan,
 } from "@/lib/legal-info";
@@ -78,9 +79,28 @@ function periodEnd(start: Date, months: number): Date {
  * support can grep for it.
  */
 function describePurchase(plan: PaidPlan, orgName: string): string {
-  const planLabel = plan === "PRO" ? "«Про»" : "«Бизнес»";
+  const label = `«${PLAN_LABEL[plan] ?? plan}»`;
   // ЮKassa caps description at 128 chars.
-  return `${BRAND.name} — тариф ${planLabel}, 1 мес. (${orgName})`.slice(0, 128);
+  return `${BRAND.name} — тариф ${label}, 1 мес. (${orgName})`.slice(0, 128);
+}
+
+/**
+ * Look up the monthly price in RUB for a paid plan. Centralised so
+ * receipt emails / payment metadata never go through a switch — adding
+ * a tier is purely a PRICING_RUB edit.
+ */
+function paidPlanPriceRub(plan: PaidPlan): number {
+  switch (plan) {
+    case "PRO_SOLO":
+      return PRICING_RUB.PRO_SOLO;
+    case "PRO_TEAM":
+      return PRICING_RUB.PRO_TEAM;
+    case "BUSINESS":
+      return PRICING_RUB.BUSINESS;
+    case "PRO":
+      // Legacy alias — same price as PRO_SOLO.
+      return PRICING_RUB.PRO;
+  }
 }
 
 /**
@@ -103,7 +123,11 @@ export async function createCheckoutSession(
     throw new BillingError("Неизвестный тариф", "INVALID_PLAN");
   }
 
-  const amountKopecks = PRICING_KOPECKS[input.plan];
+  const amountKopecks =
+    PRICING_KOPECKS[input.plan as keyof typeof PRICING_KOPECKS];
+  if (typeof amountKopecks !== "number") {
+    throw new BillingError("Нет цены для этого тарифа", "INVALID_PLAN");
+  }
 
   const org = await prisma.organization.findUnique({
     where: { id: input.orgId },
@@ -255,11 +279,15 @@ export async function applySucceededPayment(
     const periodEndAt = periodEnd(periodStart, payment.periodMonths);
 
     // Upsert subscription. If the org has a prior CANCELED sub, this
-    // reactivates it with new period boundaries.
+    // reactivates it with new period boundaries. Subscription.userId is
+    // the new authoritative link (one paid seat = PRO across every
+    // workspace they own); orgId stays so the legacy unique constraint
+    // and "which workspace bought this" history don't break.
     await tx.subscription.upsert({
       where: { orgId: payment.orgId },
       create: {
         orgId: payment.orgId,
+        userId: payment.userId,
         plan: payment.plan,
         status: "ACTIVE",
         currentPeriodStart: periodStart,
@@ -272,6 +300,7 @@ export async function applySucceededPayment(
             : null,
       },
       update: {
+        userId: payment.userId,
         plan: payment.plan,
         status: "ACTIVE",
         cancelAtPeriodEnd: false,
@@ -301,8 +330,18 @@ export async function applySucceededPayment(
       },
     });
 
-    // Promote the workspace to the paid plan and burn any active trial
-    // — they paid, no need to keep gifting them PRO via trial flag.
+    // Promote the USER to the paid plan (authoritative for quota) and
+    // burn the user-level trial. Also write the legacy Org columns so
+    // pre-rollout admin queries keep working — single source of truth
+    // is User.plan but we double-write until the legacy columns are
+    // dropped in a later migration.
+    await tx.user.update({
+      where: { id: payment.userId },
+      data: {
+        plan: payment.plan,
+        trialEndsAt: null,
+      },
+    });
     await tx.organization.update({
       where: { id: payment.orgId },
       data: {
@@ -317,8 +356,7 @@ export async function applySucceededPayment(
     buildSubscriptionActivatedEmail({
       to: payment.customerEmail,
       plan: payment.plan as PaidPlan,
-      amountRub:
-        payment.plan === "PRO" ? PRICING_RUB.PRO : PRICING_RUB.BUSINESS,
+      amountRub: paidPlanPriceRub(payment.plan as PaidPlan),
       periodEnd: periodEnd(now, payment.periodMonths).toISOString(),
     })
   );

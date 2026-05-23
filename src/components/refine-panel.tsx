@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // "Доработать AI" panel for /generated/[id]. Two execution modes:
 //
@@ -14,7 +14,8 @@
 // The route emits a "mode" SSE event at the start of each path so this
 // panel knows which UI state to show.
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { motion } from "motion/react";
 import {
   Sparkles,
   Loader2,
@@ -64,8 +65,10 @@ export function RefinePanel({
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const toast = useToast();
+  const titleId = useId();
+  const fieldId = useId();
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setInstruction("");
     setPhase("idle");
     setStreamedText("");
@@ -75,14 +78,25 @@ export function RefinePanel({
       abortRef.current.abort();
       abortRef.current = null;
     }
-  };
+  }, []);
 
-  const close = () => {
+  const close = useCallback(() => {
     reset();
     setOpen(false);
-  };
+  }, [reset]);
 
   const isWorking = phase === "patch-running" || phase === "regen-streaming";
+
+  // Escape closes the modal — but not mid-operation, matching the
+  // disabled state of the header close button.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isWorking) close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, isWorking, close]);
 
   const handleStop = () => {
     abortRef.current?.abort();
@@ -209,8 +223,23 @@ export function RefinePanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 py-6 sm:items-center">
-      <div className="flex w-full max-w-3xl flex-col rounded-2xl border border-border bg-white shadow-2xl">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-md px-4 py-6 sm:items-center"
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
+        className="flex w-full max-w-3xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2">
@@ -218,7 +247,10 @@ export function RefinePanel({
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">
+              <h2
+                id={titleId}
+                className="text-base font-bold text-foreground"
+              >
                 Доработать документ AI
               </h2>
               <p className="text-xs text-muted">
@@ -242,16 +274,20 @@ export function RefinePanel({
           {phase === "idle" && (
             <>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                <label
+                  htmlFor={fieldId}
+                  className="mb-1.5 block text-sm font-medium text-foreground"
+                >
                   Что нужно изменить?
                 </label>
                 <textarea
+                  id={fieldId}
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   rows={4}
                   maxLength={2000}
                   placeholder="Например: «Сделай срок 6 месяцев с автопродлением, добавь штраф 0,1% в день за просрочку оплаты и пункт о коммерческой тайне.»"
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <p className="mt-1 text-right text-xs text-muted">
                   {instruction.length} / 2000
@@ -266,7 +302,7 @@ export function RefinePanel({
                       key={s}
                       type="button"
                       onClick={() => setInstruction(s)}
-                      className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-muted transition-colors hover:bg-white hover:text-foreground"
+                      className="rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-muted transition-colors hover:bg-card hover:text-foreground"
                     >
                       {s}
                     </button>
@@ -277,7 +313,7 @@ export function RefinePanel({
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-light px-3 py-2 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span className="flex-1">{error}</span>
             </div>
@@ -305,7 +341,7 @@ export function RefinePanel({
           {phase === "regen-streaming" && (
             <>
               {fallbackReason && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-light px-3 py-2 text-xs text-warning">
                   <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>{fallbackReason}</span>
                 </div>
@@ -334,7 +370,7 @@ export function RefinePanel({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-success">Готово!</p>
-                <p className="mt-0.5 text-xs text-emerald-900">
+                <p className="mt-0.5 text-xs text-success">
                   Сохраняем версию и обновляем страницу…
                 </p>
               </div>
@@ -348,7 +384,7 @@ export function RefinePanel({
             <button
               type="button"
               onClick={handleStop}
-              className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
             >
               Остановить
             </button>
@@ -359,7 +395,7 @@ export function RefinePanel({
               <button
                 type="button"
                 onClick={close}
-                className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 Закрыть
               </button>
@@ -375,7 +411,7 @@ export function RefinePanel({
             </>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

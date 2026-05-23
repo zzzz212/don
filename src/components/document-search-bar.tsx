@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -98,7 +98,7 @@ export function DocumentSearchBar() {
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
         <Search className="h-4 w-4 shrink-0 text-muted" />
         <input
           ref={inputRef}
@@ -106,7 +106,7 @@ export function DocumentSearchBar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => data && setOpen(true)}
-          placeholder="Найти договор по смыслу — например, «неустойка 0,1% в день»"
+          placeholder="Поиск по договорам"
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted/60 focus:outline-none"
         />
         {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
@@ -122,13 +122,13 @@ export function DocumentSearchBar() {
       </div>
 
       {open && data && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-white shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[28rem] overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
           {/* Mode + note */}
           <div className="flex items-center justify-between border-b border-border px-4 py-2 text-xs">
             <span className="flex items-center gap-1.5 text-muted">
               {data.mode === "semantic" ? (
                 <>
-                  <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
                   Семантический поиск
                 </>
               ) : (
@@ -149,7 +149,7 @@ export function DocumentSearchBar() {
           </div>
 
           {data.note && (
-            <p className="border-b border-border bg-amber-50 px-4 py-2 text-xs text-amber-800">
+            <p className="border-b border-border bg-warning-light px-4 py-2 text-xs text-warning">
               {data.note}
             </p>
           )}
@@ -190,7 +190,7 @@ export function DocumentSearchBar() {
                       <div className="flex shrink-0 flex-col items-end gap-1">
                         {typeof hit.similarity === "number" && (
                           <span
-                            className="rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700"
+                            className="rounded-md bg-primary-light px-1.5 py-0.5 text-[10px] font-bold text-primary-dark"
                             title={`Релевантность: ${hit.similarity.toFixed(3)}`}
                           >
                             {Math.round(hit.similarity * 100)}%

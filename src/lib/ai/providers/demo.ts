@@ -1,4 +1,5 @@
 import type { AnalysisResult, AnalysisRisk } from "../schemas/analyze";
+import { scoreAndVerdictFromCounts } from "../score-calibration";
 
 export function generateDemoAnalysis(contractText: string): AnalysisResult {
   const textLength = contractText.length;
@@ -18,6 +19,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "critical",
       description:
         "Условие об одностороннем отказе от договора без симметричного права у второй стороны создаёт дисбаланс.",
+      consequence:
+        "Контрагент сможет в любой момент выйти из договора без вашего согласия и без компенсации, тогда как вы такого права лишены — это срывает планирование и оставляет вас без защиты при внезапном расторжении.",
       legalReference: "ст. 450.1 ГК РФ",
       originalText: "В тексте договора найдено упоминание одностороннего отказа",
       recommendedText:
@@ -33,6 +36,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "medium",
       description:
         "Договор содержит условия о штрафных санкциях. Размер неустойки может быть признан несоразмерным.",
+      consequence:
+        "При просрочке вы рискуете выплатить неустойку, многократно превышающую реальные потери контрагента; взыскать её он сможет через суд — до возможного снижения по ст. 333 ГК РФ.",
       legalReference: "ст. 333 ГК РФ",
       originalText: "В договоре указан размер неустойки",
       recommendedText:
@@ -48,6 +53,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "medium",
       description:
         "Не определён предельный размер индексации, что позволяет арендодателю произвольно повышать плату.",
+      consequence:
+        "Арендодатель сможет повышать плату на любой процент и сколь угодно часто — за срок аренды платёж рискует вырасти в разы, а оспорить такое повышение будет почти невозможно.",
       legalReference: "ст. 614 ГК РФ",
       originalText: "Условие об индексации в договоре",
       recommendedText:
@@ -62,6 +69,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       clauseTitle: "Гарантийный срок",
       level: "medium",
       description: "Не установлен или не чётко определён гарантийный срок на товар.",
+      consequence:
+        "Без чёткого гарантийного срока вы не сможете бесплатно устранить заводской брак и рискуете оплачивать ремонт или замену товара за свой счёт.",
       legalReference: "ст. 470-477 ГК РФ",
       originalText: "Условия гарантии в договоре",
       recommendedText:
@@ -77,6 +86,8 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
       level: "low",
       description:
         "В договоре не определён обязательный претензионный порядок, что может затянуть разрешение споров.",
+      consequence:
+        "Без согласованного претензионного порядка спор затянется, а если он обязателен по закону — суд может вернуть иск или оставить его без рассмотрения.",
       legalReference: "ст. 4 АПК РФ",
       originalText: "Пункт в договоре отсутствует",
       recommendedText:
@@ -102,10 +113,14 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
   const criticalCount = risks.filter((r) => r.level === "critical").length;
   const mediumCount = risks.filter((r) => r.level === "medium").length;
   const lowCount = risks.filter((r) => r.level === "low").length;
-  const score = Math.max(
-    1,
-    Math.min(10, Math.round(10 - criticalCount * 2 - mediumCount * 1 - lowCount * 0.5))
-  );
+  // Single source of truth for the calibration table — same helper the
+  // prompt enforces and the synthesis fallback uses.
+  const calibration = scoreAndVerdictFromCounts({
+    critical: criticalCount,
+    medium: mediumCount,
+    low: lowCount,
+  });
+  const score = calibration.score;
 
   const contractType = isLease
     ? "Договор аренды"
@@ -126,11 +141,33 @@ export function generateDemoAnalysis(contractText: string): AnalysisResult {
         ? `${contractType} в целом приемлем, но содержит ${mediumCount} замечаний, которые рекомендуется устранить.`
         : `${contractType} не содержит явных рисков по автоматической проверке.`;
 
+  const balance =
+    criticalCount > 0
+      ? {
+          favor: "second" as const,
+          comment:
+            "Ряд условий смещён в пользу второй стороны — есть пункты с односторонними правами и санкциями.",
+        }
+      : mediumCount > 0
+        ? {
+            favor: "second" as const,
+            comment:
+              "Небольшой перекос в пользу второй стороны по отдельным пунктам.",
+          }
+        : {
+            favor: "balanced" as const,
+            comment:
+              "Грубых перекосов между сторонами автоматическая проверка не выявила.",
+          };
+
   return {
     score,
     summary,
     contractType,
     parties: "Стороны не определены автоматически (демо-режим)",
+    verdict: calibration.verdict,
+    verdictReason: calibration.verdictReason,
+    balance,
     risks,
     notarization: {
       required: false,

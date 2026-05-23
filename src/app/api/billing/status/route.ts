@@ -3,13 +3,18 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureActiveOrg, requireMembership, OrgAccessError } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
-import { getEffectivePlan } from "@/lib/plans";
+import { getEffectiveUserPlan } from "@/lib/plans";
 import { checkTrialEligibility } from "@/lib/billing/trial";
 
 // GET /api/billing/status
-//   Returns the workspace's current subscription state and the most
-//   recent payments (history). Used by /billing page. OWNER+ only —
-//   regular members shouldn't see billing details.
+//   Returns the user's current plan/trial state plus the workspace's
+//   payment history. Plan and trial fields are USER-scoped now (one
+//   subscription = PRO across every workspace they own); the payments
+//   list and OWNER gate are still per-workspace because each org has
+//   its own billing thread for accounting purposes.
+//
+//   Used by /billing page (OWNER+ only) AND by AccountMenu's plan-chip
+//   probe — read access is the same, AccountMenu just ignores `payments`.
 export async function GET() {
   const session = await auth();
   const userId = session?.user?.id;
@@ -25,7 +30,11 @@ export async function GET() {
       session.user.activeOrgId ?? (await ensureActiveOrg(userId));
     const membership = await requireMembership(userId, orgId, "OWNER");
 
-    const [subscription, payments, trialEligibility] = await Promise.all([
+    const [user, subscription, payments, trialEligibility] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { plan: true, trialEndsAt: true },
+      }),
       prisma.subscription.findUnique({ where: { orgId } }),
       prisma.payment.findMany({
         where: { orgId },
@@ -46,9 +55,9 @@ export async function GET() {
       checkTrialEligibility(userId, orgId),
     ]);
 
-    const effective = getEffectivePlan({
-      plan: membership.organization.plan,
-      trialEndsAt: membership.organization.trialEndsAt,
+    const effective = getEffectiveUserPlan({
+      plan: user?.plan,
+      trialEndsAt: user?.trialEndsAt ?? null,
     });
 
     return NextResponse.json({

@@ -9,6 +9,9 @@ import { reportError } from "@/lib/telemetry";
 import { embedDocumentChunks, hasEmbeddings } from "@/lib/document-search";
 import { ensureActiveOrg } from "@/lib/org";
 
+// Same timeout as /api/analyze — reanalyze runs the identical pipeline.
+export const maxDuration = 300;
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -120,6 +123,8 @@ export async function POST(
     const metadata = JSON.stringify({
       contractType: analysis.contractType,
       parties: analysis.parties,
+      verdict: analysis.verdict,
+      verdictReason: analysis.verdictReason,
       notarization: analysis.notarization,
       registration: analysis.registration,
       missingClauses: analysis.missingClauses,

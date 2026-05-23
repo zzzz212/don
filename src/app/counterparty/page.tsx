@@ -1,8 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { ContactCounterparty } from "@/components/contact-counterparty";
+import { buttonClass } from "@/components/button";
+import { Badge } from "@/components/badge";
 import {
   Search,
   Loader2,
@@ -103,51 +106,42 @@ export default function CounterpartyPage() {
   const getRiskIcon = (level: string) => {
     switch (level) {
       case "critical":
-        return <AlertOctagon className="h-6 w-6 text-red-600" />;
+        return <AlertOctagon className="h-6 w-6 text-danger" />;
       case "high":
-        return <AlertTriangle className="h-6 w-6 text-orange-600" />;
+        return <AlertTriangle className="h-6 w-6 text-warning" />;
       case "medium":
-        return <AlertCircle className="h-6 w-6 text-yellow-600" />;
+        return <AlertCircle className="h-6 w-6 text-warning" />;
       default:
-        return <CheckCircle className="h-6 w-6 text-green-600" />;
+        return <CheckCircle className="h-6 w-6 text-success" />;
     }
   };
 
   const getRiskColor = (level: string) => {
     switch (level) {
       case "critical":
-        return "bg-red-50 border-red-200";
+        return "bg-danger-light border-danger/30";
       case "high":
-        return "bg-orange-50 border-orange-200";
+        return "bg-warning-light border-warning/30";
       case "medium":
-        return "bg-yellow-50 border-yellow-200";
+        return "bg-warning-light border-warning/30";
       default:
-        return "bg-green-50 border-green-200";
+        return "bg-success-light border-success/30";
     }
   };
 
   const getRiskPercentageColor = (score: number) => {
-    if (score >= 76) return "bg-red-600";
-    if (score >= 51) return "bg-orange-600";
-    if (score >= 26) return "bg-yellow-600";
-    return "bg-green-600";
+    if (score >= 51) return "bg-danger";
+    if (score >= 26) return "bg-warning";
+    return "bg-success";
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
-        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Проверка контрагентов
-            </h1>
-            <p className="text-muted">
-              Узнайте риск-скор компании по ИНН на основе открытых данных
-            </p>
-          </div>
-
+    <AppShell>
+      <PageHeader
+        title="Проверка контрагентов"
+        description="Узнайте риск-скор компании по ИНН на основе открытых данных."
+      />
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           {/* Search form */}
           <div className="mb-8">
             <div className="flex gap-2">
@@ -158,12 +152,12 @@ export default function CounterpartyPage() {
                 onChange={(e) => setInn(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleCheck()}
                 maxLength={12}
-                className="flex-1 rounded-lg border border-border bg-white px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="flex-1 rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <button
                 onClick={handleCheck}
                 disabled={loading}
-                className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50 flex items-center gap-2"
+                className={buttonClass()}
               >
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -177,7 +171,7 @@ export default function CounterpartyPage() {
 
           {/* Error message */}
           {error && (
-            <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-red-800">
+            <div className="mb-6 rounded-lg bg-danger-light border border-danger/30 p-4 text-danger">
               <p className="text-sm font-medium">{error}</p>
             </div>
           )}
@@ -193,7 +187,7 @@ export default function CounterpartyPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground mb-1">
+                    <h2 className="text-2xl font-semibold text-foreground mb-1">
                       {profile.name}
                     </h2>
                     <p className="text-sm text-muted">ИНН: {profile.inn}</p>
@@ -203,10 +197,10 @@ export default function CounterpartyPage() {
                         <span
                           className={
                             profile.dataSource === "dadata"
-                              ? "text-green-600 font-medium"
+                              ? "text-success font-medium"
                               : profile.dataSource === "egrul"
-                                ? "text-blue-600 font-medium"
-                                : "text-orange-600 font-medium"
+                                ? "text-primary font-medium"
+                                : "text-warning font-medium"
                           }
                         >
                           {profile.dataSource === "dadata"
@@ -230,7 +224,7 @@ export default function CounterpartyPage() {
                       {profile.riskScore}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-card-hover rounded-full h-3">
                     <div
                       className={`h-3 rounded-full transition-all ${getRiskPercentageColor(
                         profile.riskScore
@@ -247,30 +241,22 @@ export default function CounterpartyPage() {
                 {/* Risk level badge */}
                 <div className="inline-block">
                   {profile.riskLevel === "critical" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-red-600 text-white text-xs font-semibold">
-                      🔴 КРИТИЧЕСКИЙ РИСК
-                    </span>
+                    <Badge tone="danger">Критический риск</Badge>
                   )}
                   {profile.riskLevel === "high" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-orange-600 text-white text-xs font-semibold">
-                      🟠 ВЫСОКИЙ РИСК
-                    </span>
+                    <Badge tone="danger">Высокий риск</Badge>
                   )}
                   {profile.riskLevel === "medium" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-yellow-600 text-white text-xs font-semibold">
-                      🟡 СРЕДНИЙ РИСК
-                    </span>
+                    <Badge tone="warning">Средний риск</Badge>
                   )}
                   {profile.riskLevel === "low" && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-green-600 text-white text-xs font-semibold">
-                      🟢 НИЗКИЙ РИСК
-                    </span>
+                    <Badge tone="success">Низкий риск</Badge>
                   )}
                 </div>
               </div>
 
               {/* Company info */}
-              <div className="bg-white rounded-lg border border-border p-6">
+              <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">
                   Информация о компании
                 </h3>
@@ -331,41 +317,29 @@ export default function CounterpartyPage() {
                 </div>
               </div>
 
-              {/* Risk factors */}
-              <div className="bg-white rounded-lg border border-border p-6">
+              {/* Reach the counterparty directly when its ИНН belongs to
+                  a Яксо account. */}
+              <ContactCounterparty inn={profile.inn} />
+
+              {/* Risk factors. Court / debt rows are gated until the real
+                  KAD (api-fns.ru) and FSSP integrations are wired —
+                  showing literal zeros from the stub providers gave users
+                  a false sense of safety on counterparties that actually
+                  had lawsuits or bailiff cases. ЕГРЮЛ-derived signals
+                  stay visible. */}
+              <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4">
                   Факторы риска
                 </h3>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">
-                      Активные судебные дела
-                    </span>
-                    <span className="font-bold text-lg">
-                      {profile.activeLawsuits}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">
-                      Закрытые судебные дела
-                    </span>
-                    <span className="font-bold text-lg">
-                      {profile.completedLawsuits}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">Проигранные дела</span>
-                    <span className="font-bold text-lg">{profile.lossesCount}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-surface">
-                    <span className="text-sm font-medium">Наличие долгов</span>
-                    <span className="font-bold">
-                      {profile.debtFound ? "❌ Да" : "✅ Нет"}
-                    </span>
+                  <div
+                    role="status"
+                    className="rounded-lg border border-warning/30 bg-warning-light/50 p-3 text-xs text-warning"
+                  >
+                    Проверка по арбитражным делам (КАД) и исполнительным
+                    производствам (ФССП) скоро будет доступна. Сейчас
+                    показываем только данные из ЕГРЮЛ и DaData.
                   </div>
 
                   {profile.riskFactors.length > 0 && (
@@ -375,9 +349,10 @@ export default function CounterpartyPage() {
                         {profile.riskFactors.map((factor) => (
                           <span
                             key={factor}
-                            className="inline-block px-2 py-1 rounded-full bg-red-100 text-red-800 text-xs"
+                            className="inline-flex items-center gap-1 rounded-md border border-danger/25 bg-danger-light px-2 py-1 text-xs text-danger"
                           >
-                            ⚠️ {factor}
+                            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                            {factor}
                           </span>
                         ))}
                       </div>
@@ -387,7 +362,7 @@ export default function CounterpartyPage() {
               </div>
 
               {/* Notes section */}
-              <div className="bg-white rounded-lg border border-border p-6">
+              <div className="bg-card rounded-lg border border-border p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                   <FileText className="h-5 w-5" />
                   Ваши комментарии
@@ -398,13 +373,13 @@ export default function CounterpartyPage() {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Добавьте свои заметки о контрагенте..."
                   rows={4}
-                  className="w-full rounded-lg border border-border bg-white px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full rounded-lg border border-border bg-card px-4 py-3 text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
 
                 <button
                   onClick={handleSaveNotes}
                   disabled={savingNotes}
-                  className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                  className={buttonClass({ size: "sm", className: "mt-3" })}
                 >
                   {savingNotes ? "Сохранение..." : "Сохранить комментарий"}
                 </button>
@@ -424,10 +399,7 @@ export default function CounterpartyPage() {
               </p>
             </div>
           )}
-        </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </div>
+    </AppShell>
   );
 }

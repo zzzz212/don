@@ -48,7 +48,10 @@ export async function POST(
     }
     if (planRaw !== "FREE" && !isPaidPlan(planRaw)) {
       return NextResponse.json(
-        { error: "plan должен быть FREE / PRO / BUSINESS" },
+        {
+          error:
+            "plan должен быть FREE / PRO_SOLO / PRO_TEAM / BUSINESS (или legacy PRO)",
+        },
         { status: 400 }
       );
     }
@@ -78,8 +81,16 @@ export async function POST(
     const now = new Date();
 
     if (planRaw === "FREE") {
-      // Downgrade: clear plan + cancel any active subscription.
+      // Downgrade: write through to BOTH User.plan (authoritative for
+      // quota) and Organization.plan (legacy mirror) so the change is
+      // visible to checkQuotaSafe on the next request. Previously this
+      // route only touched Org.plan — quota then ignored it and kept
+      // serving the old tier's limits.
       await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: { plan: "FREE", trialEndsAt: null },
+        }),
         prisma.organization.update({
           where: { id: orgId },
           data: { plan: "FREE", trialEndsAt: null },
@@ -112,7 +123,14 @@ export async function POST(
     const paidPlan: PaidPlan = planRaw;
     const periodEnd = new Date(now.getTime() + periodMonths * 30 * MS_PER_DAY);
 
+    // Upgrade: same dual-write reasoning as the FREE branch — User.plan
+    // is what quota actually reads; without it the admin "change plan"
+    // is a no-op for limit purposes.
     await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { plan: paidPlan, trialEndsAt: null },
+      }),
       prisma.organization.update({
         where: { id: orgId },
         data: { plan: paidPlan, trialEndsAt: null },
@@ -121,6 +139,7 @@ export async function POST(
         where: { orgId },
         create: {
           orgId,
+          userId,
           plan: paidPlan,
           status: "ACTIVE",
           currentPeriodStart: now,
@@ -128,6 +147,7 @@ export async function POST(
           provider: "manual",
         },
         update: {
+          userId,
           plan: paidPlan,
           status: "ACTIVE",
           cancelAtPeriodEnd: false,

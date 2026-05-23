@@ -1,9 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/components/toast";
 import {
   ShieldCheck,
@@ -13,7 +12,6 @@ import {
   Copy,
   Check,
   Download,
-  ArrowLeft,
 } from "lucide-react";
 
 interface StatusResponse {
@@ -172,7 +170,7 @@ export default function AccountSecurityPage() {
 
   const handleDownloadRecovery = () => {
     const text = [
-      "Резервные коды для восстановления доступа к ЮрИИст",
+      "Резервные коды для восстановления доступа к Яксо",
       "===================================================",
       "",
       "Каждый код можно использовать ОДИН раз вместо",
@@ -190,7 +188,7 @@ export default function AccountSecurityPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `juriist-recovery-codes.txt`;
+    a.download = `yakso-recovery-codes.txt`;
     document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(url);
@@ -234,33 +232,15 @@ export default function AccountSecurityPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
+      <PageHeader
+        title="Безопасность аккаунта"
+        description="Двухфакторная авторизация (2FA) защищает аккаунт даже если ваш пароль украден."
+      />
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/dashboard"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К дашборду
-          </Link>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light">
-              <ShieldCheck className="h-5 w-5 text-primary-dark" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Безопасность аккаунта
-              </h1>
-              <p className="text-sm text-muted">
-                Двухфакторная авторизация (2FA) защищает аккаунт даже
-                если ваш пароль украден.
-              </p>
-            </div>
-          </div>
 
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -275,7 +255,7 @@ export default function AccountSecurityPage() {
           {phase === "off" && (
             <section className="rounded-2xl border border-border bg-card p-6">
               <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning-light text-warning">
                   <ShieldOff className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
@@ -338,7 +318,7 @@ export default function AccountSecurityPage() {
                   <button
                     type="button"
                     onClick={handleCopySecret}
-                    className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 font-mono text-xs text-foreground transition-colors hover:bg-surface"
+                    className="inline-flex items-center gap-2 rounded-md bg-card px-3 py-1.5 font-mono text-xs text-foreground transition-colors hover:bg-surface"
                     title="Скопировать ключ"
                   >
                     {setup.secret}
@@ -365,7 +345,7 @@ export default function AccountSecurityPage() {
                     setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
                   maxLength={6}
-                  className="w-full rounded-xl border border-border bg-white py-3 px-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-border bg-card py-3 px-4 text-center text-lg font-mono tracking-widest text-foreground placeholder:text-muted/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
 
@@ -378,7 +358,7 @@ export default function AccountSecurityPage() {
                     setCode("");
                     setError(null);
                   }}
-                  className="rounded-xl border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+                  className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
                 >
                   Отмена
                 </button>
@@ -400,17 +380,17 @@ export default function AccountSecurityPage() {
           )}
 
           {phase === "showing-recovery" && (
-            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-              <h2 className="mb-2 text-lg font-bold text-amber-900">
+            <section className="rounded-2xl border border-warning/30 bg-warning-light p-6">
+              <h2 className="mb-2 text-lg font-bold text-warning">
                 Сохраните резервные коды
               </h2>
-              <p className="mb-4 text-sm text-amber-900/90">
+              <p className="mb-4 text-sm text-warning/90">
                 <strong>Эти коды показываются один раз.</strong> Каждый код
                 можно использовать ОДНОКРАТНО вместо обычного 2FA-кода если
                 потеряете телефон. Сохраните в надёжном месте — например,
                 в менеджере паролей.
               </p>
-              <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 font-mono text-sm">
+              <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-card p-4 font-mono text-sm">
                 {recoveryCodes.map((c) => (
                   <div key={c} className="px-2 py-1 text-foreground">
                     {c}
@@ -421,7 +401,7 @@ export default function AccountSecurityPage() {
                 <button
                   type="button"
                   onClick={handleCopyRecovery}
-                  className="flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100"
+                  className="flex items-center gap-2 rounded-xl border border-warning/40 bg-card px-4 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning-light"
                 >
                   {recoveryCopied ? (
                     <>
@@ -438,7 +418,7 @@ export default function AccountSecurityPage() {
                 <button
                   type="button"
                   onClick={handleDownloadRecovery}
-                  className="flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100"
+                  className="flex items-center gap-2 rounded-xl border border-warning/40 bg-card px-4 py-2 text-sm font-medium text-warning transition-colors hover:bg-warning-light"
                 >
                   <Download className="h-4 w-4" />
                   Скачать .txt
@@ -463,10 +443,10 @@ export default function AccountSecurityPage() {
                     <ShieldCheck className="h-5 w-5" />
                   </div>
                   <div className="flex-1">
-                    <h2 className="font-semibold text-emerald-900">
+                    <h2 className="font-semibold text-success">
                       2FA включена
                     </h2>
-                    <p className="mt-1 text-sm text-emerald-900/90">
+                    <p className="mt-1 text-sm text-success/90">
                       {status.enabledAt &&
                         `Активирована ${new Date(status.enabledAt).toLocaleDateString("ru-RU")}. `}
                       Резервных кодов осталось:{" "}
@@ -498,7 +478,7 @@ export default function AccountSecurityPage() {
                       className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                         disableMode === m
                           ? "bg-primary text-white"
-                          : "border border-border bg-white text-foreground hover:bg-surface"
+                          : "border border-border bg-card text-foreground hover:bg-surface"
                       }`}
                     >
                       {m === "code"
@@ -523,7 +503,7 @@ export default function AccountSecurityPage() {
                       }))
                     }
                     maxLength={6}
-                    className="mb-3 w-full rounded-xl border border-border bg-white py-2 px-3 font-mono text-center tracking-widest focus:border-primary focus:outline-none"
+                    className="mb-3 w-full rounded-xl border border-border bg-card py-2 px-3 font-mono text-center tracking-widest focus:border-primary focus:outline-none"
                   />
                 )}
                 {disableMode === "password" && (
@@ -537,7 +517,7 @@ export default function AccountSecurityPage() {
                         password: e.target.value,
                       }))
                     }
-                    className="mb-3 w-full rounded-xl border border-border bg-white py-2 px-3 focus:border-primary focus:outline-none"
+                    className="mb-3 w-full rounded-xl border border-border bg-card py-2 px-3 focus:border-primary focus:outline-none"
                   />
                 )}
                 {disableMode === "recoveryCode" && (
@@ -551,7 +531,7 @@ export default function AccountSecurityPage() {
                         recoveryCode: e.target.value,
                       }))
                     }
-                    className="mb-3 w-full rounded-xl border border-border bg-white py-2 px-3 font-mono focus:border-primary focus:outline-none"
+                    className="mb-3 w-full rounded-xl border border-border bg-card py-2 px-3 font-mono focus:border-primary focus:outline-none"
                   />
                 )}
 
@@ -559,7 +539,7 @@ export default function AccountSecurityPage() {
                   type="button"
                   onClick={handleDisable}
                   disabled={submitting}
-                  className="flex items-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl border border-danger/40 bg-card px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger-light disabled:opacity-50"
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -572,8 +552,6 @@ export default function AccountSecurityPage() {
             </section>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

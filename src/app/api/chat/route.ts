@@ -2,13 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { streamChat, getActiveProvider } from "@/lib/ai/client";
 import { CHAT_SYSTEM } from "@/lib/ai/prompts";
 import { logUsage } from "@/lib/ai/usage";
+import { pickTier } from "@/lib/ai/tier-policy";
 import { SSE_HEADERS, streamToSSE } from "@/lib/ai/sse";
 import type { StreamEvent } from "@/lib/ai/types";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
-import { ensureActiveOrg } from "@/lib/org";
+import { ensureActiveOrg, getMembership } from "@/lib/org";
+import { getEffectiveUserPlan } from "@/lib/plans";
 import { captureEvent } from "@/lib/analytics/server";
+
+// Streaming chat with long answers (Sonnet on PRO can generate 1500+
+// tokens, ~40-60s). Hobby plan caps this at 60s anyway, but on Pro
+// the headroom keeps long legal explanations from getting cut off.
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +59,31 @@ export async function POST(request: NextRequest) {
       ? session?.user?.activeOrgId ?? (await ensureActiveOrg(userId))
       : null;
 
+    // Workspace VIEWERs are read-only — no AI quota spend.
+    if (userId && orgId) {
+      const m = await getMembership(userId, orgId);
+      if (m?.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Роль «Наблюдатель» не позволяет пользоваться чатом-юристом." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Resolve the user's effective plan so the chat tier picker can
+    // pick Sonnet for paying users / Haiku for FREE. Anonymous = FREE.
+    let effectivePlan: string | null = null;
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { plan: true, trialEndsAt: true },
+      });
+      effectivePlan = getEffectiveUserPlan({
+        plan: user?.plan,
+        trialEndsAt: user?.trialEndsAt ?? null,
+      }).plan;
+    }
+
     // Track at the request level, not per token. One event per user
     // message is the unit a funnel actually cares about.
     void captureEvent({
@@ -85,6 +118,7 @@ export async function POST(request: NextRequest) {
               : ("user" as const),
           content: m.content,
         })),
+        model: pickTier("chat", effectivePlan),
         maxTokens: 2048,
         signal,
       });

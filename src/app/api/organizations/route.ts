@@ -6,7 +6,7 @@ import {
   listMyOrganizations,
   reserveSlug,
 } from "@/lib/org";
-import { getEffectivePlan } from "@/lib/plans";
+import { getEffectivePlan, getEffectiveUserPlan } from "@/lib/plans";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
 import { logAudit, attribution } from "@/lib/audit";
@@ -26,15 +26,37 @@ export async function GET() {
     const activeOrgId =
       session.user.activeOrgId ?? (await ensureActiveOrg(session.user.id));
 
-    const memberships = await listMyOrganizations(session.user.id);
+    const [memberships, user] = await Promise.all([
+      listMyOrganizations(session.user.id),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { plan: true, trialEndsAt: true },
+      }),
+    ]);
+
+    // Plan / trial are now user-scoped. Every workspace the user owns
+    // inherits their personal plan; workspaces they're a MEMBER of
+    // inherit the OWNER's plan (resolved server-side per workspace).
+    // OrgSwitcher only needs the user-level effective plan when the
+    // viewer is OWNER — for non-owned workspaces the chip shows the
+    // workspace's stored plan (best-effort).
+    const userEffective = getEffectiveUserPlan({
+      plan: user?.plan,
+      trialEndsAt: user?.trialEndsAt ?? null,
+    });
 
     return NextResponse.json({
       activeOrgId,
       organizations: memberships.map((m) => {
-        const effective = getEffectivePlan({
-          plan: m.organization.plan,
-          trialEndsAt: m.organization.trialEndsAt,
-        });
+        // Owned workspace? Show the user's plan/trial (authoritative).
+        // Otherwise fall back to the org's stored fields.
+        const isOwner = m.role === "OWNER";
+        const effective = isOwner
+          ? userEffective
+          : getEffectivePlan({
+              plan: m.organization.plan,
+              trialEndsAt: m.organization.trialEndsAt,
+            });
         return {
           id: m.organization.id,
           name: m.organization.name,
@@ -99,22 +121,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Pull every workspace the user is OWNER of in one go. We need plan
-    // and trialEndsAt to compute the effective plan and decide whether
-    // a free workspace already exists.
-    const ownedMemberships = await prisma.membership.findMany({
-      where: { userId: session.user.id, role: "OWNER" },
-      include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            plan: true,
-            trialEndsAt: true,
+    // Plan / trial are user-scoped now. The anti-abuse check reads
+    // User.plan directly: a FREE user (including trial) gets exactly
+    // one owned workspace; a paying user can create up to MAX_OWNED.
+    // We still load the owned workspaces for the count and so we can
+    // surface a useful "upgrade to extend" error pointing at an
+    // existing workspace name.
+    const [ownedMemberships, user] = await Promise.all([
+      prisma.membership.findMany({
+        where: { userId: session.user.id, role: "OWNER" },
+        include: {
+          organization: {
+            select: { id: true, name: true, plan: true, trialEndsAt: true },
           },
         },
-      },
-    });
+      }),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { plan: true, trialEndsAt: true },
+      }),
+    ]);
 
     if (ownedMemberships.length >= MAX_OWNED_WORKSPACES) {
       return NextResponse.json(
@@ -125,32 +151,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use the *stored* plan (not effective). A trial-active workspace
-    // has effective plan === "PRO" but stored plan === "FREE", and we
-    // want to count it toward the cap so the user can't farm a second
-    // FREE workspace alongside a trial.
-    const existingNonPaid = ownedMemberships.find(
-      (m) => m.organization.plan === "FREE"
-    );
-
-    if (existingNonPaid) {
-      // Tailor the message: trial-active vs plain free, since the user
-      // experience and recovery action differ ("оплатите подписку" vs
-      // "оплатите подписку, не дожидаясь конца триала").
-      const eff = getEffectivePlan({
-        plan: existingNonPaid.organization.plan,
-        trialEndsAt: existingNonPaid.organization.trialEndsAt,
+    // Free / trial users are capped at one owned workspace. We use the
+    // stored User.plan (not effective) to decide: a trial user is on
+    // "FREE" plan with a trial bridge — letting them create a second
+    // FREE workspace would silently multiply their quota.
+    if (user?.plan === "FREE" && ownedMemberships.length >= 1) {
+      const userEffective = getEffectiveUserPlan({
+        plan: user.plan,
+        trialEndsAt: user.trialEndsAt ?? null,
       });
-      const errorMessage = eff.isTrial
-        ? `Создавать дополнительные workspace можно только на платном тарифе. Сейчас «${existingNonPaid.organization.name}» использует пробный период «Про» — оформите подписку, чтобы расширить аккаунт.`
-        : `На бесплатном тарифе можно иметь только один workspace. Чтобы создать ещё один — оплатите тариф для существующего workspace «${existingNonPaid.organization.name}».`;
+      const firstOwned = ownedMemberships[0];
+      const errorMessage = userEffective.isTrial
+        ? `Создавать дополнительные workspace можно только на платном тарифе. Сейчас вы на пробном периоде «Про» — оформите подписку, чтобы расширить аккаунт.`
+        : `На бесплатном тарифе можно иметь только один workspace «${firstOwned.organization.name}». Чтобы создать ещё один — оформите подписку «Про» или «Бизнес».`;
 
       return NextResponse.json(
         {
           error: errorMessage,
           code: "FREE_WORKSPACE_LIMIT",
-          existingWorkspaceId: existingNonPaid.organization.id,
-          existingWorkspaceName: existingNonPaid.organization.name,
+          existingWorkspaceId: firstOwned.organization.id,
+          existingWorkspaceName: firstOwned.organization.name,
         },
         { status: 403 }
       );

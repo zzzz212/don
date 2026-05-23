@@ -39,13 +39,41 @@ export type AuditAction =
   // Trial
   | "trial.activated"
   | "trial.extended"
+  // Anti-abuse — trial activation flagged as a likely farmed account
+  | "abuse.trial_flagged"
+  // Referral programme — a referred user activated, both sides rewarded
+  | "referral.rewarded"
   // Documents
   | "document.deleted"
   | "document.refined_ai"
+  // Public read-only analysis links
+  | "public_share.created"
+  | "public_share.revoked"
+  // ИНН linking / verification
+  | "inn.claimed"
+  | "inn.unlinked"
+  | "inn.doc_uploaded"
+  | "inn.verified"
+  | "inn.rejected"
   // Account security
   | "auth.password_reset"
   | "auth.2fa_enabled"
-  | "auth.2fa_disabled";
+  | "auth.2fa_disabled"
+  // 152-ФЗ consent capture at signup. payload records which legal-page
+  // version the user agreed to and whether they granted the separate
+  // cross-border-transfer consent required by Art. 12 of 152-ФЗ.
+  | "account.signup_consent_granted"
+  // Lifecycle emails sent by the billing-reminders cron. Used both as
+  // a delivery audit and as a dedup key — the cron checks for the
+  // most recent send before re-firing.
+  | "email.trial_expiring_sent"
+  | "email.trial_expired_sent"
+  | "email.inactive_reengagement_sent"
+  | "email.checkout_abandoned_sent"
+  | "email.contract_reminder_sent"
+  // Deal Room — sender-side creation and per-clause participant actions
+  | "deal.created"
+  | "deal.clause_action";
 
 export type TargetType =
   | "workspace"

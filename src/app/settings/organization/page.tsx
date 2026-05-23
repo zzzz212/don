@@ -1,11 +1,12 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Header } from "@/components/header";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { InlineEdit } from "@/components/inline-edit";
 import Link from "next/link";
 import {
-  Building2,
   Users,
   Loader2,
   Trash2,
@@ -19,14 +20,17 @@ import {
   ShieldCheck,
   TrendingUp,
   ChevronRight,
+  Eye,
 } from "lucide-react";
+
+type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
 interface Member {
   userId: string;
   name: string | null;
   email: string;
   image: string | null;
-  role: "OWNER" | "ADMIN" | "MEMBER";
+  role: WorkspaceRole;
   isMe: boolean;
   joinedAt: string;
 }
@@ -34,7 +38,7 @@ interface Member {
 interface PendingInvite {
   id: string;
   email: string | null;
-  role: "ADMIN" | "MEMBER";
+  role: "ADMIN" | "MEMBER" | "VIEWER";
   token: string;
   expiresAt: string;
   createdAt: string;
@@ -48,14 +52,18 @@ interface OrgDetails {
     plan: string;
     createdAt: string;
   };
-  myRole: "OWNER" | "ADMIN" | "MEMBER";
+  myRole: WorkspaceRole;
   members: Member[];
 }
 
-const ROLE_META = {
-  OWNER: { label: "Владелец", icon: Crown, color: "text-amber-600" },
+const ROLE_META: Record<
+  WorkspaceRole,
+  { label: string; icon: typeof Crown; color: string }
+> = {
+  OWNER: { label: "Владелец", icon: Crown, color: "text-warning" },
   ADMIN: { label: "Админ", icon: Shield, color: "text-primary" },
   MEMBER: { label: "Участник", icon: UserIcon, color: "text-muted" },
+  VIEWER: { label: "Наблюдатель", icon: Eye, color: "text-muted" },
 };
 
 export default function OrganizationSettingsPage() {
@@ -70,7 +78,6 @@ export default function OrganizationSettingsPage() {
   const [details, setDetails] = useState<OrgDetails | null>(null);
   const [invites, setInvites] = useState<PendingInvite[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [renaming, setRenaming] = useState(false);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -109,30 +116,7 @@ export default function OrganizationSettingsPage() {
   const canManage = details?.myRole === "OWNER" || details?.myRole === "ADMIN";
   const isOwner = details?.myRole === "OWNER";
 
-  const handleRename = async () => {
-    if (!details) return;
-    const newName = window.prompt("Новое название workspace:", details.organization.name);
-    if (!newName || newName.trim() === details.organization.name) return;
-    setRenaming(true);
-    try {
-      const res = await fetch(`/api/organizations/${details.organization.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDetails({ ...details, organization: data.organization });
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "Ошибка при переименовании");
-      }
-    } finally {
-      setRenaming(false);
-    }
-  };
-
-  const handleCreateInvite = async (role: "ADMIN" | "MEMBER") => {
+const handleCreateInvite = async (role: "ADMIN" | "MEMBER" | "VIEWER") => {
     if (!details) return;
     setCreatingInvite(true);
     try {
@@ -183,6 +167,32 @@ export default function OrganizationSettingsPage() {
     );
     if (res.ok) {
       setInvites((prev) => prev?.filter((i) => i.id !== inviteId) ?? null);
+    }
+  };
+
+  const handleChangeRole = async (
+    member: Member,
+    newRole: WorkspaceRole
+  ) => {
+    if (!details || member.role === newRole) return;
+    const res = await fetch(
+      `/api/organizations/${details.organization.id}/members/${member.userId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      }
+    );
+    if (res.ok) {
+      setDetails({
+        ...details,
+        members: details.members.map((m) =>
+          m.userId === member.userId ? { ...m, role: newRole } : m
+        ),
+      });
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Не удалось изменить роль");
     }
   };
 
@@ -256,45 +266,27 @@ export default function OrganizationSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (!details || !orgs) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
+      <AppShell>
           <p className="text-muted">Не удалось загрузить настройки workspace.</p>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
+      <PageHeader
+        title="Настройки workspace"
+        description={details.organization.name}
+      />
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-light">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                Настройки workspace
-              </h1>
-              <p className="text-sm text-muted">
-                {details.organization.name}
-              </p>
-            </div>
-          </div>
 
           {/* General */}
           <section className="mb-6 rounded-xl border border-border bg-card p-6">
@@ -307,15 +299,35 @@ export default function OrganizationSettingsPage() {
                   Название
                 </dt>
                 <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                  {details.organization.name}
-                  {canManage && (
-                    <button
-                      onClick={handleRename}
-                      disabled={renaming}
-                      className="text-xs text-primary hover:underline disabled:opacity-50"
-                    >
-                      {renaming ? "..." : "Изменить"}
-                    </button>
+                  {canManage ? (
+                    <InlineEdit
+                      value={details.organization.name}
+                      variant="body"
+                      editLabel="Переименовать workspace"
+                      minLength={2}
+                      maxLength={80}
+                      onSave={async (next) => {
+                        const res = await fetch(
+                          `/api/organizations/${details.organization.id}`,
+                          {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: next }),
+                          }
+                        );
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          throw new Error(data.error ?? "Не удалось переименовать");
+                        }
+                        setDetails((prev) =>
+                          prev
+                            ? { ...prev, organization: data.organization ?? { ...prev.organization, name: next } }
+                            : prev
+                        );
+                      }}
+                    />
+                  ) : (
+                    details.organization.name
                   )}
                 </dd>
               </div>
@@ -393,13 +405,13 @@ export default function OrganizationSettingsPage() {
             id="members"
             className="mb-6 rounded-xl border border-border bg-card p-6"
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Users className="h-5 w-5 text-muted" />
+                <Users className="h-5 w-5 text-muted" aria-hidden="true" />
                 Участники ({details.members.length})
               </h2>
               {canManage && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => handleCreateInvite("MEMBER")}
                     disabled={creatingInvite}
@@ -412,11 +424,19 @@ export default function OrganizationSettingsPage() {
                     )}
                     Пригласить
                   </button>
+                  <button
+                    onClick={() => handleCreateInvite("VIEWER")}
+                    disabled={creatingInvite}
+                    className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Наблюдателя
+                  </button>
                   {isOwner && (
                     <button
                       onClick={() => handleCreateInvite("ADMIN")}
                       disabled={creatingInvite}
-                      className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       <Shield className="h-3.5 w-3.5" />
                       Пригласить админа
@@ -433,9 +453,9 @@ export default function OrganizationSettingsPage() {
                 return (
                   <li
                     key={m.userId}
-                    className="flex items-center justify-between py-3"
+                    className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-light text-sm font-bold text-primary">
                         {(m.name || m.email)[0]?.toUpperCase()}
                       </div>
@@ -450,12 +470,31 @@ export default function OrganizationSettingsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`flex items-center gap-1 text-xs font-medium ${meta.color}`}
-                      >
-                        <Icon className="h-3 w-3" />
-                        {meta.label}
-                      </span>
+                      {isOwner ? (
+                        <select
+                          value={m.role}
+                          onChange={(e) =>
+                            handleChangeRole(
+                              m,
+                              e.target.value as WorkspaceRole
+                            )
+                          }
+                          aria-label={`Роль участника ${m.name || m.email}`}
+                          className="rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="OWNER">Владелец</option>
+                          <option value="ADMIN">Админ</option>
+                          <option value="MEMBER">Участник</option>
+                          <option value="VIEWER">Наблюдатель</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`flex items-center gap-1 text-xs font-medium ${meta.color}`}
+                        >
+                          <Icon className="h-3 w-3" />
+                          {meta.label}
+                        </span>
+                      )}
                       {(canManage || m.isMe) && (
                         <button
                           onClick={() => handleRemoveMember(m)}
@@ -493,7 +532,12 @@ export default function OrganizationSettingsPage() {
                         <p className="truncate text-sm text-foreground">
                           {inv.email ?? "Открытая ссылка"}
                           <span className="ml-2 text-xs uppercase tracking-wide text-muted">
-                            · {inv.role === "ADMIN" ? "Админ" : "Участник"}
+                            ·{" "}
+                            {inv.role === "ADMIN"
+                              ? "Админ"
+                              : inv.role === "VIEWER"
+                                ? "Наблюдатель"
+                                : "Участник"}
                           </span>
                         </p>
                         <p className="text-xs text-muted">
@@ -508,7 +552,7 @@ export default function OrganizationSettingsPage() {
                       <div className="flex shrink-0 items-center gap-2">
                         <button
                           onClick={() => copyToken(inv.token, inv.id)}
-                          className="flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                          className="flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                         >
                           {copied === inv.id ? (
                             <>
@@ -539,7 +583,7 @@ export default function OrganizationSettingsPage() {
 
           {/* Danger zone — owner only */}
           {isOwner && (
-            <section className="rounded-xl border border-danger/30 bg-red-50/50 p-6">
+            <section className="rounded-xl border border-danger/30 bg-danger-light/50 p-6">
               <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold text-danger">
                 <AlertTriangle className="h-5 w-5" />
                 Опасная зона
@@ -550,7 +594,7 @@ export default function OrganizationSettingsPage() {
               </p>
               <button
                 onClick={handleDeleteOrg}
-                className="flex items-center gap-2 rounded-lg border border-danger bg-white px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
+                className="flex items-center gap-2 rounded-lg border border-danger bg-card px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
               >
                 <Trash2 className="h-4 w-4" />
                 Удалить workspace
@@ -558,7 +602,6 @@ export default function OrganizationSettingsPage() {
             </section>
           )}
         </div>
-      </main>
-    </div>
+      </AppShell>
   );
 }

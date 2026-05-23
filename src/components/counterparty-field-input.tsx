@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback } from "react";
 import { Loader2, AlertOctagon, AlertTriangle, AlertCircle, CheckCircle, Info } from "lucide-react";
@@ -65,13 +65,13 @@ export function CounterpartyFieldInput({
     if (!profile) return null;
     switch (profile.riskLevel) {
       case "critical":
-        return <AlertOctagon className="h-4 w-4 text-red-600" />;
+        return <AlertOctagon className="h-4 w-4 text-danger" />;
       case "high":
-        return <AlertTriangle className="h-4 w-4 text-orange-600" />;
+        return <AlertTriangle className="h-4 w-4 text-warning" />;
       case "medium":
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+        return <AlertCircle className="h-4 w-4 text-warning" />;
       default:
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-success" />;
     }
   };
 
@@ -79,13 +79,13 @@ export function CounterpartyFieldInput({
     if (!profile) return "";
     switch (profile.riskLevel) {
       case "critical":
-        return "bg-red-50 border-red-200";
+        return "bg-danger-light border-danger/30";
       case "high":
-        return "bg-orange-50 border-orange-200";
+        return "bg-warning-light border-warning/30";
       case "medium":
-        return "bg-yellow-50 border-yellow-200";
+        return "bg-warning-light border-warning/30";
       default:
-        return "bg-green-50 border-green-200";
+        return "bg-success-light border-success/30";
     }
   };
 
@@ -112,7 +112,7 @@ export function CounterpartyFieldInput({
           onChange={(e) => handleChange(e.target.value)}
           placeholder={placeholder}
           maxLength={12}
-          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted/60 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
         {checking && (
           <div className="absolute right-3 top-3">

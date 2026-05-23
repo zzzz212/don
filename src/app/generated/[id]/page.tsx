@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
 import { useToast } from "@/components/toast";
 import { RefinePanel } from "@/components/refine-panel";
+import { InlineEdit } from "@/components/inline-edit";
+import { SendToChat } from "@/components/send-to-chat";
+import { buttonClass } from "@/components/button";
+import { MenuButton, type MenuItem } from "@/components/menu-button";
 import { getTemplate } from "@/lib/templates";
 import {
-  ArrowLeft,
   Download,
   Copy,
   FileText,
@@ -18,6 +20,7 @@ import {
   CheckCircle,
   GitBranch,
   Pencil,
+  MoreHorizontal,
 } from "lucide-react";
 
 interface GeneratedDocument {
@@ -49,11 +52,15 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
       /[А-ЯA-Z]/.test(block);
     const isNumberedSection = /^\d+\.\s+[А-ЯA-Z]/.test(block);
 
+    // No `text-foreground` here — that class binds to the theme variable
+    // and would render light grey on the always-white document page in
+    // dark mode. We let the .document-preview parent's CSS color cascade
+    // through (see globals.css — it pins all descendants to ink black).
     if (isAllCapsHeading) {
       return (
         <h2
           key={i}
-          className="mb-3 mt-6 text-center text-base font-bold uppercase tracking-wide text-foreground first:mt-0"
+          className="mb-3 mt-6 text-center text-base font-bold uppercase tracking-wide first:mt-0"
         >
           {block}
         </h2>
@@ -64,9 +71,9 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
       const [firstLine, ...rest] = block.split("\n");
       return (
         <div key={i} className="mb-4 mt-5 first:mt-0">
-          <h3 className="mb-2 text-sm font-bold text-foreground">{firstLine}</h3>
+          <h3 className="mb-2 text-sm font-bold">{firstLine}</h3>
           {rest.length > 0 && (
-            <p className="whitespace-pre-line text-justify text-sm leading-relaxed text-foreground">
+            <p className="whitespace-pre-line text-justify text-sm leading-relaxed">
               {rest.join("\n")}
             </p>
           )}
@@ -76,7 +83,7 @@ function renderDocumentParagraphs(content: string): React.ReactNode {
     return (
       <p
         key={i}
-        className="mb-3 whitespace-pre-line text-justify text-sm leading-relaxed text-foreground"
+        className="mb-3 whitespace-pre-line text-justify text-sm leading-relaxed"
       >
         {block}
       </p>
@@ -186,20 +193,15 @@ export default function ViewGeneratedPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   if (!doc) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <div className="text-center">
             <h1 className="text-xl font-bold text-foreground">
               Документ не найден
@@ -211,32 +213,19 @@ export default function ViewGeneratedPage() {
               Вернуться на дашборд
             </Link>
           </div>
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
-          <Link
-            href="/dashboard"
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            На дашборд
-          </Link>
-
           {/* Document info */}
-          <div className="mb-6 flex items-center gap-3 rounded-xl bg-blue-50 border border-blue-200 p-4">
-            <CheckCircle className="h-5 w-5 text-blue-600 shrink-0" />
+          <div className="mb-6 flex items-center gap-3 rounded-xl bg-primary-light border border-primary/30 p-4">
+            <CheckCircle className="h-5 w-5 text-primary shrink-0" />
             <div>
-              <p className="font-semibold text-blue-800">Документ загружен</p>
-              <p className="text-sm text-blue-700">
+              <p className="font-semibold text-primary-dark">Документ загружен</p>
+              <p className="text-sm text-primary-dark">
                 Дата создания:{" "}
                 {new Date(doc.createdAt).toLocaleDateString("ru-RU", {
                   year: "numeric",
@@ -250,11 +239,30 @@ export default function ViewGeneratedPage() {
           </div>
 
           {/* Header with actions */}
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-                <FileText className="h-6 w-6 text-primary" />
-                {doc.name}
+              <h1 className="flex items-center gap-2">
+                <FileText className="h-6 w-6 shrink-0 text-primary" aria-hidden="true" />
+                <InlineEdit
+                  value={doc.name}
+                  variant="h1"
+                  editLabel="Переименовать документ"
+                  minLength={1}
+                  maxLength={200}
+                  onSave={async (next) => {
+                    const r = await fetch(`/api/generated/${doc.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: next }),
+                    });
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                      throw new Error(j.error ?? "Не удалось переименовать");
+                    }
+                    setDoc((prev) => (prev ? { ...prev, name: j.name ?? next } : prev));
+                    toast.success("Название обновлено");
+                  }}
+                />
               </h1>
               {versionCount !== null && versionCount > 0 && (
                 <span className="rounded-md bg-primary-light px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-primary-dark">
@@ -262,49 +270,21 @@ export default function ViewGeneratedPage() {
                 </span>
               )}
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                {copied ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    Скопировано
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Копировать
-                  </>
-                )}
-              </button>
+            <div className="flex flex-wrap gap-2">
+              {/* Primary — the patched .docx is the artefact the user
+                  walks away with. Brand-coloured to signal "this is
+                  what you came here for". */}
               <button
                 onClick={handleDownload}
-                className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+                className={buttonClass({ variant: "primary", size: "sm" })}
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4" aria-hidden />
                 Скачать DOCX
               </button>
-              <Link
-                href={`/generated/${doc.id}/versions`}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <GitBranch className="h-4 w-4" />
-                Версии
-                {versionCount !== null && versionCount > 0 && (
-                  <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-muted">
-                    {versionCount}
-                  </span>
-                )}
-              </Link>
-              <Link
-                href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
-              >
-                <Pencil className="h-4 w-4" />
-                Изменить
-              </Link>
+
+              {/* AI refine + edit form re-fill stay visible — these
+                  are the two ways to change the document, so they
+                  earn their slot in the header row. */}
               <RefinePanel
                 documentId={doc.id}
                 currentContent={doc.content}
@@ -315,21 +295,64 @@ export default function ViewGeneratedPage() {
                   window.location.reload();
                 }}
               />
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-red-50 disabled:opacity-50"
+              <Link
+                href={`/templates/${doc.templateId}?editDoc=${doc.id}`}
+                className={buttonClass({ variant: "secondary", size: "sm" })}
               >
-                <Trash2 className="h-4 w-4" />
-                Удалить
-              </button>
+                <Pencil className="h-4 w-4" aria-hidden />
+                Изменить
+              </Link>
+
+              {/* Versions link carries the count chip as a badge — useful
+                  signal at a glance. */}
+              <Link
+                href={`/generated/${doc.id}/versions`}
+                className={buttonClass({ variant: "secondary", size: "sm" })}
+              >
+                <GitBranch className="h-4 w-4" aria-hidden />
+                Версии
+                {versionCount !== null && versionCount > 0 && (
+                  <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-muted">
+                    {versionCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Forward-to-chat keeps its own button — Sprint 11 social
+                  flow, modal-bearing component. */}
+              <SendToChat documentId={doc.id} documentName={doc.name} />
+
+              {/* Overflow — copy-to-clipboard and the destructive delete
+                  live behind a single trigger so the header row stays
+                  legible and мис-кликов на «Удалить» становится меньше. */}
+              <MenuButton
+                label="Ещё"
+                icon={MoreHorizontal}
+                ariaLabel="Дополнительные действия с документом"
+                items={[
+                  {
+                    label: copied ? "Скопировано" : "Копировать текст",
+                    icon: copied ? CheckCircle : Copy,
+                    onClick: handleCopy,
+                  },
+                  {
+                    label: deleting ? "Удаляем…" : "Удалить документ",
+                    icon: Trash2,
+                    onClick: handleDelete,
+                    disabled: deleting,
+                    danger: true,
+                  } satisfies MenuItem,
+                ]}
+              />
             </div>
           </div>
 
-          {/* Document preview — A4 page chrome with proper typography. */}
+          {/* Document preview — A4 page chrome with proper typography.
+              Uses .document-page (always-white, theme-aware shadow) so the
+              page sits cleanly on a dark canvas without a muddy halo. */}
           <div className="my-6 flex justify-center">
-            <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
-              <div className="document-preview p-10 sm:p-12 lg:p-14">
+            <div className="w-full max-w-2xl rounded-lg document-page">
+              <div className="document-preview p-6 sm:p-10 lg:p-14">
                 {renderDocumentParagraphs(doc.content)}
               </div>
             </div>
@@ -339,7 +362,7 @@ export default function ViewGeneratedPage() {
           <div className="mt-6 flex justify-center gap-3">
             <Link
               href="/templates"
-              className="rounded-xl border border-border bg-white px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+              className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
             >
               Создать новый
             </Link>
@@ -351,9 +374,6 @@ export default function ViewGeneratedPage() {
             </Link>
           </div>
         </div>
-      </main>
-
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

@@ -1,16 +1,14 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import {
   Search,
   Loader2,
   AlertCircle,
-  ArrowLeft,
-  CreditCard,
 } from "lucide-react";
 
 interface PaymentRow {
@@ -38,8 +36,10 @@ interface PaymentsResponse {
 }
 
 const PLAN_LABEL: Record<string, string> = {
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  PRO: "Pro Solo", // legacy
 };
 
 function formatDateTime(iso: string): string {
@@ -55,13 +55,13 @@ function formatDateTime(iso: string): string {
 function StatusChip({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUCCEEDED: { label: "Оплачено", cls: "bg-success/10 text-success" },
-    PENDING: { label: "Ожидает", cls: "bg-amber-100 text-amber-800" },
+    PENDING: { label: "Ожидает", cls: "bg-warning-light text-warning" },
     WAITING_FOR_CAPTURE: {
       label: "Ожидает захвата",
-      cls: "bg-amber-100 text-amber-800",
+      cls: "bg-warning-light text-warning",
     },
     CANCELED: { label: "Отменён", cls: "bg-surface text-muted" },
-    FAILED: { label: "Ошибка", cls: "bg-red-100 text-red-700" },
+    FAILED: { label: "Ошибка", cls: "bg-danger-light text-danger" },
   };
   const e = map[status] ?? { label: status, cls: "bg-surface text-muted" };
   return (
@@ -99,8 +99,6 @@ function PaymentsPageInner() {
     });
   }, [q, statusFilter, planFilter, page, router]);
 
-  useEffect(() => setPage(1), [q, statusFilter, planFilter]);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -131,24 +129,16 @@ function PaymentsPageInner() {
   }, [q, statusFilter, planFilter, page]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-      <main className="flex-1 bg-surface/30">
+    <AppShell>
+      <PageHeader
+        title="Платежи"
+        description={
+          data
+            ? `${data.total.toLocaleString("ru-RU")} платежей · оплачено по фильтру: ${data.filteredRevenue.succeededRub.toLocaleString("ru-RU")} ₽ (${data.filteredRevenue.succeededCount.toLocaleString("ru-RU")})`
+            : "Загрузка…"
+        }
+      />
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/admin"
-            className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />К админ-панели
-          </Link>
-          <h1 className="mb-1 text-2xl font-bold text-foreground">Платежи</h1>
-          {data && (
-            <p className="mb-6 text-sm text-muted">
-              {data.total.toLocaleString("ru-RU")} платежей · оплачено по
-              фильтру: {data.filteredRevenue.succeededRub.toLocaleString("ru-RU")}{" "}
-              ₽ ({data.filteredRevenue.succeededCount.toLocaleString("ru-RU")})
-            </p>
-          )}
 
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <div className="relative min-w-0 flex-1">
@@ -156,15 +146,21 @@ function PaymentsPageInner() {
               <input
                 type="search"
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Email или имя пользователя"
-                className="w-full rounded-xl border border-border bg-white py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-xl border border-border bg-card py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Любой статус</option>
               <option value="SUCCEEDED">Оплачено</option>
@@ -174,8 +170,11 @@ function PaymentsPageInner() {
             </select>
             <select
               value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
-              className="rounded-xl border border-border bg-white px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+              onChange={(e) => {
+                setPlanFilter(e.target.value);
+                setPage(1);
+              }}
+              className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
             >
               <option value="">Любой тариф</option>
               <option value="PRO">Про</option>
@@ -190,7 +189,7 @@ function PaymentsPageInner() {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -199,7 +198,7 @@ function PaymentsPageInner() {
           {data && !loading && (
             <>
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-4 sm:mx-0"><table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-border bg-surface/50 text-left text-xs font-semibold uppercase tracking-wider text-muted">
                       <th className="px-4 py-3">Дата</th>
@@ -254,7 +253,7 @@ function PaymentsPageInner() {
                         <td className="px-4 py-3">
                           <StatusChip status={p.status} />
                           {p.failureReason && (
-                            <p className="mt-1 text-xs text-red-600">
+                            <p className="mt-1 text-xs text-danger">
                               {p.failureReason}
                             </p>
                           )}
@@ -265,7 +264,7 @@ function PaymentsPageInner() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
 
               {data.pageCount > 1 && (
@@ -278,7 +277,7 @@ function PaymentsPageInner() {
                       type="button"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={data.page <= 1}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       ← Назад
                     </button>
@@ -288,7 +287,7 @@ function PaymentsPageInner() {
                         setPage((p) => Math.min(data.pageCount, p + 1))
                       }
                       disabled={data.page >= data.pageCount}
-                      className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     >
                       Вперёд →
                     </button>
@@ -298,9 +297,7 @@ function PaymentsPageInner() {
             </>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }
 
@@ -308,12 +305,9 @@ export default function AdminPaymentsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full flex-col">
-          <Header />
-          <main className="flex flex-1 items-center justify-center">
+        <AppShell>
             <Loader2 className="h-8 w-8 animate-spin text-muted" />
-          </main>
-        </div>
+          </AppShell>
       }
     >
       <PaymentsPageInner />

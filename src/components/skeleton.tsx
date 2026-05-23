@@ -1,6 +1,8 @@
-// Lightweight skeleton primitives. Pulse animation is a Tailwind class
-// (animate-pulse) — no extra CSS needed. Use these directly inline or
-// compose into feature-specific shells like DocumentRowSkeleton below.
+// Lightweight skeleton primitives. Uses a horizontal "shimmer" sweep
+// (richer signal than a uniform pulse — matches what users see on
+// LinkedIn / Stripe / Vercel) backed by a CSS keyframe in globals.css.
+// Falls back to the static surface colour under prefers-reduced-motion
+// (handled globally).
 
 import { cn } from "@/lib/utils";
 
@@ -12,10 +14,7 @@ export function Skeleton({ className }: Props) {
   return (
     <div
       aria-hidden
-      className={cn(
-        "animate-pulse rounded bg-surface",
-        className
-      )}
+      className={cn("skeleton-shimmer rounded", className)}
     />
   );
 }
@@ -23,7 +22,7 @@ export function Skeleton({ className }: Props) {
 /** Skeleton for a row in the dashboard document list. */
 export function DocumentRowSkeleton() {
   return (
-    <div className="flex items-center gap-4 px-6 py-4">
+    <div className="flex items-center gap-4 px-4 py-4 sm:px-6">
       <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
       <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-4 w-3/5" />

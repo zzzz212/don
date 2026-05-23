@@ -8,6 +8,7 @@ interface RiskItem {
   clauseTitle: string;
   level: string;
   description: string;
+  consequence?: string;
   legalReference: string;
   originalText: string;
   recommendedText: string;
@@ -20,6 +21,7 @@ interface ExportData {
   summary: string;
   contractType?: string;
   parties?: string;
+  balance?: { favor: string; comment: string };
   risks: RiskItem[];
   notarization?: { required: boolean; reason: string };
   registration?: { required: boolean; reason: string };
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
       font: regularFont,
       info: {
         Title: `Аудит: ${data.fileName}`,
-        Author: "ЮрИИст",
+        Author: "Яксо",
       },
     });
 
@@ -107,6 +109,21 @@ export async function POST(request: NextRequest) {
     doc.font(fontRegular).fontSize(10).fillColor("#333333")
       .text(data.summary, { width: pageWidth });
     doc.moveDown(0.8);
+
+    // Side-balance assessment
+    if (data.balance) {
+      doc.font(fontBold).fontSize(11).fillColor("#1a1a1a")
+        .text("Баланс сторон: ", { continued: true });
+      doc.fillColor(data.balance.favor === "balanced" ? "#228B22" : "#CC8800")
+        .text(
+          data.balance.favor === "balanced"
+            ? "договор сбалансирован"
+            : "смещён в пользу одной стороны"
+        );
+      doc.font(fontRegular).fontSize(9).fillColor("#666666")
+        .text(data.balance.comment, { width: pageWidth });
+      doc.moveDown(0.8);
+    }
 
     // Notarization
     if (data.notarization) {
@@ -161,6 +178,15 @@ export async function POST(request: NextRequest) {
       // Description
       doc.font(fontRegular).fontSize(10).fillColor("#333333")
         .text(risk.description, { width: pageWidth });
+
+      // Consequence — what the client concretely stands to lose
+      if (risk.consequence) {
+        doc.moveDown(0.2);
+        doc.font(fontBold).fontSize(9).fillColor("#CC8800")
+          .text("Чем грозит:", { width: pageWidth });
+        doc.font(fontRegular).fontSize(9).fillColor("#8A5A00")
+          .text(risk.consequence, { width: pageWidth });
+      }
 
       // Original text
       if (risk.originalText && risk.originalText !== "—" && risk.originalText !== "Пункт в договоре отсутствует") {

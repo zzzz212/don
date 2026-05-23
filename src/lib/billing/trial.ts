@@ -10,7 +10,8 @@
 
 import { prisma } from "@/lib/db";
 import { TRIAL_DAYS } from "@/lib/legal-info";
-import { getEffectivePlan } from "@/lib/plans";
+import { getEffectiveUserPlan } from "@/lib/plans";
+import { assessAbuse } from "@/lib/anti-abuse";
 
 export type ActivationFailure =
   | "ALREADY_ACTIVATED"
@@ -23,6 +24,11 @@ export interface ActivationResult {
   reason?: ActivationFailure;
   /** ISO trial-end timestamp on success. */
   trialEndsAt?: string;
+  /** Multi-account risk score computed at activation (0–100). */
+  abuseScore?: number;
+  /** Human-readable risk flags — non-empty when the activation looks
+   *  like a farmed multi-account and should be reviewed by an admin. */
+  abuseFlags?: string[];
 }
 
 /**
@@ -46,26 +52,25 @@ export async function checkTrialEligibility(
   userId: string,
   activeOrgId: string
 ): Promise<TrialEligibility> {
-  const [user, org] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { trialActivatedAt: true },
-    }),
-    prisma.organization.findUnique({
-      where: { id: activeOrgId },
-      select: { plan: true, trialEndsAt: true },
-    }),
-  ]);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { trialActivatedAt: true, plan: true, trialEndsAt: true },
+  });
 
   if (!user) return { canActivate: false, reason: "ALREADY_ACTIVATED" };
   if (user.trialActivatedAt) {
     return { canActivate: false, reason: "ALREADY_ACTIVATED" };
   }
-  if (!org) return { canActivate: false, reason: "NO_FREE_WORKSPACE" };
 
-  const eff = getEffectivePlan({
-    plan: org.plan,
-    trialEndsAt: org.trialEndsAt,
+  // Plan / trial are user-scoped now. We don't even need to look at the
+  // workspace — if the user is FREE and never trialed, they're eligible.
+  // activeOrgId is still passed for backwards compatibility (and so audit
+  // logs can attribute the activation to the workspace they were on).
+  void activeOrgId;
+
+  const eff = getEffectiveUserPlan({
+    plan: user.plan,
+    trialEndsAt: user.trialEndsAt,
   });
   if (eff.plan !== "FREE") {
     // Already on PRO/BUSINESS or already trialing — no need for activation.
@@ -76,10 +81,16 @@ export async function checkTrialEligibility(
 }
 
 /**
- * Grant the trial. Sets Organization.trialEndsAt = now + TRIAL_DAYS AND
- * User.trialActivatedAt = now in one transaction so the operation is
- * atomic — a partial commit can't leave the user "consumed" trial flag
- * without the actual benefit (or vice versa).
+ * Grant the trial. Atomically sets:
+ *   • User.trialEndsAt = now + TRIAL_DAYS  (authoritative: the trial
+ *     applies to every workspace the user owns)
+ *   • User.trialActivatedAt = now           (lifetime "trial used" flag)
+ *   • Organization.trialEndsAt = same       (legacy column, kept in sync
+ *     so admin queries and old code keep working until a later migration
+ *     drops it)
+ *
+ * The three writes share one transaction so a partial commit can't leave
+ * the user "trial used" flag without the actual benefit (or vice versa).
  */
 export async function activateTrial(
   userId: string,
@@ -96,20 +107,60 @@ export async function activateTrial(
     return { ok: false, reason: "WORKSPACE_NOT_FOUND" };
   }
 
-  const trialEndsAt = new Date(
-    Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000
-  );
+  // ── Soft anti-abuse scoring ───────────────────────────────────────
+  // Cluster this activation against accounts that already trialed from
+  // the same signup IP / device fingerprint. We never auto-block here:
+  // corporate NAT and mobile carriers legitimately share IPs (the user
+  // chose the layered, not the strict, policy). A high score is stored
+  // and surfaced in /admin/abuse for a human to review.
+  const signals = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { signupIp: true, signupFingerprint: true },
+  });
+  let fingerprintCluster = 0;
+  let ipCluster = 0;
+  if (signals?.signupFingerprint) {
+    fingerprintCluster = await prisma.user.count({
+      where: {
+        id: { not: userId },
+        signupFingerprint: signals.signupFingerprint,
+        trialActivatedAt: { not: null },
+      },
+    });
+  }
+  if (signals?.signupIp) {
+    ipCluster = await prisma.user.count({
+      where: {
+        id: { not: userId },
+        signupIp: signals.signupIp,
+        trialActivatedAt: { not: null },
+      },
+    });
+  }
+  const assessment = assessAbuse({ ipCluster, fingerprintCluster });
+
+  const now = new Date();
+  const trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
   await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        trialActivatedAt: now,
+        trialEndsAt,
+        abuseScore: assessment.score,
+      },
+    }),
     prisma.organization.update({
       where: { id: orgId },
       data: { trialEndsAt },
     }),
-    prisma.user.update({
-      where: { id: userId },
-      data: { trialActivatedAt: new Date() },
-    }),
   ]);
 
-  return { ok: true, trialEndsAt: trialEndsAt.toISOString() };
+  return {
+    ok: true,
+    trialEndsAt: trialEndsAt.toISOString(),
+    abuseScore: assessment.score,
+    abuseFlags: assessment.flags,
+  };
 }

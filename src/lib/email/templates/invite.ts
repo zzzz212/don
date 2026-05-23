@@ -15,11 +15,11 @@ interface InviteOptions {
   /** Inviter email — always known, used as the visible "from human" line. */
   inviterEmail: string;
   /**
-   * Role being granted ("OWNER" | "ADMIN" | "MEMBER"). Drops the OWNER case
-   * into MEMBER copy because inviting someone as OWNER is a transfer-of-
-   * ownership flow and shouldn't happen via plain invite emails.
+   * Role being granted. Drops the OWNER case into MEMBER copy because
+   * inviting someone as OWNER is a transfer-of-ownership flow and
+   * shouldn't happen via plain invite emails.
    */
-  role: "OWNER" | "ADMIN" | "MEMBER";
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
   /** Public absolute URL the recipient clicks to accept. */
   acceptUrl: string;
   /** Expiry, ISO string, used for the user-facing expiry note. */
@@ -30,6 +30,7 @@ const ROLE_LABEL: Record<InviteOptions["role"], string> = {
   OWNER: "участника",
   ADMIN: "администратора",
   MEMBER: "участника",
+  VIEWER: "наблюдателя",
 };
 
 function formatDate(iso: string): string {

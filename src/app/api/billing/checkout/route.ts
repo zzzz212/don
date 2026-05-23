@@ -9,14 +9,18 @@ import {
   BillingError,
   isBillingConfigured,
 } from "@/lib/billing";
-import { isPaidPlan } from "@/lib/legal-info";
+import { isPaidPlan, planLabel } from "@/lib/legal-info";
 import { captureEvent } from "@/lib/analytics/server";
 import { logAudit, attribution } from "@/lib/audit";
 
-// POST /api/billing/checkout  { plan: "PRO" | "BUSINESS" }
+// POST /api/billing/checkout  { plan: "PRO_SOLO" | "PRO_TEAM" | "BUSINESS" }
 //   Creates a pending Payment + ЮKassa payment, returns the confirmation
 //   URL the browser should redirect to. OWNER-only — billing is a
 //   workspace-scope decision, ADMINs/MEMBERs can't trigger charges.
+//
+//   Legacy "PRO" is still accepted (isPaidPlan returns true) so historical
+//   client builds calling with the old string don't 400, but the canonical
+//   strings going forward are the underscored ones.
 export async function POST(request: NextRequest) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
     const plan = typeof body.plan === "string" ? body.plan : "";
     if (!isPaidPlan(plan)) {
       return NextResponse.json(
-        { error: "Укажите тариф PRO или BUSINESS" },
+        { error: "Укажите тариф Pro Solo, Pro Team или Бизнес" },
         { status: 400 }
       );
     }
@@ -81,7 +85,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         {
-          error: `Тариф «${plan === "PRO" ? "Про" : "Бизнес"}» уже активен. Продление откроется ближе к окончанию периода.`,
+          error: `Тариф «${planLabel(plan)}» уже активен. Продление откроется ближе к окончанию периода.`,
         },
         { status: 409 }
       );

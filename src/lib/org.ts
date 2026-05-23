@@ -9,16 +9,20 @@
 // into it inside one transaction. No batch migration job needed.
 
 import { prisma } from "@/lib/db";
-import { TRIAL_DAYS } from "@/lib/legal-info";
 
-export type Role = "OWNER" | "ADMIN" | "MEMBER";
+export type Role = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
-export const ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER"];
+export const ROLES: Role[] = ["OWNER", "ADMIN", "MEMBER", "VIEWER"];
 
+// Privilege ordering. VIEWER is read-only and sits below MEMBER, so every
+// existing `requireMembership(…, "MEMBER")` gate already rejects it — a
+// VIEWER can see shared documents and discussions but not modify them or
+// spend the workspace's AI quota.
 const ROLE_RANK: Record<Role, number> = {
   OWNER: 3,
   ADMIN: 2,
   MEMBER: 1,
+  VIEWER: 0,
 };
 
 /** True when `held` is at least as privileged as `required`. */
@@ -156,13 +160,13 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
       : `Workspace ${local}`;
   const slug = await reserveSlug(candidateName);
 
-  // Grant the trial only on the user's *first* org. Subsequent orgs they
-  // explicitly create later must not re-extend the trial — that's the
-  // anti-abuse guard. We're inside the bootstrap branch (no other
-  // memberships) so this is the first-org case by construction.
-  const trialEndsAt = new Date(
-    Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000
-  );
+  // Auto-trial removed: new users sign up directly onto FREE. The
+  // trial is claimable only through the explicit "Активировать
+  // пробный период" CTA on /billing (POST /api/billing/activate-trial)
+  // — that route still writes User.trialActivatedAt + User.trialEndsAt
+  // atomically and is one-per-user-lifetime, which is the anti-abuse
+  // contract we need. Removing auto-grant keeps the trial as a
+  // deliberate decision the user has to make.
 
   const orgId = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
@@ -170,7 +174,6 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
         name: candidateName,
         slug,
         plan: user.plan ?? "FREE",
-        trialEndsAt,
       },
       select: { id: true },
     });
@@ -181,12 +184,7 @@ export async function ensureActiveOrg(userId: string): Promise<string> {
 
     await tx.user.update({
       where: { id: userId },
-      data: {
-        activeOrgId: org.id,
-        // Mark the trial as claimed for this account — guards against the
-        // user later deleting and re-bootstrapping to farm a second trial.
-        trialActivatedAt: new Date(),
-      },
+      data: { activeOrgId: org.id },
     });
 
     // Backfill existing per-user data into the new personal workspace so

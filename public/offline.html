@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Нет соединения — Яксо</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --fg: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --primary: #4f46e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0b12;
+          --card: #15151f;
+          --fg: #f1f5f9;
+          --muted: #94a3b8;
+          --border: #26263340;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+      .card {
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 32px 28px;
+      }
+      .mark {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 14px;
+        font-size: 30px;
+        font-weight: 800;
+      }
+      h1 { margin: 0 0 8px; font-size: 20px; }
+      p { margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+      button {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--primary);
+        border: 0;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+      button:active { opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="mark">Ю</div>
+      <h1>Нет подключения к интернету</h1>
+      <p>
+        Яксо требует соединения для анализа договоров и работы с
+        документами. Проверьте сеть и попробуйте снова.
+      </p>
+      <button onclick="location.reload()">Повторить</button>
+    </div>
+  </body>
+</html>

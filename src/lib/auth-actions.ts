@@ -14,11 +14,26 @@ import {
 } from "@/lib/password-reset";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
+import { logAudit } from "@/lib/audit";
+import { LEGAL_EFFECTIVE_DATE } from "@/lib/legal-info";
+import {
+  isDisposableEmail,
+  normalizeEmailForDedup,
+  hashFingerprint,
+} from "@/lib/anti-abuse";
+import { generateReferralCode, resolveReferralCode } from "@/lib/referral";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  // 152-ФЗ requires explicit consent at the moment of account creation,
+  // with cross-border transfer (Art. 12) as a SEPARATE legal basis from
+  // domestic processing (Art. 9). The client form sets these flags only
+  // after the user ticks both boxes; the server re-validates because a
+  // crafted request bypassing the UI would still hit this code path.
+  const consentGeneral = formData.get("consent_general") === "1";
+  const consentTransborder = formData.get("consent_transborder") === "1";
 
   if (!email || !password) {
     return { error: "Email и пароль обязательны" };
@@ -28,10 +43,72 @@ export async function registerUser(formData: FormData) {
     return { error: "Пароль должен быть не менее 6 символов" };
   }
 
+  if (!consentGeneral || !consentTransborder) {
+    // Generic message — the UI separates the two checkboxes so the user
+    // already knows which one they missed; we don't need to leak which
+    // one was missing back to the server response.
+    return {
+      error:
+        "Для регистрации необходимо принять оба согласия — на обработку персональных данных и на их трансграничную передачу.",
+    };
+  }
+
+  // ── Anti-abuse: hard blocks ───────────────────────────────────────
+  // Disposable / throwaway addresses can't anchor a real account —
+  // reject before we ever create a row.
+  if (isDisposableEmail(email)) {
+    return {
+      error:
+        "Регистрация с одноразовых почтовых сервисов недоступна. Используйте постоянный email.",
+    };
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { error: "Пользователь с таким email уже существует" };
   }
+
+  // Normalised-email collision — j.o.hn+promo@gmail and john@gmail reach
+  // the same inbox, so they're the same person. This is the main lever
+  // against farming trials with alias variants of one address.
+  const normalizedEmail = normalizeEmailForDedup(email);
+  const normalizedClash = await prisma.user.findFirst({
+    where: { normalizedEmail },
+    select: { id: true },
+  });
+  if (normalizedClash) {
+    return {
+      error:
+        "Аккаунт с таким email уже существует. Если вы добавили точки или +псевдоним — войдите в исходный аккаунт.",
+    };
+  }
+
+  // Capture request attribution once — reused for the User row (signup
+  // signals) and the consent audit event. headers() can rarely throw
+  // outside a request scope, so it's wrapped; never block signup on it.
+  let ip: string | null = null;
+  let userAgent: string | null = null;
+  try {
+    const h = await headers();
+    ip =
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      h.get("x-real-ip") ??
+      null;
+    userAgent = h.get("user-agent");
+  } catch {
+    // non-fatal
+  }
+
+  // Best-effort device fingerprint from the client (see fingerprint.ts).
+  // Stored only as a SHA-256 hash; feeds the trial-activation cluster
+  // score, never auto-blocks on its own.
+  const fingerprintRaw = (formData.get("fingerprint") as string | null) ?? "";
+
+  // Referral: mint this user's own invite code and, if they arrived via
+  // ?ref=CODE, link them to whoever invited them.
+  const referralCode = await generateReferralCode();
+  const refParam = (formData.get("ref") as string | null)?.trim() ?? "";
+  const referredById = refParam ? await resolveReferralCode(refParam) : null;
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -40,8 +117,34 @@ export async function registerUser(formData: FormData) {
       name: name || null,
       email,
       password: hashedPassword,
+      normalizedEmail,
+      signupIp: ip,
+      signupUserAgent: userAgent ? userAgent.slice(0, 500) : null,
+      signupFingerprint: hashFingerprint(fingerprintRaw) || null,
+      referralCode,
+      referredById,
     },
     select: { id: true },
+  });
+
+  // Persist consent capture to the audit log — the legal-grade record
+  // that survives even if the account is deleted later (AuditEvent.orgId
+  // is nullable + onDelete: SetNull). logAudit is swallow-and-report, so
+  // a failed write can't break signup.
+  void logAudit({
+    orgId: null,
+    userId: newUser.id,
+    action: "account.signup_consent_granted",
+    target: newUser.id,
+    targetType: "user",
+    payload: {
+      consentGeneral,
+      consentTransborder,
+      legalEffectiveDate: LEGAL_EFFECTIVE_DATE,
+      provider: "credentials",
+    },
+    ip,
+    userAgent,
   });
 
   // Fire-and-forget: don't block sign-in if mail fails. sendEmail() never

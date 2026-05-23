@@ -4,7 +4,13 @@
 // as natural boundaries; falls back to paragraph and sentence splits when
 // no markers are present.
 
-export const SHORT_DOC_THRESHOLD = 12_000;
+// Up from 12_000. Sonnet 4.6 (200k context) easily ingests a 50k-char
+// contract in one call — and a single-pass analyze costs ≈ 1 model
+// invocation, while map-reduce on the same doc costs ≈ N + 1
+// invocations (one per chunk + a synthesis). Raising this threshold
+// keeps the vast majority of real-world contracts on the cheap path.
+// Only true enterprise frame-agreements (50+ pages) hit map-reduce now.
+export const SHORT_DOC_THRESHOLD = 50_000;
 export const CHUNK_TARGET_SIZE = 20_000;
 export const CHUNK_OVERLAP = 800;
 export const HARD_DOC_LIMIT = 500_000;

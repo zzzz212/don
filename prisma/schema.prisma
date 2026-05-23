@@ -10,21 +10,23 @@ datasource db {
 }
 
 model User {
-  id                 String                @id @default(cuid())
-  name               String?
-  email              String                @unique
-  emailVerified      DateTime?
-  image              String?
-  password           String?
-  // Deprecated — kept for backward compatibility during the rollout.
-  // The source of truth for plan is now Organization.plan; this field
-  // becomes the seed for the user's auto-created personal workspace.
-  plan               String                @default("FREE")
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  // Authoritative plan for this user account. A single PRO/BUSINESS
+  // subscription unlocks the tier in EVERY workspace they own — quotas,
+  // OCR, etc. all read from here. Legacy column on Organization.plan is
+  // still written-through for backwards compatibility with existing
+  // billing routes; getEffectiveUserPlan() prefers User.plan.
+  plan          String    @default("FREE")
 
   // Currently active workspace. Set lazily on first authenticated request
   // (see ensureActiveOrg in src/lib/org.ts) so existing users transparently
   // get a "Personal workspace" with all their existing data attached.
-  activeOrgId        String?
+  activeOrgId String?
 
   // Lifetime per-user "trial used" flag. Set when the trial is granted
   // (either automatically on first-org bootstrap or manually via the
@@ -32,26 +34,87 @@ model User {
   // pre-dates the trial feature). Once non-null, the user can never
   // re-claim the trial — prevents recreating workspaces to farm extra
   // free PRO time.
-  trialActivatedAt   DateTime?
+  trialActivatedAt DateTime?
 
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  // While this is in the future, the user gets PRO-tier features across
+  // all workspaces they own. Set on first-time bootstrap of the user's
+  // personal workspace, or via /api/billing/activate-trial for legacy
+  // accounts. Cleared when a paid subscription takes over (the user is
+  // already on PRO via .plan, no need for the trial bridge).
+  trialEndsAt DateTime?
 
-  accounts           Account[]
-  sessions           Session[]
-  documents          Document[]
-  generatedDocuments GeneratedDocument[]
-  chats              Chat[]
-  counterpartyChecks CounterpartyCheck[]
-  documentVersions   DocumentVersion[]
-  versionComparisons VersionComparison[]
-  legalReferences    LegalReference[]
-  aiUsage            AiUsage[]
-  memberships        Membership[]
+  // ── Anti-abuse signals (layered multi-account defence) ────────────
+  // Captured at signup. normalizedEmail collapses Gmail dots / +aliases
+  // (j.o.hn+x@gmail and john@gmail are one person) — registration
+  // hard-rejects a normalized-email collision and any disposable-domain
+  // address. signupIp / signupFingerprint feed a soft cluster score
+  // computed when the trial is activated; high scores surface in
+  // /admin/abuse for manual review rather than auto-blocking, since
+  // corporate NAT and mobile carriers legitimately share IPs.
+  normalizedEmail   String?
+  signupIp          String?
+  signupUserAgent   String?
+  signupFingerprint String?
+  // 0–100 multi-account risk score, set when the trial is activated.
+  abuseScore        Int     @default(0)
+
+  // ── Referral programme ────────────────────────────────────────────
+  // referralCode is this user's own invite code; uniqueness is enforced
+  // in application code, not a DB constraint (foot-gun #2 — nullable
+  // unique). referredById points at the user who invited them. Both
+  // sides earn bonusAnalyses (a lifetime pool of extra FREE analyses)
+  // when the referred user activates their trial.
+  referralCode  String?
+  referredById  String?
+  bonusAnalyses Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  documents           Document[]
+  generatedDocuments  GeneratedDocument[]
+  chats               Chat[]
+  counterpartyChecks  CounterpartyCheck[]
+  documentVersions    DocumentVersion[]
+  versionComparisons  VersionComparison[]
+  legalReferences     LegalReference[]
+  aiUsage             AiUsage[]
+  memberships         Membership[]
   passwordResetTokens PasswordResetToken[]
-  payments           Payment[]
-  auditEvents        AuditEvent[]
-  totp               TotpCredential?
+  payments            Payment[]
+  subscriptions       Subscription[]
+  auditEvents         AuditEvent[]
+  contractDeadlines   ContractDeadline[]
+  publicShares        PublicShare[]
+  totp                TotpCredential?
+
+  // Cross-user network (see models at the end of this file).
+  profile             UserProfile?
+  connectionsSent     Connection[]    @relation("ConnectionRequester")
+  connectionsReceived Connection[]    @relation("ConnectionAddressee")
+  sharesSent          DocumentShare[] @relation("ShareFrom")
+  sharesReceived      DocumentShare[] @relation("ShareTo")
+  shareComments       ShareComment[]
+  conversationsA      Conversation[]  @relation("ConvUserA")
+  conversationsB      Conversation[]  @relation("ConvUserB")
+  directMessages      DirectMessage[]
+  workspaceMessages   WorkspaceMessage[]
+
+  // Deal Room (Sprint 14).
+  dealsOwned          Deal[]            @relation("DealOwner")
+  dealParticipations  DealParticipant[] @relation("DealParticipantUser")
+
+  // Referral self-relation — onDelete: SetNull so a referrer's deletion
+  // doesn't cascade into the people they invited.
+  referredBy User?  @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals  User[] @relation("UserReferrals")
+
+  @@index([normalizedEmail])
+  @@index([signupIp])
+  @@index([signupFingerprint])
+  @@index([referralCode])
 }
 
 // Time-based One-Time Password (TOTP) credential for 2FA. One row per
@@ -135,23 +198,25 @@ model AuditEvent {
   @@index([action])
 }
 
-// A workspace shared by 1..N users. Plans, quotas, and document visibility
-// are scoped here. Every user always has at least one Organization (their
-// personal workspace, auto-created on first login).
+// A workspace shared by 1..N users. Documents and audit are scoped here.
+// Plan & trial are NO LONGER authoritative on Organization (User.plan /
+// User.trialEndsAt now own those concepts) but the columns remain for
+// backwards compatibility — existing billing webhooks still write through,
+// and old admin tooling reads them. New code path: getEffectiveUserPlan().
 model Organization {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  plan        String   @default("FREE")
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+  // Deprecated authority: kept so existing routes don't break mid-rollout.
+  // Source of truth is now User.plan (one subscription = PRO across all
+  // owned workspaces).
+  plan String @default("FREE")
 
-  // While this is in the future, the workspace gets PRO-tier features
-  // even if `plan == "FREE"`. Set on first-time bootstrap of a user's
-  // personal workspace (one trial per user) and never extended for
-  // additional workspaces created by the same user. Null = no trial.
+  // Deprecated authority: see User.trialEndsAt for the new source of truth.
   trialEndsAt DateTime?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   memberships        Membership[]
   invites            Invite[]
@@ -163,38 +228,48 @@ model Organization {
   subscription       Subscription?
   payments           Payment[]
   auditEvents        AuditEvent[]
+  workspaceMessages  WorkspaceMessage[]
+  deals              Deal[]
 }
 
-// One row per Organization that has ever paid. Updated in place on every
-// renewal — keeps things simple. Historical record of what was bought
-// when lives in Payment[].
+// Per-user paid subscription. One row per user — the plan applies to
+// every workspace they own. orgId is denormalised onto the row (the
+// workspace they were on when they checked out) but is NOT what the
+// quota check reads — User.plan is.
+//
+// During rollout, both the legacy per-org column and the new userId
+// column exist; getEffectiveUserPlan() reads via userId. The unique on
+// orgId stays to prevent the legacy code path from creating duplicate
+// rows for the same workspace.
 model Subscription {
-  id                 String   @id @default(cuid())
-  orgId              String   @unique
-  // The plan the customer is paying for. Distinct from Organization.plan
-  // (which is the *currently effective* tier) so a future "scheduled
-  // downgrade at period end" can be expressed without lying about the
-  // current state.
+  id                 String    @id @default(cuid())
+  orgId              String    @unique
+  // Owner of the subscription. Nullable during rollout (legacy rows
+  // pre-date this column); new rows always set it. Once backfill
+  // completes we'll tighten this and add @@unique([userId]).
+  userId             String?
   plan               String
   // "ACTIVE" | "CANCELED" | "PAST_DUE"
-  status             String   @default("ACTIVE")
+  status             String    @default("ACTIVE")
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
-  cancelAtPeriodEnd  Boolean  @default(false)
+  cancelAtPeriodEnd  Boolean   @default(false)
   canceledAt         DateTime?
 
-  provider           String   @default("yookassa")
+  provider                String  @default("yookassa")
   // ЮKassa "saved payment method" id. Required for server-initiated auto
   // renewals — populated from the first interactive payment if the user
   // opted into auto-renew.
   providerPaymentMethodId String?
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   payments     Payment[]
 
+  @@index([userId])
   @@index([status])
   @@index([currentPeriodEnd])
 }
@@ -203,43 +278,43 @@ model Subscription {
 // the create-payment call and the webhook handler use upsert against this
 // key so retries don't double-charge or double-credit.
 model Payment {
-  id                 String   @id @default(cuid())
-  orgId              String
-  subscriptionId     String?
+  id             String  @id @default(cuid())
+  orgId          String
+  subscriptionId String?
   // The user who initiated the checkout — used for receipt routing.
-  userId             String
+  userId         String
 
-  provider           String   @default("yookassa")
+  provider          String  @default("yookassa")
   // ЮKassa-side payment id. Populated after the create-payment call
   // returns. Unique so the webhook can upsert by it.
-  providerPaymentId  String?  @unique
+  providerPaymentId String? @unique
 
   // Stored as integer kopecks to avoid float drift.
-  amountKopecks      Int
-  currency           String   @default("RUB")
+  amountKopecks Int
+  currency      String @default("RUB")
 
-  plan               String
-  periodMonths       Int      @default(1)
+  plan         String
+  periodMonths Int    @default(1)
 
   // "PENDING" | "WAITING_FOR_CAPTURE" | "SUCCEEDED" | "CANCELED" | "FAILED"
-  status             String   @default("PENDING")
-  failureReason      String?
+  status        String  @default("PENDING")
+  failureReason String?
 
   // Idempotence key sent with the create-payment call. Stored so we can
   // diagnose retries and never repeat a charge for the same intent.
-  idempotenceKey     String   @unique
+  idempotenceKey String @unique
 
   // Snapshot of the customer's email at purchase time — used for the
   // 54-ФЗ receipt and to address the "thank you for paying" email.
-  customerEmail      String
+  customerEmail String
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  succeededAt        DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  succeededAt DateTime?
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([orgId, status])
   @@index([userId, createdAt])
@@ -252,10 +327,14 @@ model Membership {
   id        String   @id @default(cuid())
   userId    String
   orgId     String
-  // "OWNER" | "ADMIN" | "MEMBER". OWNER may delete the org and transfer
-  // ownership; ADMIN may invite/remove members; MEMBER may only use it.
+  // "OWNER" | "ADMIN" | "MEMBER" | "VIEWER". OWNER may delete the org and
+  // transfer ownership; ADMIN may invite/remove members; MEMBER may use
+  // it; VIEWER is read-only. See Role in src/lib/org.ts.
   role      String   @default("MEMBER")
   createdAt DateTime @default(now())
+  // Last time this member opened the workspace chat — read cursor for
+  // the unread badge.
+  chatReadAt DateTime?
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -270,13 +349,13 @@ model Membership {
 // acceptedAt becomes non-null on acceptance and the invite is then a no-op.
 // Email is optional in this MVP — invites work as a plain shareable link.
 model Invite {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   orgId      String
   email      String?
-  role       String   @default("MEMBER")
-  token      String   @unique
+  role       String    @default("MEMBER")
+  token      String    @unique
   expiresAt  DateTime
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   acceptedAt DateTime?
   createdBy  String?
 
@@ -323,7 +402,7 @@ model VerificationToken {
 }
 
 model Document {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
   // Workspace that owns this document. Nullable during the rollout — the
   // first time an existing user signs in, ensureActiveOrg() back-fills this
@@ -337,29 +416,33 @@ model Document {
   blobKey   String?
   analysis  Analysis?
   chunks    DocumentChunk[]
-  createdAt DateTime  @default(now())
+  shares    DocumentShare[]
+  createdAt DateTime        @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  deadlines    ContractDeadline[]
+  publicShares PublicShare[]
+  deals        Deal[]
 
   @@index([userId])
   @@index([orgId])
 }
 
 model DocumentChunk {
-  id          String   @id @default(cuid())
-  documentId  String
-  chunkIndex  Int
-  text        String
+  id         String @id @default(cuid())
+  documentId String
+  chunkIndex Int
+  text       String
 
   // pgvector embedding for semantic search across the user's own contracts.
   // 1024-dim matches Voyage voyage-3-large (same model as LegalKnowledge).
   // Nullable so a Document can exist before its chunks are embedded.
-  embedding   Unsupported("vector(1024)")?
+  embedding Unsupported("vector(1024)")?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, chunkIndex])
   @@index([documentId])
@@ -387,9 +470,14 @@ model GeneratedDocument {
   formData   Json
   createdAt  DateTime @default(now())
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   versions     DocumentVersion[]
+  shares       DocumentShare[]
+  // Chat messages this document was forwarded into (see Feature: forward
+  // generated documents to chats).
+  workspaceAttachments WorkspaceMessage[]
+  dmAttachments        DirectMessage[]
 
   @@index([userId])
   @@index([orgId])
@@ -397,39 +485,39 @@ model GeneratedDocument {
 }
 
 model DocumentVersion {
-  id              String   @id @default(cuid())
-  generatedDocId  String
-  versionNumber   Int
-  title           String
-  content         String
-  formData        Json
-  changesSummary  String?
+  id             String  @id @default(cuid())
+  generatedDocId String
+  versionNumber  Int
+  title          String
+  content        String
+  formData       Json
+  changesSummary String?
 
-  createdAt       DateTime @default(now())
-  createdBy       String?
+  createdAt DateTime @default(now())
+  createdBy String?
 
-  generatedDoc    GeneratedDocument @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
-  creator         User?     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
-  v1Comparisons   VersionComparison[] @relation("v1")
-  v2Comparisons   VersionComparison[] @relation("v2")
+  generatedDoc  GeneratedDocument   @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
+  creator       User?               @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  v1Comparisons VersionComparison[] @relation("v1")
+  v2Comparisons VersionComparison[] @relation("v2")
 
   @@unique([generatedDocId, versionNumber])
   @@index([generatedDocId])
 }
 
 model VersionComparison {
-  id        String   @id @default(cuid())
-  v1Id      String
-  v2Id      String
-  userId    String
+  id     String @id @default(cuid())
+  v1Id   String
+  v2Id   String
+  userId String
 
-  diffs     String
+  diffs String
 
   createdAt DateTime @default(now())
 
   v1   DocumentVersion @relation("v1", fields: [v1Id], references: [id], onDelete: Cascade)
   v2   DocumentVersion @relation("v2", fields: [v2Id], references: [id], onDelete: Cascade)
-  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([v1Id, v2Id, userId])
   @@index([userId])
@@ -464,89 +552,89 @@ model ChatMessage {
 }
 
 model LegalKnowledge {
-  id            String   @id @default(cuid())
-  code          String   @unique
-  type          String   // "statute" | "article" | "clause"
+  id            String  @id @default(cuid())
+  code          String  @unique
+  type          String // "statute" | "article" | "clause"
   title         String
   shortTitle    String
   fullText      String
   commentary    String?
   practiceNotes String?
-  relatedCodes  String   @default("[]") // JSON array as string
+  relatedCodes  String  @default("[]") // JSON array as string
 
-  tags          String   @default("[]") // JSON array as string
-  searchVector  String
+  tags         String @default("[]") // JSON array as string
+  searchVector String
 
   // pgvector embedding (1024-dim, voyage-3-large). Nullable so rows can
   // exist before being indexed. Filled by /api/admin/embed-legal.
   // Prisma can't represent vector types natively yet, so we use Unsupported
   // and query through raw SQL in src/lib/legal-search.ts.
-  embedding     Unsupported("vector(1024)")?
+  embedding Unsupported("vector(1024)")?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  references    LegalReference[]
+  references LegalReference[]
 
   @@index([code])
 }
 
 model LegalReference {
-  id        String   @id @default(cuid())
-  userId    String
-  knownId   String
+  id      String @id @default(cuid())
+  userId  String
+  knownId String
 
-  note      String?
+  note String?
 
   createdAt DateTime @default(now())
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  knowledge LegalKnowledge  @relation(fields: [knownId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledge LegalKnowledge @relation(fields: [knownId], references: [id], onDelete: Cascade)
 
   @@unique([userId, knownId])
   @@index([userId])
 }
 
 model CounterpartyProfile {
-  id                  String   @id @default(cuid())
-  inn                 String   @unique
-  name                String
-  organizationType    String?  // "ООО" | "ИП" | "АО" etc.
+  id               String  @id @default(cuid())
+  inn              String  @unique
+  name             String
+  organizationType String? // "ООО" | "ИП" | "АО" etc.
 
   // From ЕГРЮЛ
-  registrationDate    DateTime?
-  address             String?
-  okved               String?
-  capitalSize         Int?
-  statusCode          String?
+  registrationDate DateTime?
+  address          String?
+  okved            String?
+  capitalSize      Int?
+  statusCode       String?
 
   // From court registries
-  activeLawsuits      Int      @default(0)
-  completedLawsuits   Int      @default(0)
-  lossesCount         Int      @default(0)
+  activeLawsuits    Int @default(0)
+  completedLawsuits Int @default(0)
+  lossesCount       Int @default(0)
 
   // Debts and payments
-  debtFound           Boolean  @default(false)
-  debtAmount          BigInt?
-  debtSources         String   @default("") // JSON array as string
+  debtFound   Boolean @default(false)
+  debtAmount  BigInt?
+  debtSources String  @default("") // JSON array as string
 
   // Risk calculation
-  riskScore           Int      @default(50)
-  riskLevel           String   @default("medium")
-  riskFactors         String   @default("") // JSON array as string
+  riskScore   Int    @default(50)
+  riskLevel   String @default("medium")
+  riskFactors String @default("") // JSON array as string
 
-  lastUpdated         DateTime @updatedAt
-  dataSource          String   @default("egrul")
+  lastUpdated DateTime @updatedAt
+  dataSource  String   @default("egrul")
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  checks              CounterpartyCheck[]
+  checks CounterpartyCheck[]
 
   @@index([inn])
 }
 
 model AiUsage {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   userId       String
   orgId        String?
   feature      String
@@ -554,10 +642,10 @@ model AiUsage {
   model        String
   inputTokens  Int
   outputTokens Int
-  cachedTokens Int      @default(0)
+  cachedTokens Int     @default(0)
   latencyMs    Int
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -569,14 +657,14 @@ model AiUsage {
 }
 
 model CounterpartyCheck {
-  id           String   @id @default(cuid())
-  userId       String
-  orgId        String?
-  inn          String
+  id     String  @id @default(cuid())
+  userId String
+  orgId  String?
+  inn    String
 
-  notes        String?
+  notes String?
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization?       @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -594,4 +682,353 @@ model CounterpartyCheck {
   @@index([userId])
   @@index([orgId])
   @@index([inn])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Cross-user network — a layer above workspaces. Lets users discover
+// each other, connect into teams, send contracts for review, and talk.
+// Everything is opt-in: a user stays invisible until they enable a
+// discoverable profile (152-ФЗ — no PII in a public catalogue without
+// explicit consent). All six tables are new, so `prisma db push`
+// applies them with no data-loss flag.
+// ─────────────────────────────────────────────────────────────────────
+
+// Public-facing profile. One row per user, created lazily the first
+// time they open the network section. `discoverable` gates whether the
+// row is ever returned by catalogue search.
+model UserProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  // Listed in the catalogue only when true. Default false: an account
+  // must explicitly opt in before its name/headline become searchable.
+  discoverable   Boolean @default(false)
+  displayName    String?
+  headline       String?
+  bio            String?
+  // Free-text areas of practice, e.g. "Корпоративное право, M&A".
+  specialization String?
+
+  // ── Linked taxpayer id (ИНН) ──────────────────────────────────────
+  // A user may link the ИНН of the company / ИП they represent. This is
+  // a two-tier trust signal:
+  //   innStatus "claimed"  — ИНН passed checksum validation and was
+  //                          confirmed to exist via DaData. Self-service.
+  //   innStatus "verified" — an admin reviewed an uploaded ЕГРЮЛ/ЕГРИП
+  //                          extract and confirmed the user represents it.
+  // It powers "message this counterparty directly" (find the account
+  // behind a searched ИНН) and is a strong anti-abuse identity anchor.
+  //
+  // Uniqueness (one ИНН ↔ one account) is enforced in application code,
+  // NOT as a DB constraint: `prisma db push` false-positives on a new
+  // unique over a nullable column and refuses without --accept-data-loss
+  // (foot-gun #2). The @@index keeps the reverse lookup fast.
+  inn              String?
+  // "none" | "claimed" | "verified"
+  innStatus        String    @default("none")
+  // Official name resolved from DaData at claim time.
+  innCompanyName   String?
+  innClaimedAt     DateTime?
+  innVerifiedAt    DateTime?
+  // Uploaded extract awaiting admin review — url for download, key for
+  // deletion. Present ⇒ the claim is in the verification queue.
+  innDocUrl        String?
+  innDocKey        String?
+  // Set when an admin rejects an uploaded extract, shown to the user so
+  // they know to re-upload. Cleared on a fresh upload.
+  innRejectionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discoverable])
+  @@index([inn])
+}
+
+// A connection between two users — the "form a team" primitive.
+// requester sends, addressee accepts/declines. The (requester,
+// addressee) pair is unique; the API checks both directions so a
+// duplicate request the other way is rejected too.
+model Connection {
+  id          String    @id @default(cuid())
+  requesterId String
+  addresseeId String
+  // "PENDING" | "ACCEPTED" | "DECLINED"
+  status      String    @default("PENDING")
+  message     String?
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  requester User @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("ConnectionAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+}
+
+// A contract sent from one user to another for review or collaboration.
+// Exactly one of documentId / generatedDocId is set. The recipient gets
+// read-only access while the share is ACCEPTED and may copy the
+// document into their own workspace.
+model DocumentShare {
+  id             String    @id @default(cuid())
+  fromUserId     String
+  toUserId       String
+  documentId     String?
+  generatedDocId String?
+  // "REVIEW" | "COLLAB"
+  kind           String    @default("REVIEW")
+  // "PENDING" | "ACCEPTED" | "DECLINED" | "COMPLETED"
+  status         String    @default("PENDING")
+  message        String?
+  createdAt      DateTime  @default(now())
+  respondedAt    DateTime?
+
+  fromUser     User               @relation("ShareFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser       User               @relation("ShareTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  document     Document?          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  generatedDoc GeneratedDocument? @relation(fields: [generatedDocId], references: [id], onDelete: Cascade)
+  comments     ShareComment[]
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@index([documentId])
+  @@index([generatedDocId])
+}
+
+// A comment in the review thread attached to a DocumentShare.
+model ShareComment {
+  id        String   @id @default(cuid())
+  shareId   String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  share  DocumentShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([shareId, createdAt])
+}
+
+// A 1:1 direct-message conversation. pairKey is the two user ids sorted
+// and joined with ':' so a pair maps to exactly one row (the API
+// upserts against it). updatedAt is bumped on every message so the
+// inbox can sort by recency.
+model Conversation {
+  id        String   @id @default(cuid())
+  pairKey   String   @unique
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userA    User            @relation("ConvUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB    User            @relation("ConvUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages DirectMessage[]
+
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model DirectMessage {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  readAt         DateTime?
+  // Optional forwarded generated document. onDelete: SetNull keeps the
+  // message intact when the document is deleted.
+  attachmentGeneratedDocId String?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+}
+
+// A read-only public link to a contract analysis. The high-entropy
+// token IS the credential — anyone with the link sees the verdict and
+// risks (no contract excerpts, no editing). The creator can revoke it
+// or it lapses at expiresAt.
+model PublicShare {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  documentId String
+  createdBy  String
+  expiresAt  DateTime?
+  revoked    Boolean   @default(false)
+  viewCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  creator  User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+// Key dates extracted by AI from an analysed contract — end of term,
+// auto-renewal cut-off, payment milestones, notice periods. Powers the
+// /deadlines dashboard and the reminder stage of the billing-reminders
+// cron.
+model ContractDeadline {
+  id         String    @id @default(cuid())
+  documentId String
+  userId     String
+  orgId      String?
+  // "expiry" | "renewal" | "payment" | "notice" | "other"
+  kind       String    @default("other")
+  label      String
+  dueDate    DateTime
+  // Set once the cron has emailed a reminder for this deadline so it is
+  // not sent again.
+  remindedAt DateTime?
+  // Dismissed deadlines stay in the DB but drop off the dashboard.
+  dismissed  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@index([documentId])
+}
+
+// Workspace-internal team chat. One implicit channel per Organization —
+// every member of the workspace sees the same thread. The per-member
+// read cursor lives on Membership.chatReadAt (unread badge).
+model WorkspaceMessage {
+  id        String   @id @default(cuid())
+  orgId     String
+  senderId  String
+  body      String
+  // Optional forwarded generated document. onDelete: SetNull keeps the
+  // message intact when the document is deleted.
+  attachmentGeneratedDocId String?
+  createdAt DateTime @default(now())
+
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sender       User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachment   GeneratedDocument? @relation(fields: [attachmentGeneratedDocId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, createdAt])
+}
+
+// ── Deal Room (Sprint 14) ─────────────────────────────────────────
+// Two-party contract negotiation space. A Deal binds a Document to a
+// pair of participants (one SENDER + one RECEIVER in Sprint 14;
+// multi-party deferred to Sprint 17+). Receiver opens via inviteToken
+// without logging in — session-cookie identity, stored as guestName
+// on DealParticipant.
+model Deal {
+  id          String   @id @default(cuid())
+  ownerId     String
+  orgId       String
+  documentId  String
+  title       String
+  // ACTIVE — at least one participant still has unresolved clauses.
+  // AGREED — every clause has AGREED status from both participants.
+  // Sprint 15 adds DECLINED and EXPIRED.
+  status      String   @default("ACTIVE")
+  // 192-bit hex (48 chars) used as the public `/deal/[token]` URL.
+  // DB-enforced uniqueness via @unique (safe here because the field is
+  // non-nullable — foot-gun #38 only applies to nullable unique columns).
+  // Callers still wrap creation in a small retry loop to be defensive
+  // against the astronomically unlikely collision.
+  inviteToken String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner        User           @relation("DealOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  document     Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  participants DealParticipant[]
+  clauses      DealClause[]
+
+  @@index([ownerId])
+  @@index([orgId])
+  @@index([documentId])
+}
+
+model DealParticipant {
+  id          String    @id @default(cuid())
+  dealId      String
+  // "SENDER" | "RECEIVER" — Sprint 14 invariant: exactly one of each.
+  role        String
+  // Set when the participant is a logged-in user (always for SENDER,
+  // optional for RECEIVER if they sign in mid-flow).
+  userId      String?
+  // Set for anonymous RECEIVER via session cookie on first link visit.
+  // A freshly-created RECEIVER row has BOTH userId and sessionId null
+  // until the receiver opens /deal/[token] — that's when sessionId gets
+  // claimed (or userId if they're authed). Code reading participants
+  // must tolerate the "pre-claim" state.
+  sessionId   String?
+  // Display name the receiver enters in the identify modal. Falls back
+  // to "Гость" if blank.
+  guestName   String?
+  guestEmail  String?
+  joinedAt    DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+
+  deal    Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user    User?             @relation("DealParticipantUser", fields: [userId], references: [id], onDelete: SetNull)
+  actions ClauseAction[]
+
+  @@unique([dealId, role])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model DealClause {
+  id          String   @id @default(cuid())
+  dealId      String
+  ord         Int
+  // Raw text of the clause from the analysed contract. Mirrors
+  // AnalysisRisk.originalText for clauses corresponding to risks; for
+  // neutral clauses, taken from preSigningChecklist or document body.
+  text        String
+  // "critical" | "medium" | "low" | "none" — mirrors the analyze schema.
+  riskLevel   String   @default("none")
+  // Snapshot of the analyze output for the sender's side, JSON-encoded.
+  // Shape matches AnalysisRiskSchema (description, consequence,
+  // recommendation, legalReference).
+  yourSide    Json
+  // Counter-AI inference: what the other party gains from this clause.
+  // Optional because not every clause has a meaningful counter-position
+  // (e.g. boilerplate). Shape: { theirGain: string, compromise?: string }.
+  theirSide   Json?
+  // PENDING — no action yet, or only partial action.
+  // AGREED — both participants AGREE'd this clause.
+  // DISPUTED — at least one DISAGREE recorded.
+  // RESOLVED — was DISPUTED, now both participants AGREE.
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deal    Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  actions ClauseAction[]
+
+  @@index([dealId, ord])
+}
+
+model ClauseAction {
+  id            String   @id @default(cuid())
+  clauseId      String
+  participantId String
+  // "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT"
+  kind          String
+  // Free-text body. Empty for AGREE/DISAGREE, required for COMMENT and
+  // PROPOSE_EDIT.
+  body          String?
+  createdAt     DateTime @default(now())
+
+  clause      DealClause      @relation(fields: [clauseId], references: [id], onDelete: Cascade)
+  participant DealParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([clauseId, createdAt])
+  @@index([participantId])
 }

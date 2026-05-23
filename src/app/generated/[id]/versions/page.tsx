@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import {
-  ArrowLeft,
   Loader2,
   GitBranch,
   Clock,
@@ -114,12 +113,9 @@ export default function DocumentVersionsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full flex-col">
-        <Header />
-        <main className="flex flex-1 items-center justify-center">
+      <AppShell>
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
+        </AppShell>
     );
   }
 
@@ -129,36 +125,28 @@ export default function DocumentVersionsPage() {
     .sort((a, b) => a.versionNumber - b.versionNumber);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <Header />
-
-      <main className="flex-1 bg-surface/30 pb-24">
+    <AppShell>
+      <PageHeader
+        title="История версий"
+        description={`${pluralVersions(versions.length)}. Отметьте две, чтобы сравнить изменения.`}
+      />
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href={`/generated/${docId}`}
-            className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Вернуться к документу
-          </Link>
-
-          <h1 className="mb-2 flex items-center gap-3 text-3xl font-bold text-foreground">
-            <GitBranch className="h-8 w-8" />
-            История версий
-          </h1>
-          <p className="mb-8 text-muted">
-            {pluralVersions(versions.length)}. Отметьте две, чтобы сравнить
-            изменения.
-          </p>
+          <Breadcrumbs
+            items={[
+              { label: "Созданные документы", href: "/dashboard" },
+              { label: "Документ", href: `/generated/${docId}` },
+              { label: "История версий" },
+            ]}
+          />
 
           {error && (
-            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+            <div role="alert" className="mb-6 rounded-lg border border-danger/30 bg-danger-light p-4 text-danger">
               <p className="text-sm font-medium">{error}</p>
             </div>
           )}
 
           {versions.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-white py-16 text-center">
+            <div className="rounded-2xl border border-border bg-card py-16 text-center">
               <GitBranch className="mx-auto mb-4 h-12 w-12 text-muted opacity-50" />
               <h3 className="mb-2 text-lg font-semibold text-foreground">
                 Нет версий
@@ -174,7 +162,7 @@ export default function DocumentVersionsPage() {
                 return (
                   <div
                     key={version.id}
-                    className={`flex items-start gap-3 rounded-xl border bg-white p-4 transition-colors ${
+                    className={`flex items-start gap-3 rounded-xl border bg-card p-4 transition-colors ${
                       isSelected
                         ? "border-primary ring-1 ring-primary"
                         : "border-border hover:bg-surface"
@@ -225,7 +213,7 @@ export default function DocumentVersionsPage() {
                     <button
                       type="button"
                       onClick={() => handleRevert(version.id)}
-                      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface"
                       title="Создать новую версию из этой"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
@@ -237,11 +225,9 @@ export default function DocumentVersionsPage() {
             </div>
           )}
         </div>
-      </main>
-
       {/* Sticky compare bar — appears when 1+ version selected. */}
       {selected.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white/95 backdrop-blur-md">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur-md">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 text-sm">
               <GitCompareArrows className="h-4 w-4 text-primary" />
@@ -264,7 +250,7 @@ export default function DocumentVersionsPage() {
               <button
                 type="button"
                 onClick={() => setSelected([])}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface"
               >
                 <X className="h-3.5 w-3.5" />
                 Сбросить
@@ -282,7 +268,6 @@ export default function DocumentVersionsPage() {
         </div>
       )}
 
-      <Disclaimer />
-    </div>
+    </AppShell>
   );
 }

@@ -11,8 +11,8 @@ import {
 } from "../plans";
 
 describe("PLANS / DEFAULT_PLAN", () => {
-  it("exposes exactly FREE / PRO / BUSINESS", () => {
-    expect(PLANS).toEqual(["FREE", "PRO", "BUSINESS"]);
+  it("exposes FREE / PRO_SOLO / PRO_TEAM / BUSINESS in order", () => {
+    expect(PLANS).toEqual(["FREE", "PRO_SOLO", "PRO_TEAM", "BUSINESS"]);
   });
 
   it("defaults to FREE", () => {
@@ -33,8 +33,16 @@ describe("PLANS / DEFAULT_PLAN", () => {
 describe("normalizePlan", () => {
   it("returns the canonical plan when given a known string", () => {
     expect(normalizePlan("FREE")).toBe("FREE");
-    expect(normalizePlan("PRO")).toBe("PRO");
+    expect(normalizePlan("PRO_SOLO")).toBe("PRO_SOLO");
+    expect(normalizePlan("PRO_TEAM")).toBe("PRO_TEAM");
     expect(normalizePlan("BUSINESS")).toBe("BUSINESS");
+  });
+
+  it("aliases legacy 'PRO' to PRO_SOLO so old rows keep their entitlements", () => {
+    // Critical: before 5-tier rollout subscriptions stored plan='PRO'. If
+    // normalizePlan downgraded them to FREE we'd silently strip paid
+    // users of their plan on the next quota check.
+    expect(normalizePlan("PRO")).toBe("PRO_SOLO");
   });
 
   it("falls back to DEFAULT_PLAN for null / undefined / empty", () => {
@@ -53,28 +61,55 @@ describe("normalizePlan", () => {
 describe("getPlanLimits", () => {
   it("returns the exact limits for FREE", () => {
     const limits = getPlanLimits("FREE");
-    expect(limits.analyze).toBe(3);
-    expect(limits.generate).toBe(2);
+    // Bumped from 3 → 10 in the Haiku migration: Haiku is ~7x cheaper
+    // than Sonnet, so we can hand out more free analyses while keeping
+    // per-user cost similar.
+    expect(limits.analyze).toBe(10);
+    expect(limits.generate).toBe(5);
     expect(isUnlimited(limits.chat)).toBe(true);
     expect(limits.ocr).toBe(0); // OCR gated to paid
   });
 
-  it("returns UNLIMITED for all PRO features", () => {
-    const limits = getPlanLimits("PRO");
+  it("caps PRO_SOLO at 100 analyses to protect unit economics", () => {
+    const limits = getPlanLimits("PRO_SOLO");
+    expect(limits.analyze).toBe(100);
+    expect(isUnlimited(limits.generate)).toBe(true);
+    expect(isUnlimited(limits.chat)).toBe(true);
+    expect(isUnlimited(limits.ocr)).toBe(true);
+  });
+
+  it("caps PRO_TEAM at 500 analyses (pooled across seats)", () => {
+    const limits = getPlanLimits("PRO_TEAM");
+    expect(limits.analyze).toBe(500);
+    expect(isUnlimited(limits.generate)).toBe(true);
+    expect(isUnlimited(limits.chat)).toBe(true);
+    expect(isUnlimited(limits.ocr)).toBe(true);
+  });
+
+  it("BUSINESS is unlimited across the board", () => {
+    const limits = getPlanLimits("BUSINESS");
     expect(isUnlimited(limits.analyze)).toBe(true);
     expect(isUnlimited(limits.generate)).toBe(true);
     expect(isUnlimited(limits.chat)).toBe(true);
     expect(isUnlimited(limits.ocr)).toBe(true);
   });
 
-  it("BUSINESS is at least as permissive as PRO", () => {
-    const pro = getPlanLimits("PRO");
+  it("BUSINESS is at least as permissive as PRO_TEAM as PRO_SOLO", () => {
+    const solo = getPlanLimits("PRO_SOLO");
+    const team = getPlanLimits("PRO_TEAM");
     const biz = getPlanLimits("BUSINESS");
     for (const f of ["analyze", "generate", "chat", "ocr"] as const) {
-      if (isUnlimited(pro[f])) {
+      // team >= solo
+      if (isUnlimited(solo[f])) {
+        expect(isUnlimited(team[f])).toBe(true);
+      } else {
+        expect(team[f]).toBeGreaterThanOrEqual(solo[f]);
+      }
+      // biz >= team
+      if (isUnlimited(team[f])) {
         expect(isUnlimited(biz[f])).toBe(true);
       } else {
-        expect(biz[f]).toBeGreaterThanOrEqual(pro[f]);
+        expect(biz[f]).toBeGreaterThanOrEqual(team[f]);
       }
     }
   });
@@ -98,6 +133,7 @@ describe("legal-info trial constants stay in sync", () => {
     const { TRIAL_DAYS, TRIAL_DAYS_LABEL } = await import("../legal-info");
     const expected: Record<number, string> = {
       1: "один",
+      2: "два",
       3: "три",
       5: "пять",
       7: "семь",
@@ -127,9 +163,12 @@ describe("getEffectivePlan", () => {
     expect(e.trialDaysLeft).toBeNull();
   });
 
-  it("upgrades FREE to PRO during an active trial", () => {
+  it("upgrades FREE to PRO_SOLO during an active trial", () => {
+    // The trial grants the entry-paid tier (PRO_SOLO). Going straight
+    // to BUSINESS would over-promise: when the trial ends and we
+    // downgrade to FREE the gap would be too large to recover from.
     const e = getEffectivePlan({ plan: "FREE", trialEndsAt: FUTURE }, NOW);
-    expect(e.plan).toBe("PRO");
+    expect(e.plan).toBe("PRO_SOLO");
     expect(e.baselinePlan).toBe("FREE");
     expect(e.isTrial).toBe(true);
     expect(e.trialDaysLeft).toBe(10);
@@ -145,10 +184,16 @@ describe("getEffectivePlan", () => {
   it("does NOT downgrade an already-paid plan during a stale trial flag", () => {
     // Defensive: if a paid customer somehow has a trialEndsAt set, the
     // paid plan still wins.
-    const e = getEffectivePlan({ plan: "PRO", trialEndsAt: FUTURE }, NOW);
-    expect(e.plan).toBe("PRO");
-    expect(e.baselinePlan).toBe("PRO");
+    const e = getEffectivePlan({ plan: "PRO_SOLO", trialEndsAt: FUTURE }, NOW);
+    expect(e.plan).toBe("PRO_SOLO");
+    expect(e.baselinePlan).toBe("PRO_SOLO");
     expect(e.isTrial).toBe(false);
+  });
+
+  it("legacy 'PRO' plan rows still resolve to PRO_SOLO", () => {
+    const e = getEffectivePlan({ plan: "PRO", trialEndsAt: null }, NOW);
+    expect(e.plan).toBe("PRO_SOLO");
+    expect(e.baselinePlan).toBe("PRO_SOLO");
   });
 
   it("rounds up the days-left counter (so 'less than a day' shows as 1)", () => {

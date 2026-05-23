@@ -54,7 +54,9 @@ describe("chunkContract", () => {
   });
 
   it("produces multiple chunks for medium documents", () => {
-    const text = syntheticContract(40_000);
+    // 80k crosses the new 50k single-pass threshold. The chunker is
+    // only invoked for genuinely long contracts now.
+    const text = syntheticContract(80_000);
     const chunks = chunkContract(text);
     expect(chunks.length).toBeGreaterThan(1);
 
@@ -69,8 +71,8 @@ describe("chunkContract", () => {
   });
 
   it("scales chunk count with document size", () => {
-    const small = chunkContract(syntheticContract(40_000));
-    const large = chunkContract(syntheticContract(120_000));
+    const small = chunkContract(syntheticContract(80_000));
+    const large = chunkContract(syntheticContract(160_000));
     expect(large.length).toBeGreaterThan(small.length);
   });
 
@@ -106,9 +108,10 @@ describe("chunkContract", () => {
   });
 
   it("handles a single oversize section by sentence splitting", () => {
-    // One huge unit with no structure markers, > target size
+    // One huge unit with no structure markers, well past the 50k
+    // single-pass threshold so the chunker actually runs.
     const giant =
-      "Один очень длинный абзац с предложениями. ".repeat(800); // ~33k chars
+      "Один очень длинный абзац с предложениями. ".repeat(1500); // ~63k chars
     const chunks = chunkContract(giant);
     expect(chunks.length).toBeGreaterThan(1);
     for (const c of chunks) {

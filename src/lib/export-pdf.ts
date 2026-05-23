@@ -8,6 +8,7 @@ interface ExportData {
   summary: string;
   contractType?: string;
   parties?: string;
+  balance?: { favor: string; comment: string };
   risks: RiskItem[];
   notarization?: { required: boolean; reason: string };
   registration?: { required: boolean; reason: string };

@@ -7,6 +7,7 @@ import { reportError } from "@/lib/telemetry";
 import { checkQuotaSafe } from "@/lib/quota";
 import { logUsage } from "@/lib/ai/usage";
 import { generateText, streamChat, getActiveProvider } from "@/lib/ai/client";
+import { pickTier } from "@/lib/ai/tier-policy";
 import {
   REFINE_DOCUMENT_SYSTEM,
   REFINE_PATCH_SYSTEM,
@@ -56,6 +57,10 @@ function extractJsonObject(text: string): string | null {
 //
 // Both paths share the same SSE wire format. The client distinguishes
 // them via the "mode" event we emit at the start of each path.
+
+// Regen-mode streams the whole rewritten contract — 80-150s on long
+// documents. Patch mode is usually <15s but the route serves both.
+export const maxDuration = 300;
 
 export async function POST(
   request: NextRequest,
@@ -135,6 +140,7 @@ export async function POST(
     }
 
     const quota = await checkQuotaSafe(orgId, "generate");
+    const effectivePlan = quota?.plan ?? null;
     if (quota && !quota.allowed) {
       return NextResponse.json(
         {
@@ -186,7 +192,7 @@ export async function POST(
           const result = await generateText({
             system: REFINE_PATCH_SYSTEM,
             prompt: userPrompt,
-            model: "fast",
+            model: pickTier("refine", effectivePlan),
             temperature: 0.2,
             maxTokens: 2048,
           });
@@ -229,7 +235,7 @@ export async function POST(
               parseFailReason ??
               "Не удалось получить точечный патч — переключаемся на полную перегенерацию.",
           };
-          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, plan: effectivePlan, signal });
           return;
         }
 
@@ -241,7 +247,7 @@ export async function POST(
               ? `AI: ${patch.refusalReason} Переключаемся на полную перегенерацию.`
               : "AI отказался выполнять точечную правку — переключаемся на полную перегенерацию.",
           };
-          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, plan: effectivePlan, signal });
           return;
         }
 
@@ -258,7 +264,7 @@ export async function POST(
             mode: "regen",
             reason: `Не удалось применить точечную правку (${apply.reason}) — переключаемся на полную перегенерацию.`,
           };
-          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+          yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, plan: effectivePlan, signal });
           return;
         }
 
@@ -315,7 +321,7 @@ export async function POST(
 
       // ── Path 2: regen mode (explicit) ─────────────────────────
       yield { kind: "mode", mode: "regen" };
-      yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, signal });
+      yield* runRegenAndPersist({ doc, userPrompt, userId, orgId, plan: effectivePlan, signal });
     }
 
     return new Response(streamToSSE(refineStream()), {
@@ -344,6 +350,9 @@ interface RegenArgs {
   userPrompt: string;
   userId: string;
   orgId: string;
+  /** Effective plan (FREE / PRO / BUSINESS). Drives which Claude tier
+   *  the regen call uses via tier-policy.ts. */
+  plan: string | null;
   signal: AbortSignal;
 }
 
@@ -354,14 +363,14 @@ interface RegenArgs {
 async function* runRegenAndPersist(
   args: RegenArgs
 ): AsyncGenerator<StreamEvent> {
-  const { doc, userPrompt, userId, orgId, signal } = args;
+  const { doc, userPrompt, userId, orgId, plan, signal } = args;
   let accumulated = "";
 
   try {
     const source = streamChat({
       system: REFINE_DOCUMENT_SYSTEM,
       messages: [{ role: "user", content: userPrompt }],
-      model: "fast",
+      model: pickTier("refine", plan),
       maxTokens: 8192,
       signal,
     });

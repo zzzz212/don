@@ -40,15 +40,29 @@ export async function GET(
 
     return NextResponse.json({
       id: document.id,
+      // The /analyze flow returns `documentId` (its own create-then-read
+      // shape); the report page reads `analysis.documentId` to gate
+      // collaboration buttons (PublicShare / SendForReview /
+      // DeadlineScan / SendAsDeal). Without this alias, those buttons
+      // silently disappear on page reload because the doc-fetch path
+      // returned only `id`.
+      documentId: document.id,
       fileName: document.fileName,
       fileSize: document.fileSize,
       mimeType: document.mimeType,
       hasOriginal: !!document.blobKey,
+      // Plain-text body of the contract — needed by the report page so
+      // the user can apply per-risk fixes (originalText → recommendedText)
+      // without round-tripping back to the OCR/extract step. Null for
+      // legacy rows that never stored rawText.
+      rawText: document.rawText ?? null,
       score: document.analysis?.score ?? 0,
       summary: document.analysis?.summary ?? "",
       risks: document.analysis ? JSON.parse(document.analysis.risks) : [],
       contractType: metadata.contractType,
       parties: metadata.parties,
+      verdict: metadata.verdict,
+      verdictReason: metadata.verdictReason,
       notarization: metadata.notarization,
       registration: metadata.registration,
       missingClauses: metadata.missingClauses,

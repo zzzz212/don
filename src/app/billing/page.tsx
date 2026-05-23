@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -11,9 +11,22 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import { Header } from "@/components/header";
-import { Disclaimer } from "@/components/disclaimer";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader } from "@/components/page-header";
 import { BillingCardSkeleton } from "@/components/skeleton";
+import { TRIAL_DAYS, CONTACTS } from "@/lib/legal-info";
+
+// Russian plural for "день" depending on count — 1 день / 2-4 дня / 5+ дней.
+// The trial UI only needs the singular ("1 день"), few ("2-4 дня") and many
+// ("5+ дней") forms; mirrors the same helper /billing already uses for
+// "trial X days left" rendering.
+function dayWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "дня";
+  return "дней";
+}
 
 interface SubscriptionInfo {
   plan: string;
@@ -36,11 +49,18 @@ interface PaymentRow {
   failureReason: string | null;
 }
 
+// Effective plan strings that quota / tier-policy ever resolves to.
+// Legacy "PRO" is still tolerated on the wire (PaidPlan type widens to
+// include it) but the API normalises it to PRO_SOLO before rendering,
+// so the union here stays narrow.
+type EffectivePlanCode = "FREE" | "PRO_SOLO" | "PRO_TEAM" | "BUSINESS";
+type CheckoutPlanCode = "PRO_SOLO" | "PRO_TEAM" | "BUSINESS";
+
 interface BillingStatus {
   orgId: string;
   orgName: string;
-  effectivePlan: "FREE" | "PRO" | "BUSINESS";
-  baselinePlan: "FREE" | "PRO" | "BUSINESS";
+  effectivePlan: EffectivePlanCode;
+  baselinePlan: EffectivePlanCode;
   isTrial: boolean;
   trialEndsAt: string | null;
   trialDaysLeft: number | null;
@@ -51,31 +71,53 @@ interface BillingStatus {
 
 const PLAN_LABEL: Record<string, string> = {
   FREE: "Старт",
-  PRO: "Про",
+  PRO_SOLO: "Pro Solo",
+  PRO_TEAM: "Pro Team",
   BUSINESS: "Бизнес",
+  // Legacy: status API may still surface old "PRO" rows.
+  PRO: "Pro Solo",
 };
 
-const PLAN_PRICE_RUB: Record<"PRO" | "BUSINESS", number> = {
-  PRO: 3990,
+const PLAN_PRICE_RUB: Record<CheckoutPlanCode, number> = {
+  PRO_SOLO: 1990,
+  PRO_TEAM: 4990,
   BUSINESS: 14990,
 };
 
-const PLAN_FEATURES: Record<"PRO" | "BUSINESS", string[]> = {
-  PRO: [
-    "Безлимитный анализ договоров",
+const PLAN_DESCRIPTION: Record<CheckoutPlanCode, string> = {
+  PRO_SOLO: "Для ИП и фрилансеров",
+  PRO_TEAM: "Для команд до 5 человек",
+  BUSINESS: "Для компаний и юр.отделов",
+};
+
+const PLAN_FEATURES: Record<CheckoutPlanCode, string[]> = {
+  PRO_SOLO: [
+    "До 100 анализов договоров в месяц",
     "Безлимитная генерация документов",
     "OCR для скан-PDF",
     "Векторный поиск по договорам",
     "Приоритетная поддержка",
   ],
-  BUSINESS: [
-    "Всё из тарифа «Про»",
-    "До 10 участников рабочего пространства",
+  PRO_TEAM: [
+    "Всё из Pro Solo",
+    "До 5 участников рабочего пространства",
+    "500 анализов в месяц на команду",
     "Совместная история анализов",
-    "API-доступ (после релиза)",
+  ],
+  BUSINESS: [
+    "Всё из Pro Team",
+    "Безлимитные анализы",
+    "Анализ на модели Opus (точнее, дороже)",
+    "Расширенная история (без ограничения)",
     "Персональный менеджер",
   ],
 };
+
+const CHECKOUT_PLANS: readonly CheckoutPlanCode[] = [
+  "PRO_SOLO",
+  "PRO_TEAM",
+  "BUSINESS",
+];
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -108,13 +150,13 @@ function formatDateTime(iso: string | null): string {
 function PaymentStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     SUCCEEDED: { label: "Оплачено", cls: "bg-success/10 text-success" },
-    PENDING: { label: "Ожидает оплаты", cls: "bg-amber-100 text-amber-800" },
+    PENDING: { label: "Ожидает оплаты", cls: "bg-warning-light text-warning" },
     WAITING_FOR_CAPTURE: {
       label: "Ожидает подтверждения",
-      cls: "bg-amber-100 text-amber-800",
+      cls: "bg-warning-light text-warning",
     },
     CANCELED: { label: "Отменён", cls: "bg-surface text-muted" },
-    FAILED: { label: "Ошибка", cls: "bg-red-100 text-red-700" },
+    FAILED: { label: "Ошибка", cls: "bg-danger-light text-danger" },
   };
   const e = map[status] ?? { label: status, cls: "bg-surface text-muted" };
   return (
@@ -131,7 +173,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<
-    "PRO" | "BUSINESS" | null
+    CheckoutPlanCode | null
   >(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [trialActivating, setTrialActivating] = useState(false);
@@ -187,7 +229,7 @@ export default function BillingPage() {
     }
   };
 
-  const handleCheckout = async (plan: "PRO" | "BUSINESS") => {
+  const handleCheckout = async (plan: CheckoutPlanCode) => {
     setCheckoutLoading(plan);
     setCheckoutError(null);
     try {
@@ -214,18 +256,12 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="flex min-h-full flex-col bg-white">
-      <Header />
-      <main className="flex-1">
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-              Биллинг и тарифы
-            </h1>
-            <p className="mt-2 text-base text-muted">
-              Текущая подписка, история платежей и переход на платный тариф.
-            </p>
-          </div>
+    <AppShell>
+      <PageHeader
+        title="Биллинг и тарифы"
+        description="Тариф привязан к вашему аккаунту — одна подписка действует во всех ваших workspace. Ниже история платежей и смена тарифа."
+      />
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
 
           {loading && (
             <div className="space-y-6">
@@ -238,7 +274,7 @@ export default function BillingPage() {
           )}
 
           {!loading && error && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div role="alert" className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {error}
             </div>
@@ -251,10 +287,10 @@ export default function BillingPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                      Workspace
+                      Ваш аккаунт
                     </p>
                     <h2 className="mt-1 text-xl font-bold text-foreground">
-                      {data.orgName}
+                      Тариф «{PLAN_LABEL[data.effectivePlan] ?? data.effectivePlan}»
                     </h2>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
@@ -268,7 +304,7 @@ export default function BillingPage() {
                         {PLAN_LABEL[data.effectivePlan] ?? data.effectivePlan}
                       </span>
                       {data.isTrial && data.trialDaysLeft !== null && (
-                        <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-700">
+                        <span className="rounded-lg bg-warning-light px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-warning">
                           Триал · {data.trialDaysLeft}{" "}
                           {data.trialDaysLeft === 1
                             ? "день"
@@ -292,7 +328,7 @@ export default function BillingPage() {
                 </div>
 
                 {data.isTrial && (
-                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <div className="mt-5 rounded-xl border border-warning/30 bg-warning-light px-4 py-3 text-sm text-warning">
                     Пробный период тарифа «Про» закончится{" "}
                     <strong>{formatDate(data.trialEndsAt)}</strong>. Оформите
                     подписку до этой даты, чтобы избежать перехода на ограниченный
@@ -320,13 +356,13 @@ export default function BillingPage() {
                           Активируйте бесплатный пробный период «Про»
                         </p>
                         <p className="mt-1 text-sm text-muted">
-                          7 дней безлимитного анализа договоров, генерации
-                          документов и OCR. Без привязки карты и
-                          автосписаний. Доступно один раз для каждого
+                          {TRIAL_DAYS} {dayWord(TRIAL_DAYS)} безлимитного анализа
+                          договоров, генерации документов и OCR. Без привязки
+                          карты и автосписаний. Доступно один раз для каждого
                           аккаунта.
                         </p>
                         {trialError && (
-                          <p className="mt-2 flex items-center gap-1.5 text-sm text-red-700">
+                          <p className="mt-2 flex items-center gap-1.5 text-sm text-danger">
                             <AlertCircle className="h-4 w-4 shrink-0" />
                             {trialError}
                           </p>
@@ -345,7 +381,7 @@ export default function BillingPage() {
                           ) : (
                             <>
                               <Sparkles className="h-4 w-4" />
-                              Активировать на 7 дней
+                              Активировать на {TRIAL_DAYS} {dayWord(TRIAL_DAYS)}
                             </>
                           )}
                         </button>
@@ -357,46 +393,53 @@ export default function BillingPage() {
 
               {/* Plans grid */}
               {checkoutError && (
-                <div className="mb-6 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div role="alert" className="mb-6 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-light px-4 py-3 text-sm text-danger">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   {checkoutError}
                 </div>
               )}
 
-              <section className="mb-10 grid gap-6 md:grid-cols-2">
-                {(["PRO", "BUSINESS"] as const).map((plan) => {
+              <section className="mb-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {CHECKOUT_PLANS.map((plan) => {
+                  // Subscription.plan may still be the legacy "PRO" string
+                  // for grandfathered customers — treat it as PRO_SOLO so
+                  // the "current tariff" highlight is correct.
+                  const subPlan = data.subscription?.plan ?? null;
+                  const normalisedSubPlan =
+                    subPlan === "PRO" ? "PRO_SOLO" : subPlan;
                   const isCurrent =
-                    data.subscription?.plan === plan &&
+                    normalisedSubPlan === plan &&
                     data.subscription?.status === "ACTIVE" &&
                     new Date(data.subscription.currentPeriodEnd).getTime() >
                       Date.now();
-                  const popular = plan === "PRO";
+                  // PRO_SOLO is the popularly marketed tier — most signups
+                  // start here. Pro Team gets ringed too, secondary, when
+                  // we have the team-pricing story.
+                  const popular = plan === "PRO_SOLO";
                   return (
                     <div
                       key={plan}
                       className={`relative rounded-2xl border bg-card p-6 ${popular ? "border-primary shadow-lg shadow-primary/10 ring-1 ring-primary" : "border-border"}`}
                     >
                       {popular && (
-                        <div className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
-                          Популярный
+                        <div className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-fg">
+                          Рекомендуем
                         </div>
                       )}
-                      <h3 className="text-lg font-bold text-foreground">
+                      <h3 className="font-serif text-lg font-semibold text-foreground">
                         {PLAN_LABEL[plan]}
                       </h3>
                       <p className="mt-1 text-sm text-muted">
-                        {plan === "PRO"
-                          ? "Для ИП и фрилансеров"
-                          : "Для компаний до 10 человек"}
+                        {PLAN_DESCRIPTION[plan]}
                       </p>
-                      <div className="mt-4">
-                        <span className="text-3xl font-extrabold text-foreground">
+                      <div className="mt-4 flex items-baseline gap-1">
+                        <span className="font-serif text-3xl font-semibold text-foreground">
                           {new Intl.NumberFormat("ru-RU").format(
                             PLAN_PRICE_RUB[plan]
                           )}{" "}
                           ₽
                         </span>
-                        <span className="text-muted"> / мес</span>
+                        <span className="text-sm text-muted"> / мес</span>
                       </div>
                       <ul className="mt-5 space-y-2">
                         {PLAN_FEATURES[plan].map((f) => (
@@ -415,7 +458,7 @@ export default function BillingPage() {
                         disabled={
                           checkoutLoading !== null || isCurrent
                         }
-                        className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${popular ? "bg-primary text-white hover:bg-primary-dark" : "border border-border bg-white text-foreground hover:bg-surface"}`}
+                        className={`mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${popular ? "bg-primary text-white hover:bg-primary-dark" : "border border-border bg-card text-foreground hover:bg-surface"}`}
                       >
                         {checkoutLoading === plan ? (
                           <>
@@ -434,6 +477,31 @@ export default function BillingPage() {
                     </div>
                   );
                 })}
+              </section>
+
+              {/* Enterprise is intentionally not a checkout target — the
+                  sales conversation happens by email (SLA, on-prem,
+                  custom data residency are case-by-case). Keeps the
+                  pricing page honest about what you can self-serve. */}
+              <section className="mb-10 rounded-2xl border border-border bg-surface/30 p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">
+                      Enterprise
+                    </h3>
+                    <p className="mt-1 text-sm text-muted">
+                      SLA 99.9%, on-premise / частное облако, индивидуальные
+                      условия по данным, отдельный контракт. От 20 рабочих
+                      мест.
+                    </p>
+                  </div>
+                  <a
+                    href={`mailto:${CONTACTS.support}?subject=Enterprise%20%E2%80%94%20%D0%97%D0%B0%D0%BF%D1%80%D0%BE%D1%81%20%D1%83%D1%81%D0%BB%D0%BE%D0%B2%D0%B8%D0%B9`}
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+                  >
+                    Связаться <ArrowRight className="h-4 w-4" />
+                  </a>
+                </div>
               </section>
 
               {/* Payment history */}
@@ -475,7 +543,7 @@ export default function BillingPage() {
                             <td className="py-3 pr-4">
                               <PaymentStatusBadge status={p.status} />
                               {p.failureReason && (
-                                <p className="mt-1 text-xs text-red-600">
+                                <p className="mt-1 text-xs text-danger">
                                   {p.failureReason}
                                 </p>
                               )}
@@ -498,8 +566,6 @@ export default function BillingPage() {
             </>
           )}
         </div>
-      </main>
-      <Disclaimer />
-    </div>
+      </AppShell>
   );
 }

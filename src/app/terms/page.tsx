@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LegalPageShell } from "@/components/legal-page-shell";
 import { BRAND, OPERATOR, CONTACTS } from "@/lib/legal-info";
 
 export const metadata: Metadata = {
   title: `Пользовательское соглашение — ${BRAND.name}`,
   description:
-    "Пользовательское соглашение сервиса ЮрИИст: правила регистрации, использования сервиса, ответственности сторон.",
+    "Пользовательское соглашение сервиса Яксо: правила регистрации, использования сервиса, ответственности сторон.",
   robots: { index: true, follow: true },
 };
 
@@ -30,7 +31,7 @@ export default function TermsPage() {
   return (
     <LegalPageShell
       title="Пользовательское соглашение"
-      description="Условия использования сервиса ЮрИИст для физических и юридических лиц."
+      description="Условия использования сервиса Яксо для физических и юридических лиц."
       toc={TOC}
     >
       <h2 id="general">1. Общие положения</h2>
@@ -137,8 +138,8 @@ export default function TermsPage() {
         Сервис предоставляется на следующих основных Тарифах: «Старт»
         (бесплатный, с ограниченными лимитами), «Про» и «Бизнес» (платные).
         Актуальные стоимости и количественные лимиты Тарифов размещены на
-        странице <a href="/#pricing">тарифов</a> и в{" "}
-        <a href="/offer">Публичной оферте</a>.
+        странице <Link href="/#pricing">тарифов</Link> и в{" "}
+        <Link href="/offer">Публичной оферте</Link>.
       </p>
       <p>
         Оплата платных Тарифов производится в порядке и на условиях,
