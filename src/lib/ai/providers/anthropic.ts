@@ -87,7 +87,33 @@ export async function generate<T extends z.ZodTypeAny>(
 
     const block = response.content.find((c) => c.type === "tool_use");
     if (!block || block.type !== "tool_use") {
+      // Diagnostic: log what content blocks DID come back when the
+      // expected tool_use is missing — model may be returning text
+      // refusal or stop_reason mismatch.
+      console.error("[anthropic] no tool_use block. Response content types:", {
+        types: response.content.map((c) => c.type),
+        stop_reason: response.stop_reason,
+        stop_sequence: response.stop_sequence,
+      });
       throw new AIError("No tool_use block in Anthropic response", "anthropic");
+    }
+
+    // Diagnostic: log the raw tool_use.input so we can see what the
+    // model actually wrote when zod parsing fails downstream. Remove
+    // once the empty-response root cause is pinned (Sprint 14 incident
+    // 2026-05-24).
+    if (process.env.DEBUG_ANTHROPIC_TOOL_USE !== "off") {
+      const inputStr = JSON.stringify(block.input);
+      console.error("[anthropic] tool_use.input:", {
+        model,
+        stop_reason: response.stop_reason,
+        input_keys: block.input && typeof block.input === "object"
+          ? Object.keys(block.input as object)
+          : null,
+        input_length: inputStr.length,
+        input_preview: inputStr.slice(0, 800),
+        usage: response.usage,
+      });
     }
 
     const data = opts.schema.parse(block.input);
