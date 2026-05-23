@@ -70,7 +70,10 @@ export type AuditAction =
   | "email.trial_expired_sent"
   | "email.inactive_reengagement_sent"
   | "email.checkout_abandoned_sent"
-  | "email.contract_reminder_sent";
+  | "email.contract_reminder_sent"
+  // Deal Room — sender-side creation and per-clause participant actions
+  | "deal.created"
+  | "deal.clause_action";
 
 export type TargetType =
   | "workspace"

@@ -64,6 +64,8 @@ const ACTION_LABELS: Record<string, string> = {
   "email.trial_expired_sent": "Письмо о завершении триала",
   "email.inactive_reengagement_sent": "Реактивационное письмо",
   "email.checkout_abandoned_sent": "Письмо о недозавершённом платеже",
+  "deal.created": "Создана сделка",
+  "deal.clause_action": "Действие в сделке",
 };
 
 const ACTION_GROUPS: Array<{ label: string; values: string[] }> = [
