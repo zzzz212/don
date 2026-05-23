@@ -30,6 +30,7 @@ export default function robots(): MetadataRoute.Robots {
           "/r/",
           "/workspace/",
           "/deadlines",
+          "/deal/",
           "/password-reset",
           "/forgot-password",
         ],
