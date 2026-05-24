@@ -11,6 +11,7 @@ import {
   reconcileClauseStatus,
   type ClauseActionInput,
 } from "@/lib/deal-status";
+import { buttonClass } from "@/components/button";
 
 interface DealView {
   id: string;
@@ -32,11 +33,49 @@ interface DealResponse {
   myRole: "SENDER" | "RECEIVER" | null;
 }
 
+function errorMessageFor(
+  code: number,
+  serverMessage?: string
+): {
+  code: number;
+  title: string;
+  body: string;
+  recoverable: boolean;
+} {
+  if (code === 404 || code === 410) {
+    return {
+      code,
+      title: "Ссылка устарела или удалена",
+      body: "Свяжитесь с отправителем — он перевыпустит приглашение.",
+      recoverable: false,
+    };
+  }
+  if (code === 429) {
+    return {
+      code,
+      title: "Слишком много действий подряд",
+      body: "Подождите минуту и попробуйте снова.",
+      recoverable: true,
+    };
+  }
+  return {
+    code,
+    title: "Не удалось открыть",
+    body: serverMessage ?? "Попробуйте обновить страницу.",
+    recoverable: true,
+  };
+}
+
 export function DealRoom({ token }: { token: string }) {
   const [deal, setDeal] = useState<DealView | null>(null);
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [myRole, setMyRole] = useState<"SENDER" | "RECEIVER" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<{
+    code: number;
+    title: string;
+    body: string;
+    recoverable: boolean;
+  } | null>(null);
   const [needsIdentify, setNeedsIdentify] = useState(false);
 
   const fetchDeal = useCallback(async () => {
@@ -45,7 +84,7 @@ export function DealRoom({ token }: { token: string }) {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data?.error ?? "Не удалось загрузить договор");
+      setErrorState(errorMessageFor(res.status, data?.error));
       return;
     }
     const data = (await res.json()) as DealResponse;
@@ -134,7 +173,7 @@ export function DealRoom({ token }: { token: string }) {
         // Rollback to pre-mutation state, surface the error.
         setDeal(snapshot);
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(data?.error ?? "Не удалось сохранить действие");
+        setErrorState(errorMessageFor(res.status, data?.error));
         return;
       }
 
@@ -144,14 +183,28 @@ export function DealRoom({ token }: { token: string }) {
     [deal, myParticipantId, myRole, token, fetchDeal]
   );
 
-  if (error) {
+  if (errorState) {
     return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <p className="font-serif text-2xl font-semibold text-foreground">
-          Не удалось открыть
+      <main className="mx-auto max-w-md px-5 py-24 text-center sm:px-10">
+        <p className="text-[10px] uppercase tracking-[0.28em] text-ink-quiet">
+          Что-то не так
         </p>
-        <p className="mt-2 text-sm text-ink-quiet">{error}</p>
-      </div>
+        <p className="mt-3 font-serif text-2xl font-semibold tracking-tight text-foreground">
+          {errorState.title}
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink-quiet">
+          {errorState.body}
+        </p>
+        {errorState.recoverable && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className={`${buttonClass({ variant: "ghost" })} mt-6`}
+          >
+            Обновить
+          </button>
+        )}
+      </main>
     );
   }
   if (!deal) {
