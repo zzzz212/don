@@ -451,13 +451,27 @@ model DocumentChunk {
 model Analysis {
   id         String   @id @default(cuid())
   documentId String   @unique
-  score      Int
-  summary    String
-  risks      String
+  score      Int      @default(0)
+  summary    String   @default("")
+  risks      String   @default("[]")
   metadata   String?
   createdAt  DateTime @default(now())
 
+  // Sprint 15A — durable async job tracking. status=COMPLETED is the
+  // default so every pre-existing Analysis row is treated as a finished
+  // job after migration without backfill. score/summary/risks defaults
+  // cover newly-created PENDING rows where the values are not yet known;
+  // the worker overwrites them on completion.
+  status       AnalysisStatus @default(COMPLETED)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  progress     Int            @default(100)
+  stage        String?
+  errorMessage String?
+
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([status, startedAt])
 }
 
 model GeneratedDocument {
@@ -1008,6 +1022,10 @@ model DealClause {
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  // Sprint 15A — AI negotiation moves cached. Null = not yet requested.
+  // Populated by POST /api/deals/.../clauses/.../suggest-moves. Shape:
+  // { moves: Array<{id:'A'|'B'|'C', title, body, proposedText?:string}> }
+  suggestedMoves Json?
 
   deal    Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
   actions ClauseAction[]
@@ -1031,4 +1049,12 @@ model ClauseAction {
 
   @@index([clauseId, createdAt])
   @@index([participantId])
+}
+
+enum AnalysisStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
