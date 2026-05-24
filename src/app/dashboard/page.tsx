@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { ActiveAnalysesStrip } from "@/components/active-analyses-strip";
 import { RiskBadge, type RiskLevel } from "@/components/risk-badge";
 import { UsageWidget } from "@/components/usage-widget";
 import { DocumentSearchBar } from "@/components/document-search-bar";
@@ -282,6 +283,8 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      <ActiveAnalysesStrip />
 
       <div className="space-y-5 px-6 py-6 sm:px-8">
         {/* KPI strip — compact inline row instead of three full-width
