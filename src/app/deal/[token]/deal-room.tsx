@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/skeleton";
+import { ClauseSkeleton } from "./clause-skeleton";
 import { ClauseCard, type ClauseView } from "./clause-card";
 import { IdentifyModal } from "./identify-modal";
 import { StatusBar } from "./status-bar";
@@ -155,12 +156,18 @@ export function DealRoom({ token }: { token: string }) {
   }
   if (!deal) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
-        <p className="mt-3 text-xs uppercase tracking-[0.2em] text-ink-quiet">
-          Открываем договор
-        </p>
-      </div>
+      <main className="paper-grain mx-auto max-w-5xl px-5 pt-8 sm:px-10">
+        <header className="border-b border-rule pb-8 mb-12">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-3 h-8 w-3/4" />
+          <Skeleton className="mt-6 h-3 w-1/2" />
+        </header>
+        <div className="space-y-10">
+          {[0, 1, 2].map((i) => (
+            <ClauseSkeleton key={i} />
+          ))}
+        </div>
+      </main>
     );
   }
 
