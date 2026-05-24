@@ -67,7 +67,7 @@ export async function prepareDocument(
   const originalMimeType = file.type || "application/octet-stream";
 
   // 1. Parse the document
-  let contractText: string;
+  let contractText = "";
   let needsOcr = false;
   let mimeType = originalMimeType;
   try {
@@ -155,7 +155,7 @@ export async function prepareDocument(
         "OCR_PROVIDER_ERROR"
       );
     }
-  } else if (!contractText!.trim()) {
+  } else if (!contractText.trim()) {
     throw new PrepareError(
       "Документ пуст или не содержит текста.",
       "EMPTY_DOCUMENT"
@@ -163,13 +163,13 @@ export async function prepareDocument(
   }
 
   // 3. Length check
-  if (isOversizedDocument(contractText!)) {
+  if (isOversizedDocument(contractText)) {
     throw new PrepareError(
-      `Документ слишком большой для автоматического анализа (${contractText!.length.toLocaleString("ru-RU")} символов, лимит ${HARD_DOC_LIMIT.toLocaleString("ru-RU")}). Разбейте его на части и проанализируйте по разделам.`,
+      `Документ слишком большой для автоматического анализа (${contractText.length.toLocaleString("ru-RU")} символов, лимит ${HARD_DOC_LIMIT.toLocaleString("ru-RU")}). Разбейте его на части и проанализируйте по разделам.`,
       "DOCUMENT_TOO_LARGE",
-      { textLength: contractText!.length, limit: HARD_DOC_LIMIT }
+      { textLength: contractText.length, limit: HARD_DOC_LIMIT }
     );
   }
 
-  return { contractText: contractText!, usedOcr, mimeType, fileBytes };
+  return { contractText, usedOcr, mimeType, fileBytes };
 }
