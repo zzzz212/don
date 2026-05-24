@@ -60,23 +60,13 @@ verdictReason: одно предложение, прямой ответ "мож�
 - В risks[].consequence: 1-2 предложения — чем КОНКРЕТНО оборачивается этот пункт для клиента, если подписать как есть: какие деньги, сроки или права он теряет, каким иском или санкцией это грозит. Без общих слов вроде "создаёт риски" — только конкретный ущерб.
 - В risks[].recommendedText: готовый юридический текст в императивном стиле ("обязан", "вправе", "уплачивает"), с конкретными числами/сроками прописью. БЕЗ "стороны должны обсудить".
 - В risks[].legalReference: точная статья из справочника ниже. Формат "ст. X ГК РФ" или "п. Y ст. X ГК РФ".
+- В risks[].counterPerspective (необязательно): объект с двумя полями. theirGain — одно предложение в свободной форме о том, что от этого пункта получает другая сторона договора (выгода или защита). compromise (опционально, пропусти если очевидного компромисса нет) — одна формулировка-компромисс, которая ослабляет риск для клиента и одновременно сохраняет разумную часть выгоды другой стороны. Не используй JSON-синтаксис в ответе для этого описания — заполни эти поля как обычные строковые свойства внутри объекта риска.
 - В missingClauses: 0-3 реально отсутствующих критичных пункта (пустой массив если договор полный). Каждый — с указанием статьи закона, делающей этот пункт существенным.
 - В preSigningChecklist: 3-5 проверяемых действий (выписка ЕГРЮЛ, полномочия подписанта, реквизиты, и т.п.).
 - contractType / parties / notarization.reason / registration.reason — со ссылками на закон.
 - balance: favor — в чью пользу смещён договор: "balanced" (сбалансирован), "first" (в пользу первой названной в parties стороны), "second" (в пользу второй). comment — 1-2 предложения: какую РОЛЬ (Заказчик / Исполнитель / Арендодатель и т.п.) договор защищает сильнее и по каким пунктам перекос. Если явных перекосов нет — favor "balanced".
 
 Всё на русском.`;
-
-// NOTE: A Counter-AI instruction block (counterPerspective per risk)
-// briefly lived between the `balance` line and "Всё на русском." in
-// Sprint 14. It contained an isolated `ПРИМЕР: { "counterPerspective":
-// { ... } }` JSON example that the model copied as its FULL top-level
-// response — producing `{counterPerspective: {...}}` with every other
-// required field missing. Analyze broke on prod immediately after
-// deploy. Pulled the block; `counterPerspective` stays `.optional()` in
-// the schema so Sprint 14 UI gracefully hides the column. Re-add in
-// Sprint 15 with the field described INLINE in the "В risks[]…" bullet
-// list above, without a standalone top-level JSON example.
 
 // Full analyze system prompt: discipline + risk catalogue + legal
 // reference card. Concatenated up front so the entire block can be
