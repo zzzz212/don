@@ -368,7 +368,7 @@ export default function DashboardPage() {
             <div className="grid items-center gap-4 px-6 py-5 sm:grid-cols-[1fr_auto] sm:gap-8 sm:px-8 sm:py-6">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-ink-quiet">
-                  Sprint 14 · Deal Room
+                  Новинка · Deal Room
                 </p>
                 <h2 className="mt-1.5 font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                   Отправьте первый договор на согласование
