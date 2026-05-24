@@ -1,13 +1,11 @@
 "use client";
 
-// "Send as Deal" — modal shown on the contract analysis report page.
-// Lets the owner create a Deal Room from an analysed document and send
-// an invite email to the counterparty. Mirrors the style of
-// send-for-review.tsx (network layer), adapting for the Sprint 14
-// Deal Room flow (no connection required — public invite token).
+// "Send as Deal" — opens the Deal Room flow from /report. Editorial
+// styling matches IdentifyModal and the Deal Room itself: paper-grain
+// card, hairline rules, bottom-border inputs, no jewel-tone accents.
+// Foot-gun #43: fixed bg-black/60 scrim, never bg-foreground/40.
 
 import { useState } from "react";
-import { Loader2, Send, X, Check, Handshake } from "lucide-react";
 import { Button, buttonClass } from "@/components/button";
 
 export function SendAsDeal({
@@ -62,132 +60,127 @@ export function SendAsDeal({
         aria-modal="true"
         aria-label="Отправить договор второй стороне"
         onClick={(e) => e.stopPropagation()}
-        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+        className="paper-grain flex w-full max-w-md flex-col rounded-2xl border border-rule bg-card p-8 shadow-xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Handshake className="h-4 w-4 text-primary" aria-hidden="true" />
-            <h2 className="text-sm font-bold text-foreground">
-              {result ? "Сделка создана" : "Отправить второй стороне"}
+        {result ? (
+          /* ── Success state ─────────────────────────────────────── */
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.28em] text-ink-quiet">
+              Письмо отправлено
+            </p>
+            <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground">
+              Сделка создана
             </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Закрыть"
-            className="rounded-lg p-1 text-muted transition-colors hover:bg-surface hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-4">
-          {result ? (
-            /* ── Success state ─────────────────────────────── */
-            <div>
-              <div className="mb-4 flex items-center justify-center py-2">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-light">
-                  <Check className="h-6 w-6 text-success" />
-                </div>
-              </div>
-              <p className="text-center font-semibold text-foreground mb-1">
-                Письмо отправлено контрагенту
-              </p>
-              <p className="text-center text-sm text-muted mb-4">
-                Также вы можете скопировать ссылку и передать её напрямую:
-              </p>
-              <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm break-all font-mono text-foreground mb-4">
-                {result.url}
-              </div>
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(result.url);
-                  }}
-                  className={buttonClass({ variant: "primary" })}
-                >
-                  Скопировать ссылку
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className={buttonClass({ variant: "ghost" })}
-                >
-                  Закрыть
-                </button>
-              </div>
+            <p className="mt-3 text-sm leading-relaxed text-ink-quiet">
+              Контрагент получит письмо со ссылкой. Если хотите — скопируйте
+              её и передайте напрямую.
+            </p>
+            <div className="mt-6 border border-rule bg-surface/40 px-4 py-3 font-mono text-[12px] leading-[1.5] text-foreground/80 break-all rounded-md">
+              {result.url}
             </div>
-          ) : (
-            /* ── Form state ────────────────────────────────── */
-            <div>
-              <p className="text-sm text-muted mb-4">
-                Контрагент откроет договор без регистрации. Он увидит ваш
-                разбор и сможет согласовать пункты или предложить правки.
-              </p>
-
-              <label className="block mb-3">
-                <span className="text-xs font-medium text-muted">
-                  Email контрагента
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="counterparty@example.com"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  autoFocus
-                />
-              </label>
-
-              <label className="block mb-3">
-                <span className="text-xs font-medium text-muted">
-                  Имя контрагента (необязательно)
-                </span>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Иван Иванов"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </label>
-
-              <label className="block mb-4">
-                <span className="text-xs font-medium text-muted">
-                  Сообщение (необязательно)
-                </span>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={3}
-                  placeholder="Направляю договор на согласование. Просьба ознакомиться с замечаниями."
-                  className="mt-1 w-full resize-y rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </label>
-
-              {error && (
-                <p className="mb-3 text-sm text-danger">{error}</p>
-              )}
-
+            <div className="mt-6 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={submit}
-                disabled={!email.trim() || submitting}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-dark disabled:opacity-50"
+                onClick={() => {
+                  void navigator.clipboard.writeText(result.url);
+                }}
+                className={buttonClass({ variant: "primary" })}
               >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Send className="h-4 w-4" aria-hidden="true" />
-                )}
-                {submitting ? "Отправляем…" : "Отправить"}
+                Скопировать ссылку
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={buttonClass({ variant: "ghost" })}
+              >
+                Закрыть
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* ── Form state ────────────────────────────────────────── */
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.28em] text-ink-quiet">
+              Прежде чем отправить
+            </p>
+            <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground">
+              Отправить второй стороне
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-ink-quiet">
+              Контрагент откроет договор без регистрации, увидит ваш разбор
+              и сможет согласовать пункты или предложить правки.
+            </p>
+
+            <div className="mt-6">
+              <label
+                htmlFor="deal-counterparty-email"
+                className="block text-[10px] uppercase tracking-[0.22em] text-ink-quiet mb-1.5"
+              >
+                Email контрагента
+              </label>
+              <input
+                id="deal-counterparty-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="counterparty@example.com"
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                className="w-full border-0 border-b border-rule bg-transparent px-0 py-2 text-foreground placeholder:text-ink-quiet/50 focus:border-primary focus:outline-none focus:ring-0 transition-colors"
+              />
+            </div>
+
+            <div className="mt-5">
+              <label
+                htmlFor="deal-counterparty-name"
+                className="block text-[10px] uppercase tracking-[0.22em] text-ink-quiet mb-1.5"
+              >
+                Имя контрагента — необязательно
+              </label>
+              <input
+                id="deal-counterparty-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Иван Иванов"
+                className="w-full border-0 border-b border-rule bg-transparent px-0 py-2 text-foreground placeholder:text-ink-quiet/50 focus:border-primary focus:outline-none focus:ring-0 transition-colors"
+              />
+            </div>
+
+            <div className="mt-5">
+              <label
+                htmlFor="deal-message"
+                className="block text-[10px] uppercase tracking-[0.22em] text-ink-quiet mb-1.5"
+              >
+                Сообщение — необязательно
+              </label>
+              <textarea
+                id="deal-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={3}
+                placeholder="Направляю договор на согласование. Просьба ознакомиться."
+                className="w-full resize-y border-0 border-b border-rule bg-transparent px-0 py-2 text-foreground placeholder:text-ink-quiet/50 focus:border-primary focus:outline-none focus:ring-0 transition-colors"
+              />
+            </div>
+
+            {error && (
+              <p className="mt-4 text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+
+            <Button
+              variant="primary"
+              loading={submitting}
+              onClick={() => void submit()}
+              disabled={!email.trim() || submitting}
+              className="mt-6 w-full"
+            >
+              {submitting ? "Отправляем…" : "Отправить"}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
