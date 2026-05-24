@@ -69,6 +69,7 @@ export type EventName =
   | "password_reset_requested"
   | "password_reset_completed"
   // Document analysis
+  | "analysis_started"
   | "analysis_completed"
   | "analysis_failed"
   | "ocr_used"

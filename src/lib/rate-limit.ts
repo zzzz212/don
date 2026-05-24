@@ -3,6 +3,8 @@ import { Redis } from "@upstash/redis";
 
 export type RateLimitEndpoint =
   | "analyze"
+  | "analyze.start"
+  | "analyze.poll"
   | "chat"
   | "generate"
   | "billing.checkout"
@@ -10,6 +12,7 @@ export type RateLimitEndpoint =
   | "workspace-chat"
   | "deals.create"
   | "deals.action"
+  | "negotiation.suggest"
   | "default";
 
 export interface RateLimitResult {
@@ -21,6 +24,11 @@ export interface RateLimitResult {
 
 const LIMITS: Record<RateLimitEndpoint, { max: number; windowSec: number }> = {
   analyze: { max: 10, windowSec: 60 },
+  // analyze.start mirrors the old analyze cap — kicking off a job is the
+  // gated action, polling is essentially unlimited.
+  "analyze.start": { max: 10, windowSec: 60 },
+  // Polling — high cap, used by every active job every 2.5s.
+  "analyze.poll": { max: 300, windowSec: 60 },
   chat: { max: 30, windowSec: 60 },
   generate: { max: 10, windowSec: 60 },
   // Checkout creates pending Payment rows + calls ЮKassa — keep loose so
@@ -39,6 +47,9 @@ const LIMITS: Record<RateLimitEndpoint, { max: number; windowSec: number }> = {
   // Deal Room clause actions (agree/disagree/comment) — participant
   // interactions can be conversational; keep loose but bounded.
   "deals.action": { max: 60, windowSec: 60 },
+  // Negotiation moves AI calls — gated but allows a few per minute as
+  // the user iterates on a single deal.
+  "negotiation.suggest": { max: 15, windowSec: 60 },
   default: { max: 60, windowSec: 60 },
 };
 
