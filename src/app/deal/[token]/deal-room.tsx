@@ -6,6 +6,10 @@ import { Loader2 } from "lucide-react";
 import { ClauseCard, type ClauseView } from "./clause-card";
 import { IdentifyModal } from "./identify-modal";
 import { StatusBar } from "./status-bar";
+import {
+  reconcileClauseStatus,
+  type ClauseActionInput,
+} from "@/lib/deal-status";
 
 interface DealView {
   id: string;
@@ -65,8 +69,57 @@ export function DealRoom({ token }: { token: string }) {
       kind: "AGREE" | "DISAGREE" | "COMMENT",
       body?: string
     ) => {
+      if (!deal || !myParticipantId) return;
+
+      // Snapshot before any mutation so we can rollback on POST failure.
+      const snapshot = deal;
+
+      // Build the synthetic action — same shape the server will produce
+      // when we refetch. Optimistic id is prefixed so it can't collide
+      // with real cuids.
+      const optimistic = {
+        id: `optimistic-${Date.now()}`,
+        kind,
+        body: body ?? null,
+        createdAt: new Date().toISOString(),
+        participant: {
+          id: myParticipantId,
+          role: myRole ?? ("RECEIVER" as const),
+          guestName: null,
+        },
+      };
+
+      // Identify SENDER + RECEIVER ids for status reconciliation.
+      const senderId =
+        deal.participants.find((p) => p.role === "SENDER")?.id ?? "";
+      const receiverId =
+        deal.participants.find((p) => p.role === "RECEIVER")?.id ?? "";
+
+      // Mutate the deal locally — append the synthetic action and
+      // recompute the clause status.
+      setDeal({
+        ...deal,
+        clauses: deal.clauses.map((c) => {
+          if (c.id !== clauseId) return c;
+          const newActions = [...c.actions, optimistic];
+          // reconcileClauseStatus takes ClauseActionInput[] (participantId,
+          // kind, createdAt). Map the rich action shape into that.
+          const reconciled: ClauseActionInput[] = newActions.map((a) => ({
+            participantId: a.participant.id,
+            kind: a.kind as ClauseActionInput["kind"],
+            createdAt: new Date(a.createdAt),
+          }));
+          return {
+            ...c,
+            actions: newActions,
+            status: reconcileClauseStatus(reconciled, senderId, receiverId),
+          };
+        }),
+      });
+
+      // POST in the background.
       const url =
-        myRole === "SENDER" && deal
+        myRole === "SENDER"
           ? `/api/deals/${deal.id}/clauses/${clauseId}/actions`
           : `/api/deals/by-token/${token}/clauses/${clauseId}/actions`;
       const res = await fetch(url, {
@@ -75,14 +128,19 @@ export function DealRoom({ token }: { token: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ kind, body }),
       });
+
       if (!res.ok) {
+        // Rollback to pre-mutation state, surface the error.
+        setDeal(snapshot);
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         setError(data?.error ?? "Не удалось сохранить действие");
         return;
       }
+
+      // Server accepted — canonicalise (timestamps, ids, etc.).
       await fetchDeal();
     },
-    [token, fetchDeal, myRole, deal]
+    [deal, myParticipantId, myRole, token, fetchDeal]
   );
 
   if (error) {
