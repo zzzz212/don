@@ -144,6 +144,12 @@ export function ClauseCard({
               )}
             </div>
           )}
+          {!clause.theirSide && clause.yourSide && (
+            <p className="italic text-[12px] leading-[1.5] text-ink-quiet/70">
+              Counter-AI не сформирован для этого договора. Запустите повторный
+              анализ, чтобы получить позицию другой стороны.
+            </p>
+          )}
         </aside>
       </div>
 
