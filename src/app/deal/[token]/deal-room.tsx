@@ -174,6 +174,21 @@ export function DealRoom({ token }: { token: string }) {
   const disputedCount = deal.clauses.filter((c) => c.status === "DISPUTED")
     .length;
 
+  // Perspective chip — communicates which side of the deal the viewer is on.
+  const me = myParticipantId
+    ? deal.participants.find((p) => p.id === myParticipantId)
+    : null;
+  const chipLabel: string | null =
+    myRole === "SENDER"
+      ? "Вы — отправитель"
+      : myRole === "RECEIVER"
+        ? me?.name
+          ? `Открыто как ${me.name} (получатель)`
+          : "Открыто как гость"
+        : null;
+  const chipTone =
+    myRole === "SENDER" ? "bg-primary" : "bg-accent"; // terracotta for sender, sage for receiver
+
   return (
     <>
       <main className="paper-grain mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-10">
@@ -182,6 +197,15 @@ export function DealRoom({ token }: { token: string }) {
           <p className="text-[11px] uppercase tracking-[0.28em] text-ink-quiet">
             Переговоры по договору
           </p>
+          {chipLabel && (
+            <p className="mt-2 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-primary">
+              <span
+                aria-hidden="true"
+                className={`inline-block h-1.5 w-1.5 rounded-full ${chipTone}`}
+              />
+              {chipLabel}
+            </p>
+          )}
           <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {deal.title}
           </h1>
