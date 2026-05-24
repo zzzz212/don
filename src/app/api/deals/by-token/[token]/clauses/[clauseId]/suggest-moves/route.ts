@@ -6,6 +6,7 @@ import { generate } from "@/lib/ai/client";
 import { MovesSchema } from "@/lib/ai/schemas/negotiation";
 import { NEGOTIATION_MOVES_PROMPT } from "@/lib/ai/prompts";
 import { pickTier } from "@/lib/ai/tier-policy";
+import { logUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,11 @@ export async function POST(
       },
       include: {
         deal: {
-          include: {
+          select: {
+            id: true,
+            orgId: true,
+            ownerId: true,
+            inviteToken: true,
             participants: { select: { id: true, role: true, guestName: true, sessionId: true } },
           },
         },
@@ -49,6 +54,14 @@ export async function POST(
     });
     if (!clause) {
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
+    }
+
+    // Server-side gate: AI moves only make sense for disputed clauses.
+    if (clause.status !== "DISPUTED") {
+      return NextResponse.json(
+        { error: "AI-предложения доступны только для спорных пунктов." },
+        { status: 422 }
+      );
     }
 
     // Verify the session is the claimed RECEIVER for this deal.
@@ -97,6 +110,10 @@ export async function POST(
       model: tier,
       maxTokens: 1500,
     });
+
+    // Anonymous receiver — log usage against the deal owner (sender) so the
+    // spend shows in /admin and is attributed to the sender's plan.
+    await logUsage(clause.deal.ownerId, clause.deal.orgId, result.usage, "chat");
 
     await prisma.dealClause.update({
       where: { id: clauseId },

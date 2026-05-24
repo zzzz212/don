@@ -63,6 +63,14 @@ export async function POST(
       return NextResponse.json({ error: "Не найдено" }, { status: 404 });
     }
 
+    // Server-side gate: AI moves only make sense for disputed clauses.
+    if (clause.status !== "DISPUTED") {
+      return NextResponse.json(
+        { error: "AI-предложения доступны только для спорных пунктов." },
+        { status: 422 }
+      );
+    }
+
     // Cache hit: return cached moves unless ?force=1.
     const forceRegenerate = request.nextUrl.searchParams.get("force") === "1";
     if (!forceRegenerate && clause.suggestedMoves) {
@@ -77,7 +85,7 @@ export async function POST(
     const effectivePlan = owner
       ? getEffectiveUserPlan(owner).plan
       : "FREE";
-    if (effectivePlan === "FREE" && !forceRegenerate) {
+    if (effectivePlan === "FREE") {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const recentCount = await prisma.aiUsage.count({
         where: {

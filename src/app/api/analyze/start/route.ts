@@ -50,23 +50,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Quota check — only check, don't consume. Worker consumes on COMPLETED.
+    // Quota check — count completed AiUsage + in-flight Analysis rows.
+    // Worker writes AiUsage during analyze (inside analyzeContract),
+    // not at COMPLETED — so a FREE user firing N starts in parallel
+    // would otherwise bypass the cap. Count PENDING/RUNNING and add
+    // those to the gate.
     const quota = await checkQuotaSafe(orgId as string, "analyze");
-    if (quota && !quota.allowed) {
-      return NextResponse.json(
-        {
-          error: `Лимит тарифа ${quota.plan} исчерпан: ${quota.used} из ${quota.limit} анализов в этом месяце.`,
-          code: "QUOTA_EXCEEDED",
-          quota: {
-            feature: quota.feature,
-            used: quota.used,
-            limit: quota.limit,
-            plan: quota.plan,
-            resetsAt: quota.resetsAt.toISOString(),
-          },
+    if (quota) {
+      const inFlight = await prisma.analysis.count({
+        where: {
+          status: { in: ["PENDING", "RUNNING"] },
+          document: { userId, orgId: orgId as string },
         },
-        { status: 402 }
-      );
+      });
+      const projectedUsed = quota.used + inFlight;
+      if (!quota.unlimited && projectedUsed >= quota.limit) {
+        return NextResponse.json(
+          {
+            error: `Лимит тарифа ${quota.plan} исчерпан: ${projectedUsed} из ${quota.limit} анализов (включая ${inFlight} в работе).`,
+            code: "QUOTA_EXCEEDED",
+            quota: {
+              feature: quota.feature,
+              used: projectedUsed,
+              limit: quota.limit,
+              plan: quota.plan,
+              resetsAt: quota.resetsAt.toISOString(),
+            },
+          },
+          { status: 402 }
+        );
+      }
     }
 
     // OCR allowed flag — for prepareDocument
