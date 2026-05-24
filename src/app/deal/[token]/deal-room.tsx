@@ -106,7 +106,7 @@ export function DealRoom({ token }: { token: string }) {
   const onAction = useCallback(
     async (
       clauseId: string,
-      kind: "AGREE" | "DISAGREE" | "COMMENT",
+      kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT",
       body?: string
     ) => {
       if (!deal || !myParticipantId) return;
@@ -323,6 +323,9 @@ export function DealRoom({ token }: { token: string }) {
               <ClauseCard
                 clause={c}
                 myParticipantId={myParticipantId}
+                myRole={myRole}
+                dealId={deal.id}
+                token={token}
                 onAction={onAction}
               />
             </motion.div>

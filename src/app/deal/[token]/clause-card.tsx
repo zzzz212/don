@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, X, MessageSquare } from "lucide-react";
 import { buttonClass } from "@/components/button";
+import { NegotiationMoves } from "./negotiation-moves";
 
 export interface ClauseView {
   id: string;
@@ -57,13 +58,19 @@ function clauseLabel(ord: number): string {
 export function ClauseCard({
   clause,
   myParticipantId,
+  myRole,
+  dealId,
+  token,
   onAction,
 }: {
   clause: ClauseView;
   myParticipantId: string | null;
+  myRole: "SENDER" | "RECEIVER" | null;
+  dealId: string | null;
+  token: string;
   onAction: (
     clauseId: string,
-    kind: "AGREE" | "DISAGREE" | "COMMENT",
+    kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT",
     body?: string
   ) => Promise<void>;
 }) {
@@ -249,6 +256,21 @@ export function ClauseCard({
             </div>
           )}
         </div>
+      )}
+      {clause.status === "DISPUTED" && myParticipantId && myRole && (
+        <NegotiationMoves
+          dealId={dealId}
+          token={token}
+          clauseId={clause.id}
+          myRole={myRole}
+          onApplyAccept={() => void onAction(clause.id, "AGREE")}
+          onApplyCompromise={(proposedText) =>
+            void onAction(clause.id, "PROPOSE_EDIT", proposedText)
+          }
+          onApplyStand={(rationale) =>
+            void onAction(clause.id, "COMMENT", rationale)
+          }
+        />
       )}
     </article>
   );
