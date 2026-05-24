@@ -161,9 +161,11 @@ export function ClauseCard({
               <button
                 type="button"
                 onClick={() => void onAction(clause.id, "AGREE")}
+                disabled={lastVote === "AGREE"}
+                aria-pressed={lastVote === "AGREE"}
                 className={
                   lastVote === "AGREE"
-                    ? buttonClass({ variant: "primary", size: "sm" })
+                    ? `${buttonClass({ variant: "primary", size: "sm" })} cursor-default opacity-90`
                     : buttonClass({ variant: "ghost", size: "sm" })
                 }
               >
@@ -173,9 +175,11 @@ export function ClauseCard({
               <button
                 type="button"
                 onClick={() => void onAction(clause.id, "DISAGREE")}
+                disabled={lastVote === "DISAGREE"}
+                aria-pressed={lastVote === "DISAGREE"}
                 className={
                   lastVote === "DISAGREE"
-                    ? buttonClass({ variant: "primary", size: "sm" })
+                    ? `${buttonClass({ variant: "primary", size: "sm" })} cursor-default opacity-90`
                     : buttonClass({ variant: "ghost", size: "sm" })
                 }
               >
