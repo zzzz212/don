@@ -1040,6 +1040,7 @@ auth-страницах. Это не «сайт с навбаром», это п
 | `ADMIN_SEED_KEY` | Защита `/api/admin/*` | Default `dev-seed-key` (опасно в prod) |
 | `CRON_SECRET` | Защита `/api/cron/billing-reminders` + `/api/cron/restart-stuck-analyses` | В prod без него крон 401; в dev/preview доступ открыт для curl |
 | `INTERNAL_SECRET` | **Sprint 15A**. Защита `/api/analyze/run` (background worker endpoint). Self-invoke в `kickOffBackgroundAnalyze` шлёт `x-internal-token: ${INTERNAL_SECRET}`. **Production MUST set** — без него worker возвращает 503, analyses зависают PENDING, cron через 30 мин помечает FAILED. Generate: `openssl rand -hex 32` или (Windows PowerShell) `$bytes = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); ($bytes \| ForEach-Object { $_.ToString('x2') }) -join ''`. Scope: Production + Preview. |
+| `INTERNAL_BASE_URL` | **Sprint 15A.1**. (опц.) Override base URL for self-invoke в `kickOffBackgroundAnalyze`. Default — `BRAND.publicUrl` (`https://yakso.ru`). На preview deploys полезно установить в preview URL (e.g. `https://don-<hash>-zzzz212-projects.vercel.app`), иначе self-invoke улетает на prod с local-only `analysisId` → wasted request. Без unset на prod — фоллбэк работает корректно. | Self-invoke в dev/preview уходит на prod URL, PENDING висит до cron'а |
 
 ⚠️ **Все секреты должны быть проротейтены** если они когда-либо засветились
 в чате.

@@ -24,7 +24,11 @@ export async function kickOffBackgroundAnalyze(analysisId: string): Promise<void
     return;
   }
 
-  const url = `${BRAND.publicUrl}/api/analyze/run`;
+  // INTERNAL_BASE_URL override exists so dev/preview deploys don't
+  // accidentally self-invoke against production. If unset (typical
+  // prod), falls back to BRAND.publicUrl.
+  const baseUrl = process.env.INTERNAL_BASE_URL ?? BRAND.publicUrl;
+  const url = `${baseUrl}/api/analyze/run`;
 
   for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
     if (attempt > 0) {
