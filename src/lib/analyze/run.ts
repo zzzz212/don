@@ -14,6 +14,18 @@ import { ensureActiveOrg } from "@/lib/org";
 import { getEffectiveUserPlan } from "@/lib/plans";
 import { pickStageFromProgress } from "./job";
 
+/**
+ * Thrown from inside a checkpoint when the Analysis row has been
+ * flipped to CANCELLED by the user. Lets the orchestrator short-circuit
+ * cleanly without the catch block having to string-match a sentinel.
+ */
+export class CancelledByUser extends Error {
+  constructor() {
+    super("Analysis cancelled by user");
+    this.name = "CancelledByUser";
+  }
+}
+
 interface ProgressCheckpoint {
   progress: number;
   stage: string;
@@ -95,7 +107,7 @@ export async function runAnalyzeJob(
         select: { status: true },
       });
       if (current?.status === "CANCELLED") {
-        throw new Error("__CANCELLED__");
+        throw new CancelledByUser();
       }
       await prisma.analysis.update({
         where: { id: analysisId },
@@ -175,12 +187,12 @@ export async function runAnalyzeJob(
 
     return { claimed: true };
   } catch (err) {
-    const msg = (err as Error).message;
-    if (msg === "__CANCELLED__") {
+    if (err instanceof CancelledByUser) {
       // User cancelled mid-flight; status is already CANCELLED, just exit.
       console.info(`[analyze.run] ${analysisId} cancelled by user`);
       return { claimed: true };
     }
+    const msg = (err as Error).message;
     await markFailed(analysisId, msg || "Неизвестная ошибка");
     await reportError(err, {
       op: "analyze.run",
