@@ -56,38 +56,44 @@ export async function generate<T extends z.ZodTypeAny>(
   const systemWithSchema = system.text + schemaHint;
 
   try {
-    const response = await client.chat.completions.create({
-      model: modelName,
-      max_tokens: opts.maxTokens ?? 4096,
-      temperature: opts.temperature ?? 0.1,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemWithSchema },
-        { role: "user", content: opts.prompt },
-      ],
-    });
+    const response = await client.chat.completions.create(
+      {
+        model: modelName,
+        max_tokens: opts.maxTokens ?? 4096,
+        temperature: opts.temperature ?? 0.1,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemWithSchema },
+          { role: "user", content: opts.prompt },
+        ],
+      },
+      { signal: opts.signal }
+    );
 
     const text = response.choices[0]?.message?.content ?? "";
     let data = tryParse(text, opts.schema);
 
     if (data === null) {
       // One retry with stricter instruction
-      const retryResponse = await client.chat.completions.create({
-        model: modelName,
-        max_tokens: opts.maxTokens ?? 4096,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemWithSchema },
-          { role: "user", content: opts.prompt },
-          { role: "assistant", content: text },
-          {
-            role: "user",
-            content:
-              "Предыдущий ответ не соответствует схеме. Выведи ТОЛЬКО валидный JSON по указанной схеме без markdown.",
-          },
-        ],
-      });
+      const retryResponse = await client.chat.completions.create(
+        {
+          model: modelName,
+          max_tokens: opts.maxTokens ?? 4096,
+          temperature: 0,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemWithSchema },
+            { role: "user", content: opts.prompt },
+            { role: "assistant", content: text },
+            {
+              role: "user",
+              content:
+                "Предыдущий ответ не соответствует схеме. Выведи ТОЛЬКО валидный JSON по указанной схеме без markdown.",
+            },
+          ],
+        },
+        { signal: opts.signal }
+      );
 
       const retryText = retryResponse.choices[0]?.message?.content ?? "";
       data = tryParse(retryText, opts.schema);
@@ -121,15 +127,18 @@ export async function generateText(
   const start = Date.now();
 
   try {
-    const response = await client.chat.completions.create({
-      model: modelName,
-      max_tokens: opts.maxTokens ?? 4096,
-      temperature: opts.temperature ?? 0.1,
-      messages: [
-        { role: "system", content: system.text },
-        { role: "user", content: opts.prompt },
-      ],
-    });
+    const response = await client.chat.completions.create(
+      {
+        model: modelName,
+        max_tokens: opts.maxTokens ?? 4096,
+        temperature: opts.temperature ?? 0.1,
+        messages: [
+          { role: "system", content: system.text },
+          { role: "user", content: opts.prompt },
+        ],
+      },
+      { signal: opts.signal }
+    );
 
     return {
       data: (response.choices[0]?.message?.content ?? "") as never,
@@ -147,15 +156,18 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
   const start = Date.now();
 
   try {
-    const response = await client.chat.completions.create({
-      model: modelName,
-      max_tokens: opts.maxTokens ?? 2048,
-      temperature: opts.temperature ?? 0.3,
-      messages: [
-        { role: "system", content: system.text },
-        ...opts.messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
-    });
+    const response = await client.chat.completions.create(
+      {
+        model: modelName,
+        max_tokens: opts.maxTokens ?? 2048,
+        temperature: opts.temperature ?? 0.3,
+        messages: [
+          { role: "system", content: system.text },
+          ...opts.messages.map((m) => ({ role: m.role, content: m.content })),
+        ],
+      },
+      { signal: opts.signal }
+    );
 
     return {
       text: response.choices[0]?.message?.content ?? "",
