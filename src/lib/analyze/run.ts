@@ -14,6 +14,18 @@ import { ensureActiveOrg } from "@/lib/org";
 import { getEffectiveUserPlan } from "@/lib/plans";
 import { pickStageFromProgress } from "./job";
 
+/**
+ * Thrown from inside a checkpoint when the Analysis row has been
+ * flipped to CANCELLED by the user. Lets the orchestrator short-circuit
+ * cleanly without the catch block having to string-match a sentinel.
+ */
+export class CancelledByUser extends Error {
+  constructor() {
+    super("Analysis cancelled by user");
+    this.name = "CancelledByUser";
+  }
+}
+
 interface ProgressCheckpoint {
   progress: number;
   stage: string;
@@ -73,18 +85,38 @@ export async function runAnalyzeJob(
     return { claimed: true };
   }
 
-  try {
-    // 3. Resolve plan tier (for analyze tier selector).
-    const orgId =
-      document.orgId ?? (await ensureActiveOrg(document.userId));
-    const owner = await prisma.user.findUnique({
-      where: { id: document.userId },
-      select: { plan: true, trialEndsAt: true },
-    });
-    const effectivePlan = owner
-      ? getEffectiveUserPlan(owner).plan
-      : "FREE";
+  // 3. Resolve plan tier (for analyze tier selector).
+  const orgId =
+    document.orgId ?? (await ensureActiveOrg(document.userId));
+  const owner = await prisma.user.findUnique({
+    where: { id: document.userId },
+    select: { plan: true, trialEndsAt: true },
+  });
+  const effectivePlan = owner
+    ? getEffectiveUserPlan(owner).plan
+    : "FREE";
 
+  // AbortController so a CANCELLED row can preempt the in-flight
+  // analyzeContract call — checkpoint-only cancellation lets up to
+  // ~150s of Anthropic tokens drain after the user clicks cancel.
+  const controller = new AbortController();
+  const cancelPoll = setInterval(() => {
+    void prisma.analysis
+      .findUnique({
+        where: { id: analysisId },
+        select: { status: true },
+      })
+      .then((current) => {
+        if (current?.status === "CANCELLED" && !controller.signal.aborted) {
+          controller.abort();
+        }
+      })
+      .catch(() => {
+        // Transient DB error — next tick will retry.
+      });
+  }, 2_000);
+
+  try {
     // 4. Progress checkpoint helper. Each call writes status to DB +
     //    checks if the row was cancelled. If cancelled, throws to exit.
     const checkpoint = async (cp: ProgressCheckpoint): Promise<void> => {
@@ -95,7 +127,7 @@ export async function runAnalyzeJob(
         select: { status: true },
       });
       if (current?.status === "CANCELLED") {
-        throw new Error("__CANCELLED__");
+        throw new CancelledByUser();
       }
       await prisma.analysis.update({
         where: { id: analysisId },
@@ -112,7 +144,8 @@ export async function runAnalyzeJob(
       document.rawText,
       document.userId,
       orgId,
-      effectivePlan
+      effectivePlan,
+      controller.signal
     );
 
     // Stage 3: synthesis happened inside analyzeContract for multi-pass;
@@ -175,18 +208,20 @@ export async function runAnalyzeJob(
 
     return { claimed: true };
   } catch (err) {
-    const msg = (err as Error).message;
-    if (msg === "__CANCELLED__") {
+    if (err instanceof CancelledByUser || controller.signal.aborted) {
       // User cancelled mid-flight; status is already CANCELLED, just exit.
       console.info(`[analyze.run] ${analysisId} cancelled by user`);
       return { claimed: true };
     }
+    const msg = (err as Error).message;
     await markFailed(analysisId, msg || "Неизвестная ошибка");
     await reportError(err, {
       op: "analyze.run",
       extra: { analysisId },
     });
     return { claimed: true };
+  } finally {
+    clearInterval(cancelPoll);
   }
 }
 

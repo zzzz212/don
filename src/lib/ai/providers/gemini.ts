@@ -48,6 +48,32 @@ async function getModel(modelName: string, system: string) {
   });
 }
 
+// Gemini SDK's generateContent has no built-in AbortSignal support. We
+// race the request against an abort event so the caller can move on,
+// even though the underlying HTTP call keeps running until the SDK
+// resolves on its own. That's good enough for the cancel UX: the
+// runAnalyzeJob doesn't await the orphan promise.
+function withAbort<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return p;
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    p.then(
+      (v) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(v);
+      },
+      (e) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(e);
+      }
+    );
+  });
+}
+
 export async function generate<T extends z.ZodTypeAny>(
   opts: GenerateOptions<T> & { schema: T }
 ): Promise<GenerateResult<T>> {
@@ -57,16 +83,19 @@ export async function generate<T extends z.ZodTypeAny>(
 
   try {
     const model = await getModel(modelName, system.text);
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
-      generationConfig: {
-        temperature: opts.temperature ?? 0.1,
-        maxOutputTokens: opts.maxTokens ?? 4096,
-        responseMimeType: "application/json",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        responseSchema: toGeminiSchema(opts.schema) as any,
-      },
-    });
+    const result = await withAbort(
+      model.generateContent({
+        contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+        generationConfig: {
+          temperature: opts.temperature ?? 0.1,
+          maxOutputTokens: opts.maxTokens ?? 4096,
+          responseMimeType: "application/json",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          responseSchema: toGeminiSchema(opts.schema) as any,
+        },
+      }),
+      opts.signal
+    );
 
     const text = result.response.text();
     const parsed = JSON.parse(text);
@@ -90,13 +119,16 @@ export async function generateText(
 
   try {
     const model = await getModel(modelName, system.text);
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
-      generationConfig: {
-        temperature: opts.temperature ?? 0.1,
-        maxOutputTokens: opts.maxTokens ?? 4096,
-      },
-    });
+    const result = await withAbort(
+      model.generateContent({
+        contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+        generationConfig: {
+          temperature: opts.temperature ?? 0.1,
+          maxOutputTokens: opts.maxTokens ?? 4096,
+        },
+      }),
+      opts.signal
+    );
 
     return {
       data: result.response.text() as never,

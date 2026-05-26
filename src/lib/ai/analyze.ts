@@ -39,7 +39,11 @@ export async function analyzeContract(
   /** Effective plan of the workspace owner. Drives the tier selector
    *  via tier-policy.ts — FREE/PRO get Sonnet, BUSINESS escalates to
    *  Opus on this step. Null = treat as FREE (safer for cost). */
-  plan: string | null | undefined = null
+  plan: string | null | undefined = null,
+  /** Optional abort signal — propagated to every underlying AI call
+   *  so cancellation cuts the in-flight provider request short
+   *  instead of waiting for the next runAnalyzeJob checkpoint. */
+  signal?: AbortSignal
 ): Promise<AnalysisResult> {
   if (getActiveProvider() === "demo") {
     return generateDemoAnalysis(contractText);
@@ -48,8 +52,8 @@ export async function analyzeContract(
   const tier = pickTier("analyze", plan);
 
   const result = isShortDocument(contractText)
-    ? await analyzeSinglePass(contractText, userId, orgId, tier)
-    : await analyzeMultiPass(contractText, userId, orgId, tier);
+    ? await analyzeSinglePass(contractText, userId, orgId, tier, signal)
+    : await analyzeMultiPass(contractText, userId, orgId, tier, signal);
 
   // Snap each risk's quote to the contract's exact wording where it
   // differs only in whitespace — the report's apply-fix matches the
@@ -64,7 +68,8 @@ async function analyzeSinglePass(
   text: string,
   userId: string | null,
   orgId: string | null,
-  tier: "fast" | "smart" | "deep"
+  tier: "fast" | "smart" | "deep",
+  signal?: AbortSignal
 ): Promise<AnalysisResult> {
   // 8192 because the schema now carries verdict + verdictReason on top
   // of the original risks/missingClauses/checklist arrays, AND the
@@ -80,6 +85,7 @@ async function analyzeSinglePass(
     model: tier,
     maxTokens: 8192,
     temperature: 0.1,
+    signal,
   });
 
   await logUsage(userId, orgId, result.usage, "analyze");
@@ -92,7 +98,8 @@ async function analyzeMultiPass(
   text: string,
   userId: string | null,
   orgId: string | null,
-  tier: "fast" | "smart" | "deep"
+  tier: "fast" | "smart" | "deep",
+  signal?: AbortSignal
 ): Promise<AnalysisResult> {
   const chunks = chunkContract(text);
 
@@ -101,13 +108,13 @@ async function analyzeMultiPass(
   // even when the top-level tier is "deep" — Opus on every chunk would
   // be wildly expensive and the marginal accuracy gain is tiny on
   // single-chunk extraction. The reduce step gets the higher tier.
-  const chunkRisks = await mapChunks(chunks, userId, orgId);
+  const chunkRisks = await mapChunks(chunks, userId, orgId, signal);
 
   // Flatten + dedup; sort by severity.
   const allRisks = dedupRisks(chunkRisks).sort(byRiskSeverity);
 
   // Reduce phase: ask AI to fill structural fields based on preamble + risks.
-  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId, tier);
+  const synthesis = await synthesizeStructure(text, allRisks, userId, orgId, tier, signal);
 
   return {
     ...synthesis,
@@ -118,14 +125,15 @@ async function analyzeMultiPass(
 async function mapChunks(
   chunks: Chunk[],
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  signal?: AbortSignal
 ): Promise<AnalysisRisk[]> {
   const out: AnalysisRisk[] = [];
 
   for (let i = 0; i < chunks.length; i += MAP_CONCURRENCY) {
     const batch = chunks.slice(i, i + MAP_CONCURRENCY);
     const settled = await Promise.allSettled(
-      batch.map((c) => extractRisksForChunk(c, userId, orgId))
+      batch.map((c) => extractRisksForChunk(c, userId, orgId, signal))
     );
 
     for (const r of settled) {
@@ -143,7 +151,8 @@ async function mapChunks(
 async function extractRisksForChunk(
   chunk: Chunk,
   userId: string | null,
-  orgId: string | null
+  orgId: string | null,
+  signal?: AbortSignal
 ): Promise<AnalysisRisk[]> {
   // 4096 instead of 2048: with the expanded prompt (14 traps + worked
   // example) a chunk that genuinely contains 4-5 risks blows past 2k
@@ -157,6 +166,7 @@ async function extractRisksForChunk(
     model: "smart",
     maxTokens: 4096,
     temperature: 0.1,
+    signal,
   });
 
   await logUsage(userId, orgId, result.usage, "analyze");
@@ -168,7 +178,8 @@ async function synthesizeStructure(
   risks: AnalysisRisk[],
   userId: string | null,
   orgId: string | null,
-  tier: "fast" | "smart" | "deep"
+  tier: "fast" | "smart" | "deep",
+  signal?: AbortSignal
 ) {
   const preamble = fullText.slice(0, PREAMBLE_CHARS);
   const counts = {
@@ -217,6 +228,7 @@ ${riskList || "(рисков не найдено)"}
       // 2x headroom against truncation on Sonnet.
       maxTokens: 4096,
       temperature: 0.1,
+      signal,
     });
 
     await logUsage(userId, orgId, result.usage, "analyze");

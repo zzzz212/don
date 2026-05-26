@@ -32,6 +32,8 @@ export interface GenerateOptions<T extends z.ZodTypeAny = z.ZodTypeAny> {
   model?: ModelTier;
   temperature?: number;
   maxTokens?: number;
+  /** Optional abort signal — when fired, the upstream AI request is cancelled. */
+  signal?: AbortSignal;
 }
 
 export interface ChatOptions {

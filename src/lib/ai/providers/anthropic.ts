@@ -93,16 +93,19 @@ export async function generate<T extends z.ZodTypeAny>(
     : system.text;
 
   try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: opts.maxTokens ?? 4096,
-      // Anthropic's current models reject an explicit `temperature`
-      // (400 invalid_request_error) — omit it; the model default applies.
-      system: systemBlocks,
-      tools: [tool],
-      tool_choice: { type: "tool", name: TOOL_NAME },
-      messages: [{ role: "user", content: opts.prompt }],
-    });
+    const response = await client.messages.create(
+      {
+        model,
+        max_tokens: opts.maxTokens ?? 4096,
+        // Anthropic's current models reject an explicit `temperature`
+        // (400 invalid_request_error) — omit it; the model default applies.
+        system: systemBlocks,
+        tools: [tool],
+        tool_choice: { type: "tool", name: TOOL_NAME },
+        messages: [{ role: "user", content: opts.prompt }],
+      },
+      { signal: opts.signal }
+    );
 
     const block = response.content.find((c) => c.type === "tool_use");
     if (!block || block.type !== "tool_use") {
@@ -175,13 +178,16 @@ export async function generateText(
     : system.text;
 
   try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: opts.maxTokens ?? 4096,
-      // temperature omitted — rejected by Anthropic's current models.
-      system: systemBlocks,
-      messages: [{ role: "user", content: opts.prompt }],
-    });
+    const response = await client.messages.create(
+      {
+        model,
+        max_tokens: opts.maxTokens ?? 4096,
+        // temperature omitted — rejected by Anthropic's current models.
+        system: systemBlocks,
+        messages: [{ role: "user", content: opts.prompt }],
+      },
+      { signal: opts.signal }
+    );
 
     const text = response.content
       .filter((c) => c.type === "text")
@@ -251,13 +257,16 @@ export async function chat(opts: ChatOptions): Promise<ChatResult> {
     : system.text;
 
   try {
-    const response = await client.messages.create({
-      model,
-      max_tokens: opts.maxTokens ?? 2048,
-      // temperature omitted — rejected by Anthropic's current models.
-      system: systemBlocks,
-      messages: buildCachedMessages(opts.messages),
-    });
+    const response = await client.messages.create(
+      {
+        model,
+        max_tokens: opts.maxTokens ?? 2048,
+        // temperature omitted — rejected by Anthropic's current models.
+        system: systemBlocks,
+        messages: buildCachedMessages(opts.messages),
+      },
+      { signal: opts.signal }
+    );
 
     const text = response.content
       .filter((c) => c.type === "text")
