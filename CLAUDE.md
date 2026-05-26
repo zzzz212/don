@@ -8,7 +8,8 @@
 ```
 Привет. Я работаю над Яксо — Russian legal-tech SaaS на Next.js 16 +
 Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
-активная ветка `claude/sprint-8-ui-polish`, мерж в `main` через PR #7.
+активная ветка `claude/sprint-8-ui-polish`, мерж в `main` через PR #10
+(PR #7 — Sprints 11-14 core — смержен 2026-05-23).
 Полная картина — в CLAUDE.md в корне репо.
 
 ПЕРВОЕ ДЕЙСТВИЕ В НОВОЙ СЕССИИ
@@ -44,13 +45,13 @@ Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
      invoke pattern, INTERNAL_SECRET ОБЯЗАТЕЛЕН в prod env
    – Бизнес-блокеры запуска (ЮKassa, домен на Vercel, Resend domain,
      счёт ИП, Роскомнадзор)
-   – Sub-projects status: Sub-A (Sprint 15A) ✅ done в PR #7.
-     Sub-B (real two-sided Counter-AI + DECLINED/EXPIRED + audit-trail
-     PDF при AGREED) и Sub-C (inbox dashboard + sidebar 6→3 + realtime
-     presence) — впереди. Sprint 15A.1 — 5 deferred fixes из final
-     review (cancellation cooperative, sentinel collision, no rate-
-     limit on /active, INTERNAL_BASE_URL dev/prod isolation, ICS
-     line folding).
+   – Sub-projects status: PR #7 (Sprints 11-14 core) смержен 2026-05-23.
+     PR #10 в review (Sprint 14 design completion + Sprint 15A — 34
+     коммита поверх уже-merged PR #7). PR #8 в review (Sprint 15A.1 —
+     5 deferred fixes; base = sprint-8-ui-polish, ребейзнется на main
+     после PR #10). PR #9 draft (Sub-B spec — real two-sided Counter-AI
+     + DECLINED/EXPIRED + audit-trail PDF при AGREED). Sub-C (inbox
+     dashboard + sidebar 6→3 + realtime presence) — впереди.
    – Что я должен сделать на стороне ЮKassa/Vercel/Resend/Neon если
      ты затронешь критичный путь
 
@@ -320,7 +321,7 @@ async analyze + parallel + AI negotiation moves + ICS calendar export»
 |---|---|
 | **Production** | https://yakso.ru |
 | **Repo** | https://github.com/zzzz212/don |
-| **Active branch** | `claude/sprint-8-ui-polish` (мерж в `main` через PR #7) |
+| **Active branch** | `claude/sprint-8-ui-polish` (мерж в `main` через PR #10; PR #7 уже смержен 2026-05-23) |
 | **Main branch** | `claude/complete-previous-tasks-rzcSp` (та, что зовём «main») |
 | **Stack** | Next.js 16 / React 19 / TypeScript / Prisma + Neon Postgres (pgvector) / NextAuth v5 beta.30 / Tailwind 4 (CSS-first + @custom-variant) / Geist + Source Serif 4 / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus) с prompt caching |
 | **Тесты** | 417 unit-тестов через vitest (`npm test`) |
@@ -1790,8 +1791,9 @@ add-on usage pricing.
 
 ### Sprint 15A — Durable Analyze + Parallel + 2 Killer Features (последний заход)
 
-PR #7, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено.
-Pushed как range `cef8b32..154402a` (19 коммитов на remote).
+PR #10, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено
+(пакет с Sprint 14 design completion и Sprint 15A, поверх уже-merged
+PR #7). Pushed как range `cef8b32..154402a` (19 коммитов на remote).
 
 ```
 154402a Sprint 15A final-review fixes: quota race, force-bypass, anonymous spend, status gate
@@ -1855,7 +1857,7 @@ Manual smoke deferred до preview deploy с установленным INTERNAL
 
 ### Sprint 14 design completion — «editorial alignment + Counter-AI restore + UX»
 
-PR #7, ветка `claude/sprint-8-ui-polish`. Range `8f08383..cef8b32`,
+PR #10, ветка `claude/sprint-8-ui-polish`. Range `8f08383..cef8b32`,
 12 коммитов реализации (через `subagent-driven-development`).
 
 ```
@@ -1887,7 +1889,8 @@ d0516e5 Drop "Sprint 14" eyebrow leaks and false-advertising audit-trail bullet
 
 ### Sprint 14 + design polish — «Deal Room + editorial» (заход до того)
 
-PR #7, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено.
+PR #10 (часть пакета), ветка `claude/sprint-8-ui-polish`, в `main` НЕ
+смержено. (Sprint 14 core отдельно — был смержен в PR #7 2026-05-23.)
 
 ```
 8b96a1f Polish round 2: motion-stagger clauses, refresh empty-states, /report editorial touches, landing Deal Room band
@@ -1984,7 +1987,7 @@ Business), `/sample-report` → `/sample-deal`.
 
 ### Sprint 13 — «тёплый минимализм»
 
-PR #7, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено.
+PR #7 (смержен 2026-05-23), ветка `claude/sprint-8-ui-polish`.
 
 ```
 7b57d64 Redesign 2E: brand chrome and email under the new palette
@@ -2273,8 +2276,10 @@ bdc0e4c Hard-reload after workspace switch
   ?force=1 bypass, anonymous unmetered AI) + 1 important (no DISPUTED
   gate) — fix'нуто в `154402a`. Остальные 5 → Sprint 15A.1. **18+1
   коммитов** (1 spec + 1 plan + 16 impl + 1 fix), `tsc` / **437 тестов**
-  (417 baseline + 20 new) / `next build` зелёные. PR #7 НЕ смержен.
-  **INTERNAL_SECRET ОБЯЗАТЕЛЕН в Vercel envs до deploy**.
+  (417 baseline + 20 new) / `next build` зелёные. PR #10 НЕ смержен
+  (PR #7 — Sprints 11-14 core — смержен 2026-05-23; Sprint 14 design
+  completion + Sprint 15A пошли в отдельный PR #10).
+  **INTERNAL_SECRET ✅ выставлен в Production (2026-05-26)**.
 - **Sprint 14 design completion** (закрыт, 2026-05-24) — закрыло 6
   gap'ов после Sprint 14 + 2 design polish раундов: SendAsDeal
   editorial rewrite, Dashboard Active Deals editorial + lastSeenAt +
@@ -2325,15 +2330,11 @@ bdc0e4c Hard-reload after workspace switch
 
 ### Что осталось user-side до запуска
 
-- **🚨 ПЕРЕД merge PR #7 (Sprint 15A)** — выставить `INTERNAL_SECRET`
-  в Vercel envs (Production + Preview). Без него background analyze
-  worker возвращает 503, анализы зависают PENDING, cron через 30 мин
-  помечает FAILED. Generate: `openssl rand -hex 32` (Mac/Linux) или
-  Windows PowerShell:
-  `$bytes = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); ($bytes | ForEach-Object { $_.ToString('x2') }) -join ''`
-- **Manual smoke на preview deploy** — durable analyze (reload mid-
-  analysis, parallel jobs, cancel), schema migration check (см. SQL в
-  CLAUDE.md дебаг-разделе), AI negotiation moves на DISPUTED clause,
+- **`INTERNAL_SECRET` ✅ выставлен в Production** (2026-05-26).
+  Опционально — set в Preview env тоже для cleaner preview smoke.
+- **Manual smoke на preview deploy PR #10** — durable analyze (reload
+  mid-analysis, parallel jobs, cancel), schema migration check (см. SQL
+  в CLAUDE.md дебаг-разделе), AI negotiation moves на DISPUTED clause,
   ICS download в Google Calendar.
 - **Запуск** — ИП ✅ зарегистрирован. Осталось:
   - ЮKassa: получить `YOOKASSA_SHOP_ID` / `_SECRET_KEY`, включить
@@ -2348,9 +2349,15 @@ bdc0e4c Hard-reload after workspace switch
   - Открыть расчётный счёт ИП → заполнить `OPERATOR.bank*` (раскроется
     банковский блок оферты).
   - Каналы привлечения (см. roadmap, Неделя 3).
-- **PR #7** (база — `claude/complete-previous-tasks-rzcSp`, это и есть
-  «main») открыт, в `main` НЕ смержен. После merge — auto-deploy на
-  Vercel + `db-push-with-retry.mjs` применит Sprint 15A schema migration.
+- **PR #10** (Sprint 14 design completion + Sprint 15A, база —
+  `claude/complete-previous-tasks-rzcSp` = «main») открыт, в `main` НЕ
+  смержен. После merge — auto-deploy на Vercel + `db-push-with-retry.mjs`
+  применит Sprint 15A schema migration.
+- **PR #8** (Sprint 15A.1, 5 deferred fixes, база = `sprint-8-ui-polish`)
+  открыт. Ребейзнется на main после merge'а PR #10.
+- **PR #9 draft** (Sub-B spec — DECLINED/EXPIRED + two-sided Counter-AI
+  + audit-trail PDF при AGREED). Ожидает review user'а — 5 open
+  questions в спеке.
 
 ### Операционные напоминания
 
