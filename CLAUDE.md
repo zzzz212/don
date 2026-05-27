@@ -27,7 +27,8 @@ Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
    – Что построено (top-level overview одним абзацем-конспектом —
      ВКЛЮЧАЯ Deal Room из Sprint 14, editorial design system из
      Sprint 13, durable async analyze + parallel + AI negotiation
-     moves + ICS calendar export из Sprint 15A)
+     moves + ICS calendar export из Sprint 15A, preemptive cancel
+     + ICS line folding из Sprint 15A.1)
    – Минимум 8 критичных foot-guns:
        • #47 — Opus tool_use wrapping (`record_response` tool + defensive unwrap)
        • #58 — AiUsage пишется DURING analyze не at COMPLETED → parallel-start race
@@ -42,23 +43,26 @@ Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
    – User-scoped план (НЕ Organization.plan)
    – Durable async analyze: 5 статусов (PENDING/RUNNING/COMPLETED/
      FAILED/CANCELLED), atomic claim через updateMany, Vercel self-
-     invoke pattern, INTERNAL_SECRET ОБЯЗАТЕЛЕН в prod env
+     invoke pattern, INTERNAL_SECRET ✅ выставлен в Production
+     2026-05-26. Cancel preemptive через AbortController (Sprint 15A.1).
    – Бизнес-блокеры запуска (ЮKassa, домен на Vercel, Resend domain,
      счёт ИП, Роскомнадзор)
-   – Sub-projects status: PR #7 (Sprints 11-14 core) смержен 2026-05-23.
-     PR #10 в review (Sprint 14 design completion + Sprint 15A — 34
-     коммита поверх уже-merged PR #7). PR #8 в review (Sprint 15A.1 —
-     5 deferred fixes; base = sprint-8-ui-polish, ребейзнется на main
-     после PR #10). PR #9 draft (Sub-B spec — real two-sided Counter-AI
-     + DECLINED/EXPIRED + audit-trail PDF при AGREED). Sub-C (inbox
-     dashboard + sidebar 6→3 + realtime presence) — впереди.
+   – PR landscape (2026-05-28):
+       • PR #7 ✅ смержен 2026-05-23 (Sprints 11-14 core)
+       • PR #10 OPEN — Sprint 14 design completion + Sprint 15A
+         (34 коммита на `sprint-8-ui-polish` → main)
+       • PR #8 OPEN — Sprint 15A.1 5 final-review fixes (base =
+         `sprint-8-ui-polish`, ребейзнется после #10)
+       • PR #9 DRAFT — Sub-B spec (ждёт ответов на 5 open
+         questions перед раскрытием в B1/B2/B3 implementation plans)
+       • Sub-C (inbox dashboard + sidebar 6→3 + realtime presence)
+         — впереди после Sub-B
    – Что я должен сделать на стороне ЮKassa/Vercel/Resend/Neon если
      ты затронешь критичный путь
 
 3. Спроси «что делаем сегодня». Если конкретики нет — следующий шаг
-   по бизнес-roadmap в CLAUDE.md (приоритет: подключить домен к
-   Vercel + установить INTERNAL_SECRET в prod env + завершить Sub-A
-   manual smoke на preview).
+   по бизнес-roadmap в CLAUDE.md (приоритет: merge PR #10 → merge
+   PR #8 → ответы на Sub-B open questions → подключить домен к Vercel).
 
 ═══ ПРАВИЛА РАБОТЫ В ЭТОЙ СЕССИИ ═══
 
@@ -291,9 +295,11 @@ NEXT.JS 16 (НЕ та Next.js что помнит твоё обучение):
 
 # Яксо — состояние проекта
 
-**Дата последнего обновления**: 2026-05-24 (после Sprint 15A «Durable
-async analyze + parallel + AI negotiation moves + ICS calendar export»
-— ~38 коммитов поверх Sprint 14). Хронология последних трёх заходов:
+**Дата последнего обновления**: 2026-05-28 (PR-картина: PR #7 смержен
+2026-05-23 = Sprints 11-14 core; PR #10 OPEN = Sprint 14 design
+completion + Sprint 15A на 34 коммита; PR #8 OPEN = Sprint 15A.1
+final-review fixes на 7 коммитов; PR #9 DRAFT = Sub-B spec Deal Room
+evolution). Хронология последних четырёх заходов:
 
 - **Sprint 14 (Deal Room MVP)** — Network-first pivot. 16 коммитов
   разработки + 4 hot-fix под Opus tool_use wrapping (foot-gun #47)
@@ -307,15 +313,33 @@ async analyze + parallel + AI negotiation moves + ICS calendar export»
   optimistic UI на agree/disagree, perspective chip в DealRoom header,
   loading skeleton (ClauseSkeleton), specific 404/429 error states,
   misclick guard.
-- **Sprint 15A (текущий заход)** — 18 коммитов + 1 fixup. Schema
-  migration (AnalysisStatus enum + 6 fields + DealClause.suggestedMoves),
-  durable async analyze (`/api/analyze/{start,run,[id]/status,[id]/result,[id]/cancel,active}`),
+- **Sprint 15A** (2026-05-24) — 18 коммитов + 1 fixup. Schema migration
+  (AnalysisStatus enum + 6 fields + DealClause.suggestedMoves), durable
+  async analyze (`/api/analyze/{start,run,[id]/status,[id]/result,[id]/cancel,active}`),
   cron `/api/cron/restart-stuck-analyses` (5-min), Vercel self-invoke
   pattern + INTERNAL_SECRET, `<ActiveAnalysesStrip>` multi-track UI,
   killer feature #1 (AI negotiation moves в Deal Room с MovesSchema +
   3 cards + apply-Accept/Compromise/Stand), killer feature #3 (ICS
   RFC 5545 export). Final whole-implementation review нашёл 3 critical
   + 5 important — 4 fix'нуты в коммите `154402a`, остальные → Sprint 15A.1.
+- **Sprint 15A.1** (2026-05-26, текущий заход) — 7 коммитов на отдельной
+  ветке `claude/sprint-15a-1-followups` (PR #8 базируется на
+  `sprint-8-ui-polish`, ребейзнется на main после merge'а PR #10). 5
+  final-review deferred fixes: ICS RFC 5545 §3.1 line folding на UTF-8
+  byte boundaries (foot-gun #63), `INTERNAL_BASE_URL` env override
+  (foot-gun #64), rate-limit `analyze.poll` на `/api/analyze/active`,
+  typed `CancelledByUser` exception вместо `__CANCELLED__` sentinel
+  (foot-gun #62), **preemptive cancel** — `AbortController` плюс 2s
+  interval-poll в `runAnalyzeJob`, threaded через `analyzeContract` →
+  single/multi-pass → mapChunks/extractRisksForChunk/synthesize →
+  `generate()` → каждый provider. Anthropic/Groq SDK принимают
+  `{signal}` 2-м аргументом; Gemini SDK не понимает signal natively,
+  используется `withAbort` race-helper (foot-gun #61). Plus Sub-B
+  design spec черновик в PR #9 (`docs/superpowers/specs/2026-05-26-
+  sprint-15b-deal-room-evolution.md`) — три vertical slice'а
+  (DECLINED/EXPIRED + two-sided Counter-AI + audit-trail PDF при
+  AGREED), ждёт ответов на 5 open questions от пользователя ДО
+  раскрытия в implementation plans.
 
 | | |
 |---|---|
@@ -324,7 +348,7 @@ async analyze + parallel + AI negotiation moves + ICS calendar export»
 | **Active branch** | `claude/sprint-8-ui-polish` (мерж в `main` через PR #10; PR #7 уже смержен 2026-05-23) |
 | **Main branch** | `claude/complete-previous-tasks-rzcSp` (та, что зовём «main») |
 | **Stack** | Next.js 16 / React 19 / TypeScript / Prisma + Neon Postgres (pgvector) / NextAuth v5 beta.30 / Tailwind 4 (CSS-first + @custom-variant) / Geist + Source Serif 4 / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus) с prompt caching |
-| **Тесты** | 417 unit-тестов через vitest (`npm test`) |
+| **Тесты** | 437 unit-тестов на `sprint-8-ui-polish` (PR #10), 442 на `sprint-15a-1-followups` (PR #8 = +5 ICS fold tests) через vitest (`npm test`) |
 
 Russian legal-tech SaaS: AI-анализ договоров с verdict и per-risk apply-fix
 + **Deal Room MVP (Sprint 14)** — двусторонняя переговорная по договору
@@ -1040,7 +1064,8 @@ auth-страницах. Это не «сайт с навбаром», это п
 | `ADMIN_USER_IDS` | CSV `User.id` для `/admin` | `/admin` показывает 403 |
 | `ADMIN_SEED_KEY` | Защита `/api/admin/*` | Default `dev-seed-key` (опасно в prod) |
 | `CRON_SECRET` | Защита `/api/cron/billing-reminders` + `/api/cron/restart-stuck-analyses` | В prod без него крон 401; в dev/preview доступ открыт для curl |
-| `INTERNAL_SECRET` | **Sprint 15A**. Защита `/api/analyze/run` (background worker endpoint). Self-invoke в `kickOffBackgroundAnalyze` шлёт `x-internal-token: ${INTERNAL_SECRET}`. **Production MUST set** — без него worker возвращает 503, analyses зависают PENDING, cron через 30 мин помечает FAILED. Generate: `openssl rand -hex 32` или (Windows PowerShell) `$bytes = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); ($bytes \| ForEach-Object { $_.ToString('x2') }) -join ''`. Scope: Production + Preview. |
+| `INTERNAL_SECRET` | **Sprint 15A**. Защита `/api/analyze/run` (background worker endpoint). Self-invoke в `kickOffBackgroundAnalyze` шлёт `x-internal-token: ${INTERNAL_SECRET}`. **Production ✅ set 2026-05-26**. Без него worker возвращает 503, analyses зависают PENDING, cron через 30 мин помечает FAILED. Generate: `openssl rand -hex 32` или (Windows PowerShell) `$bytes = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); ($bytes \| ForEach-Object { $_.ToString('x2') }) -join ''`. Scope: Production + Preview. |
+| `INTERNAL_BASE_URL` | **Sprint 15A.1**. (опц.) Override base URL for self-invoke в `kickOffBackgroundAnalyze`. Default — `BRAND.publicUrl` (`https://yakso.ru`). На preview deploys полезно установить в preview URL (e.g. `https://don-<hash>-zzzz212-projects.vercel.app`), иначе self-invoke улетает на prod с local-only `analysisId` → wasted request. Без unset на prod — фоллбэк работает корректно. | Self-invoke в dev/preview уходит на prod URL, PENDING висит до cron'а |
 
 ⚠️ **Все секреты должны быть проротейтены** если они когда-либо засветились
 в чате.
@@ -1402,39 +1427,39 @@ auth-страницах. Это не «сайт с навбаром», это п
     его квота). Иначе anonymous endpoint = unmetered Anthropic spend
     vector. Уже применено для receiver suggest-moves.
 
-61. **Sprint 15A. Cancel в durable job — cooperative, НЕ preemptive**.
-    `runAnalyzeJob` проверяет CANCELLED только на progress checkpoint'ах
-    (5/30/50/90). Между checkpoint 50 и 90 сидит весь `analyzeContract`
-    (20-150с) — `AbortController` в provider не проброшен. User видит
-    что row пропал с UI («Отменить» работает), но Anthropic-токены
-    всё равно списываются. Sprint 15A.1 — добавить AbortController в
-    `generate()` и proxy'ить через всю цепочку. До этого — UX-tooltip
-    «Отмена — best-effort» на кнопке.
+61. **Sprint 15A. Cancel в durable job — cooperative, НЕ preemptive**
+    (закрыто в Sprint 15A.1, PR #8). `runAnalyzeJob` проверял CANCELLED
+    только на progress checkpoint'ах (5/30/50/90). Между checkpoint 50
+    и 90 сидел весь `analyzeContract` (20-150с) — `AbortController` в
+    provider не был проброшен. Закрыто в Sprint 15A.1: `runAnalyzeJob`
+    спинит AbortController + 2s interval-poll; `signal` threaded через
+    `analyzeContract` → `{single,multi}-pass` → `mapChunks` /
+    `extractRisksForChunk` / `synthesizeStructure` → `generate()` →
+    провайдер. Anthropic/Groq SDK принимают `{signal}` 2-м аргументом;
+    Gemini SDK не понимает signal natively, используется `withAbort`
+    race-helper.
 
-62. **Sprint 15A. `__CANCELLED__` sentinel theoretically collidable**.
-    `runAnalyzeJob` использует `throw new Error("__CANCELLED__")` для
-    short-circuit при cancel detection, потом `if (err.message ===
-    "__CANCELLED__")` в catch. Realistic risk: ни один provider не
-    возвращает эту строку. Но safer — `class CancelledByUser extends
-    Error {}` + `if (err instanceof CancelledByUser)`. Sprint 15A.1.
+62. **Sprint 15A. `__CANCELLED__` sentinel theoretically collidable**
+    (закрыто в Sprint 15A.1, PR #8). Заменено на `class CancelledByUser
+    extends Error {}` + `if (err instanceof CancelledByUser)` в
+    `src/lib/analyze/run.ts`. Контракт явный, не зависит от того что
+    провайдер не вернёт случайно эту строку.
 
 63. **Sprint 15A. RFC 5545 ICS escape order MATTERS**. В `src/lib/ics.ts`
     `escapeText` ОБЯЗАН escape'ить backslash ПЕРВЫМ (`\\` → `\\\\`),
     потом `;`, `,`, и newlines. Иначе двойной escape добавит `\` к
     уже-добавленным escape'ам — поломанный output. Также: CRLF line
     endings обязательны, day-level events через `VALUE=DATE:YYYYMMDD`
-    (без TZ block — простой для подавляющего большинства cases). RFC
-    также требует line folding на 75 octets для строгого compliance —
-    не реализовано в Sprint 15A; Google/Apple/Outlook толерантны, но
-    некоторые строгие парсеры могут reject'ить. Sprint 15A.1.
+    (без TZ block — простой для подавляющего большинства cases).
+    **Line folding на 75 octets — закрыто в Sprint 15A.1 (PR #8)**
+    через `foldLine` helper, который режет на UTF-8 byte boundaries
+    (важно для кириллицы: 1 символ = 2 байта, SUMMARY:Срок оплаты по
+    договору легко выходит за 75 octets).
 
-64. **Sprint 15A. Self-invoke в dev/preview может уйти на prod URL**.
-    `BRAND.publicUrl` в `kickOffBackgroundAnalyze` — это `https://yakso.ru`
-    (hardcoded). На dev environment где `INTERNAL_SECRET` случайно
-    совпадает с prod'ом — kick-off попадёт на prod URL с local-only
-    `analysisId` (которого там нет, request тупо waste'ит). Sprint
-    15A.1 — отдельный `INTERNAL_BASE_URL` env var с фоллбэком на
-    `BRAND.publicUrl`.
+64. **Sprint 15A. Self-invoke в dev/preview может уйти на prod URL**
+    (закрыто в Sprint 15A.1, PR #8). Добавлен `INTERNAL_BASE_URL` env
+    var с фоллбэком на `BRAND.publicUrl`. На preview deploy — set
+    `INTERNAL_BASE_URL=<preview-url>`. На prod — оставить unset.
 
 ---
 
@@ -1789,7 +1814,51 @@ add-on usage pricing.
 
 ## 📋 Полный список коммитов (новейшие сверху)
 
-### Sprint 15A — Durable Analyze + Parallel + 2 Killer Features (последний заход)
+### Sprint 15A.1 — Final-review deferred fixes (последний заход)
+
+PR #8, ветка `claude/sprint-15a-1-followups` (база =
+`claude/sprint-8-ui-polish`, ребейзнется на main после merge'а PR #10).
+7 коммитов:
+
+```
+db6a8b5 Update CLAUDE.md for Sprint 15A.1 completion
+11326da Make analyze cancellation preemptive via threaded AbortSignal
+46046f3 Replace __CANCELLED__ sentinel with CancelledByUser exception class
+34534c6 Fold ICS lines on 75-octet boundary (RFC 5545 §3.1)
+eb491a0 Rate-limit /api/analyze/active under analyze.poll
+8cd615c Add INTERNAL_BASE_URL override for self-invoke in dev/preview
+2b0acb0 Plan Sprint 15A.1 — 5 deferred final-review fixes
+```
+
+5 фикcов через `superpowers:dispatching-parallel-agents` для
+независимых файлов (ICS / INTERNAL_BASE_URL / rate-limit /active)
+плюс sequential для overlapping files (typed exception → AbortController
+через 7 файлов). Final smoke: `tsc` clean, **442 тестов** (437 + 5
+fold), `next build` clean. Manual smoke deferred до preview deploy.
+Sprint 15A.2 не нужен — все 5 fix'ов вошли в PR #8.
+
+### Sprint 15B spec — Deal Room Evolution (Sub-B) — draft в review
+
+PR #9 (DRAFT), ветка `claude/sprint-15b-design`. Один коммит
+(`docs/superpowers/specs/2026-05-26-sprint-15b-deal-room-evolution.md`,
+590 строк). Три vertical slice'а:
+- **B1** — DECLINED/EXPIRED statuses + decline endpoints + daily
+  expiry cron (~2-3 дня → PR #11 после merge'а PR #10)
+- **B2** — Real two-sided Counter-AI с receiver position input +
+  `REBALANCE_CLAUSE_PROMPT` + conflict-level rendering (~5-7 дней →
+  PR #12)
+- **B3** — Audit-trail PDF при AGREED через `@react-pdf/renderer` +
+  SHA-256 evidentiary integrity + email с двумя attachments
+  (~5-7 дней → PR #13)
+
+5 open questions ждут ответа user'а ДО writing-plans:
+1. TTL default 30 days?
+2. DECLINE reversibility?
+3. PDF lib `@react-pdf/renderer` vs pdfkit?
+4. Receiver position hard-gated перед rebalance?
+5. FREE rebalance quota 3/day/deal?
+
+### Sprint 15A — Durable Analyze + Parallel + 2 Killer Features
 
 PR #10, ветка `claude/sprint-8-ui-polish`, в `main` НЕ смержено
 (пакет с Sprint 14 design completion и Sprint 15A, поверх уже-merged
@@ -2259,7 +2328,27 @@ bdc0e4c Hard-reload after workspace switch
 
 ### Sprint-итоги по убыванию
 
-- **Sprint 15A** (закрыт, этот заход, 2026-05-24) — **Durable async
+- **Sprint 15A.1** (закрыт, 2026-05-26) — **Final-review deferred
+  fixes**. 5 fix'ов из Sprint 15A whole-implementation review:
+  ICS line folding RFC 5545 §3.1 (foot-gun #63, helper `foldLine`
+  режет на UTF-8 byte boundary — критично для кириллицы),
+  `INTERNAL_BASE_URL` env var с фоллбэком на `BRAND.publicUrl` для
+  dev/preview isolation (foot-gun #64), rate-limit `analyze.poll` на
+  `/api/analyze/active` (унификация с siblings status/result),
+  `CancelledByUser` typed exception вместо `__CANCELLED__` sentinel
+  string (foot-gun #62), **preemptive cancel** — `AbortController`
+  через `runAnalyzeJob` + threaded через `analyzeContract` →
+  `{single,multi}-pass` → `mapChunks` / `extractRisksForChunk` /
+  `synthesizeStructure` → `generate()` → каждый provider (foot-gun
+  #61). Anthropic/Groq SDK принимают `{signal}` 2-м аргументом;
+  Gemini SDK — race-helper `withAbort`. **7 коммитов** (1 plan + 5
+  fixes + 1 CLAUDE.md), `tsc` + 442 тестов + `next build` зелёные.
+  PR #8 OPEN; ребейзнется на main после merge'а PR #10.
+  Plus Sub-B design spec черновик в PR #9 (DECLINED/EXPIRED +
+  two-sided Counter-AI + audit-trail PDF при AGREED) — ждёт user
+  approve по 5 open questions перед раскрытием в B1/B2/B3 plans.
+
+- **Sprint 15A** (закрыт, 2026-05-24) — **Durable async
   analyze + parallel + 2 killer features**. Через
   `superpowers:brainstorming → scope-decomposition (Sub-A/B/C) →
   writing-plans (16 tasks, verbatim code) → subagent-driven-development
@@ -2417,10 +2506,26 @@ bdc0e4c Hard-reload after workspace switch
   один `chat` feature counter.
 - **CI** — GitHub Actions гоняет `lint` / `tsc --noEmit` / `vitest` /
   `next build` на каждый PR и пуш в `main`.
-- **Тесты — 437** (Sprint 15A добавил 20: 8 analyze-job + 7
-  negotiation-schema + 5 ics). Перед commit: `npx tsc --noEmit && npm
-  test`. Перед push: `npx next build` (нужны `DATABASE_URL` и
-  `AUTH_SECRET` — см. опенинг-промт).
+- **Тесты — 437 на `sprint-8-ui-polish` (PR #10), 442 на `sprint-15a-1-followups`
+  (PR #8, +5 ICS fold tests).** Sprint 15A добавил 20: 8 analyze-job +
+  7 negotiation-schema + 5 ics. Sprint 15A.1 добавил 5: foldLine на
+  UTF-8 byte boundaries. Перед commit: `npx tsc --noEmit && npm test`.
+  Перед push: `npx next build` (нужны `DATABASE_URL` и `AUTH_SECRET`
+  — см. опенинг-промт).
+- **Cancel preemptive** (Sprint 15A.1) — `runAnalyzeJob` спинит
+  `AbortController` + 2s interval-poll. На CANCELLED row poll
+  вызывает `controller.abort()`. `signal` threaded через
+  `analyzeContract` → провайдер. Anthropic/Groq honor signal в SDK
+  natively; Gemini нет, race через `withAbort` helper. Smoke test:
+  cancel mid-flight → AiUsage row НЕ создаётся (или partial если
+  cancel пришёл после `analyzeContract` returned но до final write).
+- **ICS line folding** (Sprint 15A.1) — `foldLine` режет на UTF-8
+  byte boundaries (НЕ character). Кириллический SUMMARY 30+ символов
+  фолдится; ASCII под 75 octets — no-op. Строгие RFC 5545 парсеры
+  (некоторые corporate Outlook) больше не reject'ят.
+- **`INTERNAL_BASE_URL`** — опциональный env для dev/preview. На prod
+  пустой → фоллбэк на `BRAND.publicUrl`. На preview обязательно
+  set'нуть в preview URL, иначе self-invoke улетает на yakso.ru.
 
 ---
 
