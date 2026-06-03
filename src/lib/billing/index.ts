@@ -27,6 +27,7 @@ import {
 } from "@/lib/legal-info";
 import { reportError } from "@/lib/telemetry";
 import { YookassaClient, kopecksToYookassaValue } from "./yookassa";
+import { canCancelSubscription, resolveExpiryDowngrade } from "./cancel";
 
 export interface CheckoutSessionInput {
   orgId: string;
@@ -385,4 +386,108 @@ export async function markPaymentCanceled(
 
 export function isBillingConfigured(): boolean {
   return YookassaClient.fromEnv() !== null;
+}
+
+/**
+ * Schedule a cancel-at-period-end for the workspace's subscription. The
+ * user keeps full access until currentPeriodEnd; we only flip the flag
+ * and stamp canceledAt. No provider call — there is no recurring charge
+ * to stop yet (auto-renew is deferred), so cancelling is purely "don't
+ * renew when the renewal loop ships". Returns the decision so the route
+ * can map it to a precise HTTP status.
+ */
+export async function cancelSubscriptionAtPeriodEnd(
+  orgId: string
+): Promise<
+  | { ok: true; currentPeriodEnd: string }
+  | { ok: false; reason: "NO_SUBSCRIPTION" | "ALREADY_SCHEDULED" | "NOT_ACTIVE" }
+> {
+  const sub = await prisma.subscription.findUnique({
+    where: { orgId },
+    select: { status: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
+  });
+
+  const decision = canCancelSubscription(sub);
+  if (!decision.ok) return decision;
+
+  const updated = await prisma.subscription.update({
+    where: { orgId },
+    data: { cancelAtPeriodEnd: true, canceledAt: new Date() },
+    select: { currentPeriodEnd: true },
+  });
+
+  return { ok: true, currentPeriodEnd: updated.currentPeriodEnd.toISOString() };
+}
+
+/**
+ * Resume a subscription scheduled to cancel — clears the flag so it keeps
+ * renewing (once auto-renew ships) and stays paid. Only meaningful while
+ * the period is still running; a no-op otherwise.
+ */
+export async function resumeSubscription(
+  orgId: string
+): Promise<{ ok: boolean }> {
+  const sub = await prisma.subscription.findUnique({
+    where: { orgId },
+    select: { status: true, cancelAtPeriodEnd: true },
+  });
+  if (!sub || sub.status !== "ACTIVE" || !sub.cancelAtPeriodEnd) {
+    return { ok: false };
+  }
+  await prisma.subscription.update({
+    where: { orgId },
+    data: { cancelAtPeriodEnd: false, canceledAt: null },
+  });
+  return { ok: true };
+}
+
+/**
+ * Lazy expiry downgrade. Called on billing-status reads (no renewal cron
+ * yet): if the OWNER's subscription was canceled and its period has now
+ * elapsed, drop them to FREE. Dual-writes User.plan (authoritative) AND
+ * Organization.plan (legacy mirror) + flips the Subscription to CANCELED
+ * so the next pass is a no-op — matches the applySucceededPayment
+ * dual-write pattern and foot-gun #11.
+ *
+ * Idempotent and safe to call on every read: resolveExpiryDowngrade
+ * returns false once the row is CANCELED.
+ */
+export async function applyExpiryDowngrade(
+  orgId: string,
+  now: Date = new Date()
+): Promise<{ downgraded: boolean; userId: string | null }> {
+  const sub = await prisma.subscription.findUnique({
+    where: { orgId },
+    select: {
+      status: true,
+      cancelAtPeriodEnd: true,
+      currentPeriodEnd: true,
+      userId: true,
+    },
+  });
+
+  const decision = resolveExpiryDowngrade(sub, now);
+  if (!decision.downgrade) return { downgraded: false, userId: sub?.userId ?? null };
+
+  await prisma.$transaction(async (tx) => {
+    // Authoritative quota source — drop the seat owner to FREE.
+    if (sub!.userId) {
+      await tx.user.update({
+        where: { id: sub!.userId },
+        data: { plan: "FREE" },
+      });
+    }
+    // Legacy mirror so pre-rollout admin queries stay consistent (#11).
+    await tx.organization.update({
+      where: { id: orgId },
+      data: { plan: "FREE" },
+    });
+    // Terminal state — makes the next resolveExpiryDowngrade a no-op.
+    await tx.subscription.update({
+      where: { orgId },
+      data: { status: "CANCELED" },
+    });
+  });
+
+  return { downgraded: true, userId: sub!.userId ?? null };
 }
