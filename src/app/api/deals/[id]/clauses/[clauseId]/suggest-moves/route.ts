@@ -7,6 +7,7 @@ import { MovesSchema } from "@/lib/ai/schemas/negotiation";
 import { NEGOTIATION_MOVES_PROMPT } from "@/lib/ai/prompts";
 import { pickTier } from "@/lib/ai/tier-policy";
 import { getEffectiveUserPlan } from "@/lib/plans";
+import { isOverFreeChatCap, FREE_CHAT_CAP } from "@/lib/ai/free-cap";
 import { logUsage } from "@/lib/ai/usage";
 import { reportError } from "@/lib/telemetry";
 import { ensureActiveOrg } from "@/lib/org";
@@ -85,6 +86,10 @@ export async function POST(
     const effectivePlan = owner
       ? getEffectiveUserPlan(owner).plan
       : "FREE";
+    // FREE owners are capped at FREE_CHAT_CAP negotiation generations per
+    // rolling 24h. The count lives here (DB), the threshold decision in
+    // free-cap.ts so sender and receiver routes can't diverge. The cap is
+    // enforced regardless of ?force=1 — force is cache-bypass only (#59).
     if (effectivePlan === "FREE") {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const recentCount = await prisma.aiUsage.count({
@@ -94,11 +99,10 @@ export async function POST(
           createdAt: { gte: since },
         },
       });
-      if (recentCount >= 10) {
+      if (isOverFreeChatCap(effectivePlan, recentCount)) {
         return NextResponse.json(
           {
-            error:
-              "Лимит AI-предложений для тарифа FREE исчерпан (10 в день). Обновитесь до тарифа «Про».",
+            error: `Лимит AI-предложений для тарифа FREE исчерпан (${FREE_CHAT_CAP} в день). Обновитесь до тарифа «Про».`,
             code: "NEGOTIATION_LIMIT",
           },
           { status: 402 }
