@@ -19,6 +19,7 @@ import { dedupRisks, byRiskSeverity } from "./dedup";
 import { scoreAndVerdictFromCounts as calibrate } from "./score-calibration";
 import { pickTier } from "./tier-policy";
 import { verifyRiskQuotes } from "./quote-verify";
+import { captureEvent } from "@/lib/analytics/server";
 
 export type {
   AnalysisRisk,
@@ -55,7 +56,20 @@ export async function analyzeContract(
   // differs only in whitespace — the report's apply-fix matches the
   // quote with an exact substring check, so a stray line break in the
   // model's citation would otherwise silently disable the fix button.
-  return { ...result, risks: verifyRiskQuotes(contractText, result.risks) };
+  return {
+    ...result,
+    risks: verifyRiskQuotes(contractText, result.risks, ({ level, clauseTitle }) => {
+      // Fire-and-forget: a recovered quote stays usable, a paraphrased
+      // one silently disables apply-fix — track the trend (PII-free:
+      // only the risk level and the clause's own title flow through).
+      void captureEvent({
+        userId,
+        event: "analyze.applyfix_unavailable",
+        properties: { level, clauseTitle },
+        orgId,
+      });
+    }),
+  };
 }
 
 // ── Short doc: single pass against the full ANALYZE prompt ──────────

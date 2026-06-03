@@ -73,6 +73,11 @@ export type EventName =
   | "analysis_completed"
   | "analysis_failed"
   | "ocr_used"
+  // Apply-fix observability: a risk cite was paraphrased so the report's
+  // apply-fix button is silently disabled (no fuzzy fallback by design,
+  // foot-gun #13). Lets us trend headline-feature degradation that 4xx
+  // Sentry filtering hides.
+  | "analyze.applyfix_unavailable"
   // Document generation
   | "document_generated"
   | "document_refined"
