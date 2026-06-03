@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { Button, buttonClass } from "@/components/button";
+import { buildShareLinks } from "@/lib/deals-share";
 
 export function SendAsDeal({
   documentId,
@@ -19,7 +20,7 @@ export function SendAsDeal({
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ url: string } | null>(null);
+  const [result, setResult] = useState<{ url: string; emailSent: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
@@ -43,8 +44,8 @@ export function SendAsDeal({
         );
         return;
       }
-      const data = (await res.json()) as { url: string };
-      setResult({ url: data.url });
+      const data = (await res.json()) as { url: string; emailSent?: boolean };
+      setResult({ url: data.url, emailSent: Boolean(data.emailSent) });
     } finally {
       setSubmitting(false);
     }
@@ -64,39 +65,64 @@ export function SendAsDeal({
       >
         {result ? (
           /* ── Success state ─────────────────────────────────────── */
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.28em] text-ink-quiet">
-              Письмо отправлено
-            </p>
-            <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground">
-              Сделка создана
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-ink-quiet">
-              Контрагент получит письмо со ссылкой. Если хотите — скопируйте
-              её и передайте напрямую.
-            </p>
-            <div className="mt-6 border border-rule bg-surface/40 px-4 py-3 font-mono text-[12px] leading-[1.5] text-foreground/80 break-all rounded-md">
-              {result.url}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(result.url);
-                }}
-                className={buttonClass({ variant: "primary" })}
-              >
-                Скопировать ссылку
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className={buttonClass({ variant: "ghost" })}
-              >
-                Закрыть
-              </button>
-            </div>
-          </div>
+          (() => {
+            // Share-sheet links are built from the returned deal URL. The
+            // title is the contract name typed by the sender (falls back
+            // to a generic label inside buildShareLinks when blank).
+            const share = buildShareLinks(result.url, name.trim());
+            return (
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-ink-quiet">
+                  {result.emailSent ? "Письмо отправлено" : "Ссылка готова"}
+                </p>
+                <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground">
+                  Сделка создана
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-ink-quiet">
+                  {result.emailSent
+                    ? "Контрагент получит письмо со ссылкой. Если хотите — передайте её и напрямую."
+                    : "Скопируйте ссылку или отправьте её контрагенту в мессенджере. Логин ему не понадобится."}
+                </p>
+                <div className="mt-6 border border-rule bg-surface/40 px-4 py-3 font-mono text-[12px] leading-[1.5] text-foreground/80 break-all rounded-md">
+                  {result.url}
+                </div>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(result.url);
+                    }}
+                    className={buttonClass({ variant: "primary" })}
+                  >
+                    Скопировать ссылку
+                  </button>
+                  <a
+                    href={share.telegram}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClass({ variant: "ghost" })}
+                  >
+                    Telegram
+                  </a>
+                  <a
+                    href={share.whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClass({ variant: "ghost" })}
+                  >
+                    WhatsApp
+                  </a>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className={buttonClass({ variant: "ghost" })}
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </div>
+            );
+          })()
         ) : (
           /* ── Form state ────────────────────────────────────────── */
           <div>
@@ -116,7 +142,7 @@ export function SendAsDeal({
                 htmlFor="deal-counterparty-email"
                 className="block text-[10px] uppercase tracking-[0.22em] text-ink-quiet mb-1.5"
               >
-                Email контрагента
+                Email контрагента — необязательно
               </label>
               <input
                 id="deal-counterparty-email"
@@ -174,10 +200,10 @@ export function SendAsDeal({
               variant="primary"
               loading={submitting}
               onClick={() => void submit()}
-              disabled={!email.trim() || submitting}
+              disabled={submitting}
               className="mt-6 w-full"
             >
-              {submitting ? "Отправляем…" : "Отправить"}
+              {submitting ? "Создаём…" : email.trim() ? "Отправить" : "Создать ссылку"}
             </Button>
           </div>
         )}

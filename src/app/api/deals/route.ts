@@ -13,7 +13,15 @@ import { reportError } from "@/lib/telemetry";
 
 const CreateSchema = z.object({
   documentId: z.string().min(1),
-  counterpartyEmail: z.string().email(),
+  // Optional: a sender who shares the link via Telegram/WhatsApp instead
+  // of email never supplies an address. `.email()` still validates the
+  // format when one IS provided. Empty string is normalised to undefined
+  // so the client can send "" without tripping the email-format check.
+  counterpartyEmail: z
+    .string()
+    .email()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   counterpartyName: z.string().trim().max(120).optional(),
   message: z.string().trim().max(500).optional(),
 });
@@ -90,32 +98,42 @@ export async function POST(request: NextRequest) {
       select: { title: true },
     });
 
-    // Fire-and-forget invite email — failures land in Sentry via
+    // Fire-and-forget invite email — only when an address was supplied.
+    // Without one, the sender shares the link manually (Telegram/WhatsApp)
+    // from the success share-sheet. Failures land in Sentry via
     // sendEmail's internal handler.
-    void sendEmail(
-      buildDealInviteEmail({
-        to: counterpartyEmail,
-        fromName: session.user.name ?? session.user.email ?? "Пользователь",
-        documentName: fullDeal?.title ?? "Договор",
-        dealUrl: `${BRAND.publicUrl}/deal/${deal.inviteToken}`,
-        message,
-      })
-    );
+    if (counterpartyEmail) {
+      void sendEmail(
+        buildDealInviteEmail({
+          to: counterpartyEmail,
+          fromName: session.user.name ?? session.user.email ?? "Пользователь",
+          documentName: fullDeal?.title ?? "Договор",
+          dealUrl: `${BRAND.publicUrl}/deal/${deal.inviteToken}`,
+          message,
+        })
+      );
+    }
 
     // Key name `email` (not `counterpartyEmail`) so `redact()` masks it
     // in the audit log per foot-gun #26 — SENSITIVE_KEYS matches exact
-    // key names, not substrings.
+    // key names, not substrings. Spread it in only when present so the
+    // log doesn't carry an `email: undefined` for link-shared deals.
     await logAudit({
       action: "deal.created",
       userId: me,
       orgId,
-      payload: { dealId: deal.id, email: counterpartyEmail, clauseCount },
+      payload: {
+        dealId: deal.id,
+        clauseCount,
+        ...(counterpartyEmail ? { email: counterpartyEmail } : {}),
+      },
     });
 
     return NextResponse.json({
       dealId: deal.id,
       inviteToken: deal.inviteToken,
       url: `${BRAND.publicUrl}/deal/${deal.inviteToken}`,
+      emailSent: Boolean(counterpartyEmail),
     });
   } catch (error) {
     await reportError(error, { op: "deals.create" });

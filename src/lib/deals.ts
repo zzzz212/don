@@ -22,7 +22,11 @@ export interface CreateDealArgs {
   ownerId: string;
   orgId: string;
   documentId: string;
-  counterpartyEmail: string;
+  // Optional: when the sender shares the link manually (Telegram/WhatsApp)
+  // rather than by email, no address is collected. The guestEmail column
+  // is nullable (schema.prisma:987), so the RECEIVER row simply starts
+  // without one.
+  counterpartyEmail?: string;
   counterpartyName?: string;
   title?: string;
 }
@@ -126,7 +130,7 @@ export async function createDealFromDocument(
         participants: {
           create: [
             { role: "SENDER", userId: args.ownerId },
-            { role: "RECEIVER", guestEmail: args.counterpartyEmail, guestName: args.counterpartyName },
+            { role: "RECEIVER", guestEmail: args.counterpartyEmail ?? null, guestName: args.counterpartyName },
           ],
         },
         clauses: {
