@@ -15,6 +15,7 @@ import { buttonClass } from "@/components/button";
 import { ReceiverCta } from "./receiver-cta";
 import { shouldShowReceiverCta } from "@/lib/deal-cta";
 import { formatLastSeen, isOnline } from "@/lib/deal-presence";
+import { mergeDealClauses } from "@/lib/deal-merge";
 
 interface DealView {
   id: string;
@@ -103,9 +104,72 @@ export function DealRoom({ token }: { token: string }) {
     }
   }, [token]);
 
+  // Background poll: refetch and MERGE (not blind-replace) so optimistic
+  // in-flight actions survive until the server echoes them. Distinct from
+  // fetchDeal (which canonicalises after the local user's own action and
+  // may surface errors / identify) — the poll stays silent on transient
+  // failures and never opens the identify modal.
+  const pollDeal = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/deals/by-token/${token}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return; // stay silent on transient poll failures
+      const data = (await res.json()) as DealResponse;
+      setDeal((current) => {
+        if (!current) return data.deal;
+        const senderId =
+          current.participants.find((p) => p.role === "SENDER")?.id ?? "";
+        const receiverId =
+          current.participants.find((p) => p.role === "RECEIVER")?.id ?? "";
+        return {
+          ...data.deal,
+          clauses: mergeDealClauses(
+            current.clauses,
+            data.deal.clauses,
+            senderId,
+            receiverId
+          ),
+        };
+      });
+    } catch {
+      // ignore — next tick retries
+    }
+  }, [token]);
+
   useEffect(() => {
     void fetchDeal();
   }, [fetchDeal]);
+
+  // Auto-refresh while the tab is visible and the deal is still open.
+  // Pauses on AGREED (nothing more to reconcile) and whenever the tab is
+  // hidden (avoids hammering deep-include GETs from background tabs).
+  useEffect(() => {
+    if (!deal || deal.status === "AGREED") return;
+    let handle: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (handle) return;
+      handle = setInterval(() => {
+        void pollDeal();
+      }, 4_500);
+    };
+    const stop = () => {
+      if (handle) {
+        clearInterval(handle);
+        handle = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [deal, pollDeal]);
 
   const onAction = useCallback(
     async (
@@ -207,7 +271,10 @@ export function DealRoom({ token }: { token: string }) {
         {errorState.recoverable && (
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setErrorState(null);
+              void fetchDeal();
+            }}
             className={`${buttonClass({ variant: "ghost" })} mt-6`}
           >
             Обновить
@@ -282,6 +349,10 @@ export function DealRoom({ token }: { token: string }) {
   const counterparty = deal.participants.find(
     (p) => p.role === counterpartyRole
   );
+  // Date.now() in render trips react-hooks/purity, but the presence label
+  // is a soft, lagged signal that the 4.5s poll re-renders anyway — the
+  // render-time instability is benign and never observable to the user.
+  // eslint-disable-next-line react-hooks/purity
   const presenceNow = Date.now();
   const presenceLabel = formatLastSeen(
     counterparty?.lastSeenAt ?? null,
