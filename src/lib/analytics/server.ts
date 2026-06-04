@@ -99,7 +99,14 @@ export type EventName =
   | "payment_failed"
   | "subscription_canceled"
   // Admin
-  | "admin_action_performed";
+  | "admin_action_performed"
+  // Deal Room funnel (DR-2)
+  | "deal_created"
+  | "deal_link_opened"
+  | "receiver_identified"
+  | "clause_agreed"
+  | "clause_disputed"
+  | "deal_agreed_complete";
 
 interface CaptureArgs {
   /** User cuid. Use "anonymous" for anonymous flows. */
