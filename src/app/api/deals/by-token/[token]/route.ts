@@ -138,6 +138,10 @@ export async function GET(
           id: p.id,
           role: p.role,
           name: p.guestName ?? p.user?.name ?? null,
+          // Soft presence signal for the title-page header. Written on
+          // every GET (sender + claimed receiver), so it lags by the poll
+          // interval — never a heartbeat. Not PII (#50: only name leaks).
+          lastSeenAt: p.lastSeenAt ? p.lastSeenAt.toISOString() : null,
         })),
         clauses: deal.clauses,
       },
