@@ -12,6 +12,8 @@ import {
   type ClauseActionInput,
 } from "@/lib/deal-status";
 import { buttonClass } from "@/components/button";
+import { ReceiverCta } from "./receiver-cta";
+import { shouldShowReceiverCta } from "@/lib/deal-cta";
 
 interface DealView {
   id: string;
@@ -254,6 +256,23 @@ export function DealRoom({ token }: { token: string }) {
   const chipTone =
     myRole === "SENDER" ? "bg-primary" : "bg-accent"; // terracotta for sender, sage for receiver
 
+  // Has the local receiver cast at least one AGREE/DISAGREE on any clause?
+  // Drives the post-vote CTA peak (see src/lib/deal-cta.ts).
+  const hasVoted = myParticipantId
+    ? deal.clauses.some((c) =>
+        c.actions.some(
+          (a) =>
+            a.participant.id === myParticipantId &&
+            (a.kind === "AGREE" || a.kind === "DISAGREE")
+        )
+      )
+    : false;
+  const showReceiverCta = shouldShowReceiverCta({
+    myRole,
+    hasVoted,
+    dealStatus: deal.status,
+  });
+
   return (
     <>
       <main className="paper-grain mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-10">
@@ -336,6 +355,14 @@ export function DealRoom({ token }: { token: string }) {
             </motion.div>
           ))}
         </div>
+
+        {showReceiverCta && deal.status !== "AGREED" && (
+          <ReceiverCta variant="inline" />
+        )}
+
+        {showReceiverCta && deal.status === "AGREED" && (
+          <ReceiverCta variant="colophon" />
+        )}
 
         {/* Closing colophon — tiny brand mark at the bottom of the
             document, like a printer's mark on a legal opinion. */}
