@@ -4,15 +4,20 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureActiveOrg, getMembership } from "@/lib/org";
 import { rateLimit } from "@/lib/rate-limit";
-import { reconcileClauseStatus } from "@/lib/deals";
+import {
+  reconcileClauseStatus,
+  latestAcceptedProposalText,
+  type ClauseActionInput,
+} from "@/lib/deals";
 import { logAudit } from "@/lib/audit";
 import { reportError } from "@/lib/telemetry";
 import { captureEvent } from "@/lib/analytics/server";
 import { DEAL_FUNNEL_EVENTS, clauseEventFor } from "@/lib/analytics/deal-funnel";
 
 const ActionSchema = z.object({
-  kind: z.enum(["AGREE", "DISAGREE", "COMMENT", "PROPOSE_EDIT"]),
+  kind: z.enum(["AGREE", "DISAGREE", "COMMENT", "PROPOSE_EDIT", "ACCEPT_PROPOSAL"]),
   body: z.string().trim().max(2000).optional(),
+  proposalId: z.string().trim().max(64).optional(),
 });
 
 // POST /api/deals/[id]/clauses/[clauseId]/actions — sender posts an
@@ -52,6 +57,9 @@ export async function POST(
     if ((parsed.data.kind === "COMMENT" || parsed.data.kind === "PROPOSE_EDIT") && !parsed.data.body) {
       return NextResponse.json({ error: "Комментарий не может быть пустым" }, { status: 400 });
     }
+    if (parsed.data.kind === "ACCEPT_PROPOSAL" && !parsed.data.proposalId) {
+      return NextResponse.json({ error: "Не указано принимаемое предложение" }, { status: 400 });
+    }
 
     // Verify the clause belongs to a deal owned by sender's org, and
     // locate the SENDER participant in one query.
@@ -82,25 +90,31 @@ export async function POST(
         participantId: sender.id,
         kind: parsed.data.kind,
         body: parsed.data.body ?? null,
+        proposalId: parsed.data.proposalId ?? null,
       },
     });
 
     const allActions = await prisma.clauseAction.findMany({
       where: { clauseId },
-      select: { participantId: true, kind: true, createdAt: true },
+      select: { id: true, participantId: true, kind: true, body: true, proposalId: true, createdAt: true },
     });
-    const newStatus = reconcileClauseStatus(
-      allActions.map((a) => ({
-        participantId: a.participantId,
-        kind: a.kind as "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT",
-        createdAt: a.createdAt,
-      })),
-      sender.id,
-      receiver.id
-    );
+    const reconciled: ClauseActionInput[] = allActions.map((a) => ({
+      id: a.id,
+      participantId: a.participantId,
+      kind: a.kind as ClauseActionInput["kind"],
+      body: a.body,
+      proposalId: a.proposalId,
+      createdAt: a.createdAt,
+    }));
+    const newStatus = reconcileClauseStatus(reconciled, sender.id, receiver.id);
+    // When the clause settles on a counter-proposal, snapshot its text so
+    // the final document can export the agreed wording. Otherwise leave
+    // any prior agreedText untouched.
+    const settledText =
+      newStatus === "RESOLVED" ? (latestAcceptedProposalText(reconciled) ?? undefined) : undefined;
     await prisma.dealClause.update({
       where: { id: clauseId },
-      data: { status: newStatus },
+      data: { status: newStatus, ...(settledText !== undefined ? { agreedText: settledText } : {}) },
     });
 
     // Sync deal.status with the current state of all clauses. Promote to
@@ -108,7 +122,7 @@ export async function POST(
     // previously-AGREED deal has any clause flip back to DISPUTED/PENDING
     // (a DISAGREE arrived after both parties had AGREEd).
     const stillOpen = await prisma.dealClause.count({
-      where: { dealId, status: { not: "AGREED" } },
+      where: { dealId, status: { notIn: ["AGREED", "RESOLVED"] } },
     });
     const desiredStatus = stillOpen === 0 ? "AGREED" : "ACTIVE";
     await prisma.deal.updateMany({

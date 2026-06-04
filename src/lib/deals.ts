@@ -10,6 +10,8 @@ export function generateInviteToken(): string {
 
 export {
   reconcileClauseStatus,
+  latestOpenProposal,
+  latestAcceptedProposalText,
   type ClauseActionInput,
   type ClauseStatus,
 } from "./deal-status";

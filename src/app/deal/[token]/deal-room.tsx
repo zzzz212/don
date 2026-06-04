@@ -106,8 +106,9 @@ export function DealRoom({ token }: { token: string }) {
   const onAction = useCallback(
     async (
       clauseId: string,
-      kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT",
-      body?: string
+      kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT" | "ACCEPT_PROPOSAL",
+      body?: string,
+      proposalId?: string
     ) => {
       if (!deal || !myParticipantId) return;
 
@@ -121,6 +122,7 @@ export function DealRoom({ token }: { token: string }) {
         id: `optimistic-${Date.now()}`,
         kind,
         body: body ?? null,
+        proposalId: proposalId ?? null,
         createdAt: new Date().toISOString(),
         participant: {
           id: myParticipantId,
@@ -145,8 +147,11 @@ export function DealRoom({ token }: { token: string }) {
           // reconcileClauseStatus takes ClauseActionInput[] (participantId,
           // kind, createdAt). Map the rich action shape into that.
           const reconciled: ClauseActionInput[] = newActions.map((a) => ({
+            id: a.id,
             participantId: a.participant.id,
             kind: a.kind as ClauseActionInput["kind"],
+            body: a.body,
+            proposalId: a.proposalId ?? null,
             createdAt: new Date(a.createdAt),
           }));
           return {
@@ -166,7 +171,7 @@ export function DealRoom({ token }: { token: string }) {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind, body }),
+        body: JSON.stringify({ kind, body, proposalId }),
       });
 
       if (!res.ok) {
