@@ -14,6 +14,7 @@ import {
 import { buttonClass } from "@/components/button";
 import { ReceiverCta } from "./receiver-cta";
 import { shouldShowReceiverCta } from "@/lib/deal-cta";
+import { formatLastSeen, isOnline } from "@/lib/deal-presence";
 
 interface DealView {
   id: string;
@@ -25,6 +26,7 @@ interface DealView {
     id: string;
     role: "SENDER" | "RECEIVER";
     name: string | null;
+    lastSeenAt: string | null;
   }>;
   clauses: ClauseView[];
 }
@@ -273,6 +275,23 @@ export function DealRoom({ token }: { token: string }) {
     dealStatus: deal.status,
   });
 
+  // Counterparty presence — the side the viewer is NOT. Soft signal from
+  // lastSeenAt (lags by the poll interval). null when never opened.
+  const counterpartyRole: "SENDER" | "RECEIVER" =
+    myRole === "RECEIVER" ? "SENDER" : "RECEIVER";
+  const counterparty = deal.participants.find(
+    (p) => p.role === counterpartyRole
+  );
+  const presenceNow = Date.now();
+  const presenceLabel = formatLastSeen(
+    counterparty?.lastSeenAt ?? null,
+    presenceNow
+  );
+  const counterpartyOnline = isOnline(
+    counterparty?.lastSeenAt ?? null,
+    presenceNow
+  );
+
   return (
     <>
       <main className="paper-grain mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-10">
@@ -327,6 +346,19 @@ export function DealRoom({ token }: { token: string }) {
             {disputedCount > 0 && ` · ${disputedCount} спорных`}
             {deal.status === "AGREED" && " · договор согласован полностью"}
           </p>
+
+          {presenceLabel && (
+            <p className="mt-2 inline-flex items-center gap-2 text-[11px] italic text-ink-quiet">
+              <span
+                aria-hidden="true"
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  counterpartyOnline ? "bg-accent" : "bg-ink-quiet/40"
+                }`}
+              />
+              {counterpartyRole === "SENDER" ? "Отправитель" : "Контрагент"}{" "}
+              {presenceLabel}
+            </p>
+          )}
         </header>
 
         {/* ── Clauses — staggered fade-in, like turning the pages of a
