@@ -1018,7 +1018,8 @@ model DealClause {
   // PENDING — no action yet, or only partial action.
   // AGREED — both participants AGREE'd this clause.
   // DISPUTED — at least one DISAGREE recorded.
-  // RESOLVED — was DISPUTED, now both participants AGREE.
+  // RESOLVED — a counter-proposal (PROPOSE_EDIT) was accepted by the
+  //   counterparty (ACCEPT_PROPOSAL); the agreed wording is in agreedText.
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

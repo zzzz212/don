@@ -112,15 +112,14 @@ export async function POST(
     });
 
     // Funnel: per-clause resolution + deal completion, receiver side.
-    // distinctId is the opaque session id (PII-free); spend/cohort is
-    // attributed to the deal owner so the anonymous side stays unmetered
-    // against the right org (foot-gun #60 — anonymous endpoints credit the
-    // owner, not null).
+    // distinctId is the opaque session id (PII-free); the workspace group
+    // key is the deal's org so receiver-side events roll up to the owner's
+    // workspace rather than the anonymous session.
     const clauseEvent = clauseEventFor(newStatus);
     if (clauseEvent) {
       void captureEvent({
         userId: sessionId,
-        orgId: clause.deal.ownerId,
+        orgId: clause.deal.orgId,
         event: clauseEvent,
         properties: { role: "RECEIVER" },
       });
@@ -128,7 +127,7 @@ export async function POST(
     if (desiredStatus === "AGREED") {
       void captureEvent({
         userId: sessionId,
-        orgId: clause.deal.ownerId,
+        orgId: clause.deal.orgId,
         event: DEAL_FUNNEL_EVENTS.dealAgreedComplete,
         properties: { role: "RECEIVER" },
       });
