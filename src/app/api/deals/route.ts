@@ -10,6 +10,8 @@ import { buildDealInviteEmail } from "@/lib/email/templates/deal-invite";
 import { BRAND } from "@/lib/legal-info";
 import { logAudit } from "@/lib/audit";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
+import { DEAL_FUNNEL_EVENTS } from "@/lib/analytics/deal-funnel";
 
 const CreateSchema = z.object({
   documentId: z.string().min(1),
@@ -127,6 +129,15 @@ export async function POST(request: NextRequest) {
         clauseCount,
         ...(counterpartyEmail ? { email: counterpartyEmail } : {}),
       },
+    });
+
+    // Fire-and-forget funnel event. distinctId is the owner cuid (PII-free);
+    // clauseCount lets us measure share-readiness per deal.
+    void captureEvent({
+      userId: me,
+      orgId,
+      event: DEAL_FUNNEL_EVENTS.dealCreated,
+      properties: { clauseCount },
     });
 
     return NextResponse.json({

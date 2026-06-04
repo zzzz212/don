@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { getOrCreateDealSessionId } from "@/lib/deal-session";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
+import { DEAL_FUNNEL_EVENTS } from "@/lib/analytics/deal-funnel";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +58,16 @@ export async function POST(
         guestName: parsed.data.name,
         lastSeenAt: new Date(),
       },
+    });
+
+    // Funnel: receiver put a name to the slot — the strongest pre-register
+    // engagement signal. distinctId is the opaque session id (PII-free);
+    // we attribute the cohort to the deal owner's org. We never put the
+    // guest name in properties (it is PII).
+    void captureEvent({
+      userId: sessionId,
+      orgId: deal.ownerId,
+      event: DEAL_FUNNEL_EVENTS.receiverIdentified,
     });
 
     return NextResponse.json({ ok: true });

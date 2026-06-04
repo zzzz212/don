@@ -7,6 +7,8 @@ import { rateLimit } from "@/lib/rate-limit";
 import { reconcileClauseStatus } from "@/lib/deals";
 import { logAudit } from "@/lib/audit";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
+import { DEAL_FUNNEL_EVENTS, clauseEventFor } from "@/lib/analytics/deal-funnel";
 
 const ActionSchema = z.object({
   kind: z.enum(["AGREE", "DISAGREE", "COMMENT", "PROPOSE_EDIT"]),
@@ -120,6 +122,26 @@ export async function POST(
       orgId,
       payload: { dealId, clauseId, kind: parsed.data.kind, role: "SENDER" },
     });
+
+    // Funnel: per-clause resolution (AGREED/DISPUTED only) + deal-level
+    // completion. distinctId is the sender's user cuid (PII-free).
+    const clauseEvent = clauseEventFor(newStatus);
+    if (clauseEvent) {
+      void captureEvent({
+        userId: me,
+        orgId,
+        event: clauseEvent,
+        properties: { role: "SENDER" },
+      });
+    }
+    if (desiredStatus === "AGREED") {
+      void captureEvent({
+        userId: me,
+        orgId,
+        event: DEAL_FUNNEL_EVENTS.dealAgreedComplete,
+        properties: { role: "SENDER" },
+      });
+    }
 
     return NextResponse.json({ ok: true, clauseStatus: newStatus });
   } catch (error) {

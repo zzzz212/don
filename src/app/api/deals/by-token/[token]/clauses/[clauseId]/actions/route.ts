@@ -5,6 +5,8 @@ import { getOrCreateDealSessionId } from "@/lib/deal-session";
 import { rateLimit } from "@/lib/rate-limit";
 import { reconcileClauseStatus } from "@/lib/deals";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
+import { DEAL_FUNNEL_EVENTS, clauseEventFor } from "@/lib/analytics/deal-funnel";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +97,29 @@ export async function POST(
       where: { id: clause.dealId, status: { not: desiredStatus } },
       data: { status: desiredStatus },
     });
+
+    // Funnel: per-clause resolution + deal completion, receiver side.
+    // distinctId is the opaque session id (PII-free); spend/cohort is
+    // attributed to the deal owner so the anonymous side stays unmetered
+    // against the right org (foot-gun #60 — anonymous endpoints credit the
+    // owner, not null).
+    const clauseEvent = clauseEventFor(newStatus);
+    if (clauseEvent) {
+      void captureEvent({
+        userId: sessionId,
+        orgId: clause.deal.ownerId,
+        event: clauseEvent,
+        properties: { role: "RECEIVER" },
+      });
+    }
+    if (desiredStatus === "AGREED") {
+      void captureEvent({
+        userId: sessionId,
+        orgId: clause.deal.ownerId,
+        event: DEAL_FUNNEL_EVENTS.dealAgreedComplete,
+        properties: { role: "RECEIVER" },
+      });
+    }
 
     return NextResponse.json({ ok: true, clauseStatus: newStatus });
   } catch (error) {
