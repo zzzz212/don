@@ -7,9 +7,10 @@
 
 ```
 Привет. Я работаю над Яксо — Russian legal-tech SaaS на Next.js 16 +
-Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
-активная ветка `claude/sprint-8-ui-polish`, мерж в `main` через PR #10
-(PR #7 — Sprints 11-14 core — смержен 2026-05-23).
+Prisma + Neon Postgres. ~230 коммитов, production https://yakso.ru
+(домен ✅ подключён к Vercel, 2026-06-04), активная ветка
+`claude/sprint-8-ui-polish`, мерж в `main` через PR #10 (PR #7 —
+Sprints 11-14 core — смержен 2026-05-23).
 Полная картина — в CLAUDE.md в корне репо.
 
 ПЕРВОЕ ДЕЙСТВИЕ В НОВОЙ СЕССИИ
@@ -20,7 +21,7 @@ Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
    ВСЕГДА, на каждом действии, без исключений.
 
 1. Прочитай CLAUDE.md целиком (~2200 строк). Там вся архитектура, схема,
-   foot-guns (#1-#64), env vars, дебаг-рецепты, бизнес-roadmap,
+   foot-guns (#1-#69), env vars, дебаг-рецепты, бизнес-roadmap,
    полная история спринтов.
 
 2. Подтверди 8-10 буллетами:
@@ -28,7 +29,11 @@ Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
      ВКЛЮЧАЯ Deal Room из Sprint 14, editorial design system из
      Sprint 13, durable async analyze + parallel + AI negotiation
      moves + ICS calendar export из Sprint 15A, preemptive cancel
-     + ICS line folding из Sprint 15A.1)
+     + ICS line folding из Sprint 15A.1, и **Phase 1+2** (2026-06-04):
+     counter-propose→RESOLVED (DR-3), receiver→sender CTA (DR-1),
+     presence + auto-refresh poll (DR-8), share-sheet без email (GR-1),
+     PostHog-воронка сделок (DR-2), receiver FREE-cap (DR-6), apply-fix
+     телеметрия (AI-7), self-serve cancel подписки (MON-3))
    – Минимум 8 критичных foot-guns:
        • #47 — Opus tool_use wrapping (`record_response` tool + defensive unwrap)
        • #58 — AiUsage пишется DURING analyze не at COMPLETED → parallel-start race
@@ -45,24 +50,28 @@ Prisma + Neon Postgres. ~210 коммитов, production https://yakso.ru,
      FAILED/CANCELLED), atomic claim через updateMany, Vercel self-
      invoke pattern, INTERNAL_SECRET ✅ выставлен в Production
      2026-05-26. Cancel preemptive через AbortController (Sprint 15A.1).
-   – Бизнес-блокеры запуска (ЮKassa, домен на Vercel, Resend domain,
-     счёт ИП, Роскомнадзор)
-   – PR landscape (2026-05-28):
+   – Бизнес-блокеры запуска: ЮKassa, Resend domain, счёт ИП,
+     Роскомнадзор. (Домен yakso.ru ✅ подключён к Vercel 2026-06-04 —
+     deal-ссылки / OG / share / `/r/` теперь резолвятся после деплоя.)
+   – PR landscape (2026-06-04):
        • PR #7 ✅ смержен 2026-05-23 (Sprints 11-14 core)
-       • PR #10 OPEN — Sprint 14 design completion + Sprint 15A
-         (34 коммита на `sprint-8-ui-polish` → main)
+       • PR #10 OPEN — Sprint 14 design completion + Sprint 15A +
+         **Phase 1+2** (8 задач: DR-6/MON-3/GR-1/AI-7/DR-2/DR-3/DR-1/
+         DR-8), запушено на `sprint-8-ui-polish`. tsc clean, **498
+         тестов**, next build clean. Ждёт merge'а user'ом через GitHub.
        • PR #8 OPEN — Sprint 15A.1 5 final-review fixes (base =
          `sprint-8-ui-polish`, ребейзнется после #10)
-       • PR #9 DRAFT — Sub-B spec (ждёт ответов на 5 open
-         questions перед раскрытием в B1/B2/B3 implementation plans)
-       • Sub-C (inbox dashboard + sidebar 6→3 + realtime presence)
-         — впереди после Sub-B
+       • PR #9 DRAFT — Sub-B spec (ждёт ответов на 5 open questions
+         перед раскрытием в DR-4/DR-5 implementation plans)
+       • Дальше: DR-7→PLT-1 (DECLINED/EXPIRED + inbox), AI-6 (proactive
+         insights + logUsage-fix), унификация двух analyze entry-points
    – Что я должен сделать на стороне ЮKassa/Vercel/Resend/Neon если
      ты затронешь критичный путь
 
 3. Спроси «что делаем сегодня». Если конкретики нет — следующий шаг
-   по бизнес-roadmap в CLAUDE.md (приоритет: merge PR #10 → merge
-   PR #8 → ответы на Sub-B open questions → подключить домен к Vercel).
+   по бизнес-roadmap в CLAUDE.md (приоритет: merge PR #10 (Phase 1+2) →
+   manual smoke на preview/prod → merge PR #8 → ЮKassa/Resend →
+   ответы на PR #9 open questions → DR-7/PLT-1).
 
 ═══ ПРАВИЛА РАБОТЫ В ЭТОЙ СЕССИИ ═══
 
@@ -295,11 +304,12 @@ NEXT.JS 16 (НЕ та Next.js что помнит твоё обучение):
 
 # Яксо — состояние проекта
 
-**Дата последнего обновления**: 2026-05-28 (PR-картина: PR #7 смержен
+**Дата последнего обновления**: 2026-06-04 (PR-картина: PR #7 смержен
 2026-05-23 = Sprints 11-14 core; PR #10 OPEN = Sprint 14 design
-completion + Sprint 15A на 34 коммита; PR #8 OPEN = Sprint 15A.1
-final-review fixes на 7 коммитов; PR #9 DRAFT = Sub-B spec Deal Room
-evolution). Хронология последних четырёх заходов:
+completion + Sprint 15A + **Phase 1+2** (8 задач, 21 коммит, 498 тестов
+зелёные, запушено, ждёт merge'а); PR #8 OPEN = Sprint 15A.1 final-review
+fixes на 7 коммитов; PR #9 DRAFT = Sub-B spec Deal Room evolution.
+Домен yakso.ru ✅ подключён к Vercel). Хронология последних заходов:
 
 - **Sprint 14 (Deal Room MVP)** — Network-first pivot. 16 коммитов
   разработки + 4 hot-fix под Opus tool_use wrapping (foot-gun #47)
@@ -340,15 +350,53 @@ evolution). Хронология последних четырёх заходо�
   (DECLINED/EXPIRED + two-sided Counter-AI + audit-trail PDF при
   AGREED), ждёт ответов на 5 open questions от пользователя ДО
   раскрытия в implementation plans.
+- **Phase 1+2** (2026-06-04, текущий заход) — 8 buildable quick-win /
+  improvement задач из roadmap-скоринга, исполнены autonomous Opus-
+  pipeline'ом (brainstorming → multi-agent roadmap-scoring → writing-plans
+  → subagent-driven-development: fresh implementer + spec + quality review
+  + fix-loops per task + final whole-range review). 21 коммит на
+  `sprint-8-ui-polish` (`609e5e6..7cb49fa`, 37 файлов, +1963/−122):
+  • **DR-6** — receiver suggest-moves owner FREE-cap + shared
+    `src/lib/ai/free-cap.ts` (sender+receiver не разойдутся; `?force=1`
+    не обходит кап, #59).
+  • **MON-3** — self-serve cancel подписки: `src/lib/billing/cancel.ts`
+    (pure decisions) + `applyExpiryDowngrade` dual-write User+Org (#11) +
+    `POST /api/billing/cancel` + lazy-downgrade на `/api/billing/status` +
+    toggle на `/billing`. Auto-renew/charge/cron отложены до ЮKassa.
+  • **GR-1** — `counterpartyEmail` опционален; share-sheet
+    (`src/lib/deals-share.ts` → copy/Telegram/WhatsApp); conditional
+    audit (#26). Снимает email-зависимость receiver-флоу.
+  • **AI-7** — apply-fix телеметрия `analyze.applyfix_unavailable` на
+    paraphrase-ветке `quote-verify.ts`. БЕЗ fuzzy-fallback (#13).
+  • **DR-2** — PostHog-воронка сделок: `src/lib/analytics/deal-funnel.ts`
+    + 6 событий (created→link_opened→identified→agreed/disputed→complete),
+    PII-safe distinctId, EventName-union расширён.
+  • **DR-3** — counter-propose→accept: `ClauseAction.kind += ACCEPT_PROPOSAL`,
+    `DealClause.status RESOLVED`, `DealClause.agreedText`, `latestOpenProposal`/
+    `latestAcceptedProposalText` в `deal-status.ts`. Спор теперь реально
+    урегулируется на новом тексте (раньше — мёртвый провод; NegotiationMoves
+    «Компромисс» теперь доводится до конца).
+  • **DR-1** — receiver→sender CTA на пике интента (`src/lib/deal-cta.ts`
+    + `src/app/deal/[token]/receiver-cta.tsx`, RECEIVER-only, → `/sample-report`/
+    `/register`, без AI). Замыкает growth-петлю.
+  • **DR-8** — presence (`lastSeenAt`) + visibility-gated auto-refresh poll
+    (`src/lib/deal-presence.ts` + `src/lib/deal-merge.ts`), убран
+    `window.location.reload()`.
+  Final whole-range review нашёл 1 cross-task баг (receiver funnel
+  `orgId: deal.ownerId` вместо `deal.orgId`) — fix'нут (`7cb49fa`). tsc
+  clean, **498 тестов** (+61), next build clean. Roadmap-скоринг +
+  планы: `docs/superpowers/2026-06-03-platform-improvement-roadmap.md`,
+  `docs/superpowers/plans/2026-06-04-phase12-implementation.md`,
+  `docs/superpowers/plans/phase12/<TASK>.md`.
 
 | | |
 |---|---|
-| **Production** | https://yakso.ru |
+| **Production** | https://yakso.ru (домен ✅ подключён к Vercel 2026-06-04) |
 | **Repo** | https://github.com/zzzz212/don |
 | **Active branch** | `claude/sprint-8-ui-polish` (мерж в `main` через PR #10; PR #7 уже смержен 2026-05-23) |
 | **Main branch** | `claude/complete-previous-tasks-rzcSp` (та, что зовём «main») |
 | **Stack** | Next.js 16 / React 19 / TypeScript / Prisma + Neon Postgres (pgvector) / NextAuth v5 beta.30 / Tailwind 4 (CSS-first + @custom-variant) / Geist + Source Serif 4 / motion (Framer v12) / Anthropic Claude 4.x (Haiku/Sonnet/Opus) с prompt caching |
-| **Тесты** | 437 unit-тестов на `sprint-8-ui-polish` (PR #10), 442 на `sprint-15a-1-followups` (PR #8 = +5 ICS fold tests) через vitest (`npm test`) |
+| **Тесты** | **498 unit-тестов** на `sprint-8-ui-polish` (PR #10, +61 от Phase 1+2), 442 на `sprint-15a-1-followups` (PR #8) через vitest (`npm test`). ⚠️ vitest исключает `src/app` — роуты/страницы покрыты только `tsc`; фича-correctness новых эндпоинтов/UI проверять ручным smoke на preview/prod |
 
 Russian legal-tech SaaS: AI-анализ договоров с verdict и per-risk apply-fix
 + **Deal Room MVP (Sprint 14)** — двусторонняя переговорная по договору
@@ -483,6 +531,34 @@ serif marginalia, bespoke SVG illustrations).
 agree/disagree/comment per-clause. Spec: `docs/superpowers/specs/
 2026-05-23-sprint-14-deal-room-design.md`. Plan: соседний файл в
 `docs/superpowers/plans/`.
+
+**Phase 1+2 дополнения (2026-06-04)** — Deal Room из «отчёта с кнопками»
+доведён до настоящей переговорной (план: `docs/superpowers/plans/phase12/`):
+- **Резолюция спора (DR-3)**: `ClauseAction.kind += ACCEPT_PROPOSAL` +
+  `DealClause.status RESOLVED` + nullable `DealClause.agreedText`.
+  `reconcileClauseStatus` (`src/lib/deal-status.ts`) эмитит RESOLVED когда
+  открытый PROPOSE_EDIT принят контрагентом; `latestOpenProposal` /
+  `latestAcceptedProposalText` — pure-селекторы. clause-card рендерит
+  redline + «Принять формулировку». RESOLVED — terminal-agreed в обоих
+  action-роутах (foot-gun #68). NegotiationMoves «Компромисс» теперь
+  доводится до конца (раньше `PROPOSE_EDIT` был no-op для статуса).
+- **Receiver→sender CTA (DR-1)**: `src/lib/deal-cta.ts`
+  (`shouldShowReceiverCta`) + `src/app/deal/[token]/receiver-cta.tsx` —
+  RECEIVER-only после первого голоса / на AGREED, → `/sample-report`·
+  `/register` (pure-навигация, без AI → обходит #60).
+- **Presence + auto-refresh (DR-8)**: `src/lib/deal-presence.ts`
+  (`formatLastSeen`/`isOnline`) + `src/lib/deal-merge.ts`
+  (`mergeDealClauses`, optimistic-aware). by-token GET отдаёт
+  `participant.lastSeenAt`; deal-room poll'ит visibility-gated ~4.5s,
+  реконсилит по `optimistic-` префиксу, убран `window.location.reload`
+  (foot-gun #69).
+- **Share без email (GR-1)**: `counterpartyEmail` опционален; share-sheet
+  через `src/lib/deals-share.ts` (`buildShareLinks` → Telegram/WhatsApp).
+  Снимает Resend-зависимость receiver-флоу.
+- **Funnel (DR-2)**: `src/lib/analytics/deal-funnel.ts` + 6 PostHog-
+  событий на deal-роутах, PII-safe distinctId (foot-guns #66/#67).
+- **Receiver FREE-cap (DR-6)**: `src/lib/ai/free-cap.ts` — общий cap-чек
+  для sender+receiver suggest-moves (`?force=1` не обходит, #59/#60).
 
 **Модели Prisma** (после миграции через `prisma db push`):
 - `Deal` — id, ownerId, orgId, documentId, title, status (ACTIVE | AGREED),
@@ -765,6 +841,16 @@ notice/other` → русские названия), возвращает `text/c
   Lightweight probe для AccountMenu — `/api/account/plan`.
 - Backfill legacy юзеров: `POST /api/admin/backfill-user-plan`
   (x-admin-key, idempotent, расширен до rename PRO → PRO_SOLO).
+- **Self-serve cancel (Phase 1+2, MON-3)**: `src/lib/billing/cancel.ts`
+  (pure `canCancelSubscription` / `resolveExpiryDowngrade`) + DB-ops в
+  `billing/index.ts` (`cancelSubscriptionAtPeriodEnd` / `resumeSubscription`
+  ставят `Subscription.cancelAtPeriodEnd`; `applyExpiryDowngrade`
+  dual-write `User.plan`+`Organization.plan`→FREE + sub→CANCELED,
+  идемпотентно, #11). `POST /api/billing/cancel` (OWNER-only, body `{resume?}`),
+  lazy-downgrade вызывается на `GET /api/billing/status`, toggle на
+  `/billing`. **Auto-renew / charge / dunning отложены** до активации
+  ЮKassa «Автоплатежей» (нет local-теста). Закрывает offer-compliance
+  долг 152-ФЗ («отключить автопродление в любой момент»).
 
 ### Templates + Generation — `src/lib/contracts/`
 
@@ -1461,6 +1547,51 @@ auth-страницах. Это не «сайт с навбаром», это п
     var с фоллбэком на `BRAND.publicUrl`. На preview deploy — set
     `INTERNAL_BASE_URL=<preview-url>`. На prod — оставить unset.
 
+65. **Phase 1+2. `vitest.config.ts` исключает `src/app` ЦЕЛИКОМ.**
+    API-роуты и страницы НЕ юнит-тестируются. TDD-дисциплина: testable
+    core выносится в pure `src/lib/*` (тест там, красный-первым), а
+    роут/страница = тонкий glue без юнит-теста. Следствие: зелёный
+    `npm test` доказывает только pure-ядра + `tsc`, НЕ runtime роутов /
+    UI. Любую фичу с новыми эндпоинтами/страницами проверять РУЧНЫМ
+    smoke на preview/prod. Покрытые Phase 1+2 ядра: `deals-share`,
+    `free-cap`, `deal-funnel`, `deal-status`, `deal-cta`, `deal-presence`,
+    `deal-merge`, `billing/cancel`, `quote-verify`.
+
+66. **Phase 1+2. `EventName` в `src/lib/analytics/server.ts` — закрытый
+    TS-union.** Новое PostHog-событие = добавить литерал в union, иначе
+    `tsc` падает на `captureEvent({event})`. `deal-funnel.ts` пинит свой
+    map через `satisfies Record<…, EventName>`. При параллельной работе
+    над аналитикой это shared-file — сериализовать правки (Phase 1+2:
+    AI-7 добавил `analyze.applyfix_unavailable`, потом DR-2 шесть
+    `deal_*`; MON-3 переиспользовал существующий `subscription_canceled`
+    и union НЕ трогал).
+
+67. **Phase 1+2. `captureEvent({orgId})` — это Org-id (PostHog workspace
+    group key), НЕ `Deal.ownerId` (User-id).** `Deal` имеет ОБА поля.
+    Receiver/anonymous-роуты должны слать `deal.orgId` (как `logUsage`).
+    Был баг в by-token actions роуте (`orgId: clause.deal.ownerId`) —
+    мислейбл группы только на receiver-пути, fix `7cb49fa`. `distinctId`
+    для анона = `sessionId` (PII-free), НЕ ownerId/email.
+
+68. **Phase 1+2 (DR-3). `DealClause.status RESOLVED` = принятая
+    counter-proposal** (PROPOSE_EDIT + matching ACCEPT_PROPOSAL от
+    контрагента), НЕ «оба AGREE». `reconcileClauseStatus` эмитит RESOLVED;
+    согласованный текст снапшотится в nullable `DealClause.agreedText`.
+    ОБА action-роута (sender + receiver) держат RESOLVED в terminal-set
+    promote/demote-запроса (`notIn: ["AGREED","RESOLVED"]`) — иначе
+    `deal.status` desync. Schema-добавки (`agreedText`, `ClauseAction.
+    proposalId`, kind `ACCEPT_PROPOSAL`) additive nullable → `db push`
+    safe; после правки `schema.prisma` локально гнать `npx prisma
+    generate` (offline, БЕЗ db push) чтобы `tsc` увидел поля.
+
+69. **Phase 1+2 (DR-8). Deal Room auto-refresh = visibility-gated
+    polling** (паттерн `active-analyses-strip`), НЕ websockets (Vercel
+    serverless их не держит — realtime push это отдельная big-bet).
+    Poll диффит by-token GET, реконсилит optimistic-строки по префиксу
+    `optimistic-` (НЕ blind-replace), паузит при `status==="AGREED"`,
+    активен только при visible tab. by-token GET отдаёт только
+    `participant.lastSeenAt` — НЕ rawText/owner.email/recommendedText (#50).
+
 ---
 
 ## 🐛 Дебаг — когда что-то не работает
@@ -1543,15 +1674,18 @@ GROUP BY model;
 - Уведомление в Роскомнадзор не подано → `OPERATOR.rknOperatorNumber`
   не заполнен.
 - Resend domain не подтверждён → welcome / password-reset / deal-invite
-  не уходят на реальных юзеров.
-- Домен `yakso.ru` не подключён к Vercel → ссылки в письмах / OG /
-  `/r/[token]` / `/deal/[token]` ведут на 404.
+  не уходят на реальных юзеров. (NB: после GR-1 receiver-флоу Deal Room
+  работает на share-ссылках без email — Resend для него больше не блокер.)
+- ~~Домен `yakso.ru` не подключён к Vercel~~ → **✅ ПОДКЛЮЧЁН (2026-06-04).**
+  deal-ссылки / OG / `/r/[token]` / `/deal/[token]` резолвятся после деплоя
+  PR #10.
 - 0 каналов привлечения (SEO/PPC/партнёрки/комьюнити).
 
 ### 🌐 Sprint 15A.1 — Final review deferred fixes (мелкие)
 
 Из final whole-implementation review Sprint 15A (commit `154402a`
-закрыл 3 critical + 1 important; остаются):
+закрыл 3 critical + 1 important). **Остальные 5 ✅ ЗАКРЫТЫ в Sprint 15A.1
+(PR #8, 2026-05-26)** — оставлены здесь как референс к foot-guns #61-#64:
 
 - **Cancellation cooperative → preemptive** (foot-gun #61): thread
   `AbortController` через `generate()` и каждый provider, чтобы
@@ -1568,6 +1702,13 @@ GROUP BY model;
   на 75 octets. Google/Apple/Outlook tolerant, строгие парсеры — нет.
 
 ### 🌐 Sprint 15B — Deal Room evolution (Sub-B)
+
+> **Phase 1+2 (2026-06-04) заложил фундамент:** DR-3 добавил механизм
+> урегулирования спора на новом тексте (PROPOSE_EDIT → ACCEPT_PROPOSAL →
+> RESOLVED + `agreedText`). Остаётся настоящий **two-sided rebalance** (DR-4,
+> с input UI получателя) и нижеперечисленное. DR-4 + audit-PDF (DR-5) ждут
+> ответов на 5 open questions PR #9; DECLINED/EXPIRED (DR-7) → потом
+> inbox (PLT-1).
 
 - **Real two-sided Counter-AI** — когда receiver реально заполнил
   свою позицию через текстовое поле, Counter-AI должен пересчитать
@@ -1592,8 +1733,10 @@ GROUP BY model;
   Ждут их / Готово» вместо документ-карточек. Депенды от DECLINED/
   EXPIRED статусов из Sub-B.
 - **Realtime presence** (Liveblocks или `@vercel/pubsub`) — cursors,
-  online dots, live action streaming в Deal Room. Заменяет 2.5s
-  polling Sub-A на push-based updates.
+  online dots, live action streaming в Deal Room. Phase 1+2 (DR-8) уже
+  дал дешёвый interim: presence (`lastSeenAt`) + visibility-gated poll
+  ~4.5s. Big-bet — заменить poll на push (Vercel serverless websocket'ы
+  не держит, нужен внешний realtime-провайдер).
 
 ### 🌐 Sprint 16 — Public-facing + monetization
 
@@ -1673,7 +1816,7 @@ GROUP BY model;
 | Уведомление в Роскомнадзор о обработке ПДн | Founder | 0, 1 час онлайн | 152-ФЗ |
 | ~~Заполнить OPERATOR в `legal-info.ts`~~ ✅ | — | — | — |
 | Verify домена в Resend | Dev | 0 | Email-onboarding |
-| Подключить `yakso.ru` к Vercel (A-запись на IP Vercel) | Founder + Dev | 0 | OG / письма / `/r/` |
+| ~~Подключить `yakso.ru` к Vercel~~ ✅ (2026-06-04) | — | — | — |
 | Открыть расчётный счёт ИП | Founder | 0 | Банковский блок оферты |
 
 **Деливерабл:** legal-чистый продукт, готовый принимать платежи.
@@ -1814,7 +1957,48 @@ add-on usage pricing.
 
 ## 📋 Полный список коммитов (новейшие сверху)
 
-### Sprint 15A.1 — Final-review deferred fixes (последний заход)
+### Phase 1+2 — 8 buildable roadmap-задач (последний заход, 2026-06-04)
+
+PR #10, ветка `claude/sprint-8-ui-polish`, запушено (`fa4783c..7cb49fa`).
+Исполнено autonomous Opus-pipeline'ом (writing-plans →
+subagent-driven-development: implementer + spec-review + quality-review +
+fix-loops per task + final whole-range review). 21 коммит + 1 docs/plan:
+
+```
+7cb49fa Group receiver-side funnel events by the deal org, not the owner id  (final-review fix)
+49441c0 Auto-refresh Deal Room with visibility-gated poll, drop reload crutch  (DR-8)
+a0385ac Render counterparty presence line in Deal Room header                  (DR-8)
+4b00033 Expose participant lastSeenAt on by-token deal payload                 (DR-8)
+06b418f Add optimistic-aware mergeDealClauses for Deal Room auto-refresh       (DR-8)
+9856119 Add deal-presence formatter for Deal Room title-page header           (DR-8)
+b9f1ef0 Mount receiver-sender CTA at peak intent in the deal room             (DR-1)
+6dfe23a Add pure peak-intent logic for the receiver-sender CTA               (DR-1)
+7f33539 Settle a disputed clause when a counter-proposal is accepted         (DR-3)
+cef9f4b Instrument the deal viral funnel with PostHog events                 (DR-2)
+902b516 Add typed deal-funnel event map and PII-safe distinctId resolver     (DR-2)
+df0f7bf Track apply-fix unavailability when a risk cite is paraphrased       (AI-7)
+dd0110e Make Deal Room counterparty email optional + add share-sheet         (GR-1)
+e58f690 Add pure buildShareLinks helper for Deal Room share-sheet            (GR-1)
+4ae0e5d Add cancel / resume toggle to /billing current-plan card            (MON-3)
+eee2d03 Add POST /api/billing/cancel — OWNER-only self-serve cancel + resume (MON-3)
+efcf531 Reconcile expired canceled subs on billing-status read              (MON-3)
+d26d614 Add cancel / resume / expiry-downgrade DB ops in billing/index      (MON-3)
+13d6fc8 Add pure cancel + expiry-downgrade decisions for self-serve cancel  (MON-3)
+dcd6b04 Cap receiver suggest-moves against the owner's FREE plan            (DR-6)
+609e5e6 Extract FREE chat-cap decision into a shared pure helper            (DR-6)
+fa4783c Add Phase 1+2 roadmap + sequenced implementation plan               (docs)
+```
+
+Acceptance: `tsc` clean, **498 тестов** (437 baseline + 61 new), `next
+build` clean (101/101 страниц). Final whole-implementation review (Opus)
+на весь range → 1 cross-task баг (receiver funnel `orgId`) → fix `7cb49fa`.
+Verdict SHIP. Manual smoke deferred до preview/prod деплоя PR #10.
+Источник приоритизации: roadmap-скоринг (5 ридеров → 8 идеаторов → дедуп
+55→28 → adversarial scoring) в `docs/superpowers/2026-06-03-platform-
+improvement-roadmap.md`. Sub-проекты roadmap'а вне Phase 1+2 (DR-4/DR-5/
+DR-7/PLT-1/AI-1/AI-6 + founder-блокеры) — см. «Что НЕ сделано».
+
+### Sprint 15A.1 — Final-review deferred fixes (предыдущий заход)
 
 PR #8, ветка `claude/sprint-15a-1-followups` (база =
 `claude/sprint-8-ui-polish`, ребейзнется на main после merge'а PR #10).
@@ -2328,6 +2512,30 @@ bdc0e4c Hard-reload after workspace switch
 
 ### Sprint-итоги по убыванию
 
+- **Phase 1+2** (закрыт, 2026-06-04, текущий заход) — **8 buildable
+  roadmap-задач**, отобранных multi-agent скорингом (impact/effort/moat
+  vs реальный код). Исполнены autonomous Opus-pipeline'ом: roadmap →
+  `writing-plans` (per-task TDD-секции, fan-out Opus-планировщиков) →
+  `subagent-driven-development` (fresh implementer + spec-review +
+  quality-review + fix-loops per task, sequential в main-дереве по
+  волнам disjoint-файлов) → final whole-range review. Отгружено:
+  **DR-3** (counter-propose→`RESOLVED` + `agreedText` — переговорная
+  теперь реально доводит спор до согласия), **DR-1** (receiver→sender
+  CTA — замыкает growth-петлю), **DR-8** (presence + visibility-gated
+  auto-refresh poll), **GR-1** (email опционален + share-sheet —
+  receiver-флоу без Resend), **DR-2** (PostHog-воронка сделок), **DR-6**
+  (receiver FREE-cap, закрыта unmetered-spend дыра), **AI-7** (apply-fix
+  телеметрия), **MON-3** (self-serve cancel подписки — закрыт offer-
+  compliance долг 152-ФЗ). **21 коммит**, `tsc` clean, **498 тестов**
+  (+61), `next build` clean. 5 новых foot-guns (#65-#69). Запушено на
+  `sprint-8-ui-polish`, ждёт merge'а user'ом через GitHub. **Урок
+  процесса**: schema-forced StructuredOutput у Opus-ревьюеров иногда
+  падает («completed without calling StructuredOutput») и роняет весь
+  workflow — для ревью-агентов надёжнее текстовый verdict + try/catch
+  на каждый agent-вызов. Founder-блокер «домен» снят (✅ подключён).
+  Deferred за пределы Phase 1+2: DR-4/DR-5 (ждут PR #9 open questions),
+  DR-7→PLT-1, AI-6, AI-1.
+
 - **Sprint 15A.1** (закрыт, 2026-05-26) — **Final-review deferred
   fixes**. 5 fix'ов из Sprint 15A whole-implementation review:
   ICS line folding RFC 5545 §3.1 (foot-gun #63, helper `foldLine`
@@ -2421,27 +2629,32 @@ bdc0e4c Hard-reload after workspace switch
 
 - **`INTERNAL_SECRET` ✅ выставлен в Production** (2026-05-26).
   Опционально — set в Preview env тоже для cleaner preview smoke.
-- **Manual smoke на preview deploy PR #10** — durable analyze (reload
-  mid-analysis, parallel jobs, cancel), schema migration check (см. SQL
-  в CLAUDE.md дебаг-разделе), AI negotiation moves на DISPUTED clause,
-  ICS download в Google Calendar.
-- **Запуск** — ИП ✅ зарегистрирован. Осталось:
+- **Manual smoke на preview/prod деплое PR #10:**
+  - **Phase 1+2 Deal Room**: создать сделку БЕЗ email → share-ссылка /
+    Telegram → открыть в инкогнито → проголосовать → PROPOSE_EDIT →
+    «Принять формулировку» (clause → RESOLVED, `agreedText`) → presence
+    «смотрел N мин назад» + auto-refresh без reload → receiver CTA после
+    первого голоса.
+  - **MON-3**: `/billing` → «Отменить подписку» (`cancelAtPeriodEnd`) →
+    «Возобновить»; после `currentPeriodEnd` план падает на FREE.
+  - Durable analyze (reload mid-analysis, parallel jobs, cancel), AI
+    negotiation moves на DISPUTED clause, ICS download.
+- **Запуск** — ИП ✅ зарегистрирован, домен ✅ подключён к Vercel. Осталось:
   - ЮKassa: получить `YOOKASSA_SHOP_ID` / `_SECRET_KEY`, включить
-    B2B-платежи `b2b_sberbank` для будущей проверки ИНН.
+    B2B-платежи `b2b_sberbank` (+ «Автоплатежи» для MON-3 auto-renew позже).
   - Уведомление в Роскомнадзор → положить полученный номер в
     `OPERATOR.rknOperatorNumber`.
-  - Подключить `yakso.ru` к Vercel (A-запись `@` на IP Vercel). Пока
-    домен не подключён, ссылки в письмах / OG / `/r/[token]` ведут на
-    404.
-  - Verify домена в Resend → переключить welcome / password-reset на
-    реальную доставку.
+  - Verify домена в Resend → красивые email-приглашения. НЕ блокер для
+    receiver-флоу (после GR-1 он работает на share-ссылках без email).
   - Открыть расчётный счёт ИП → заполнить `OPERATOR.bank*` (раскроется
     банковский блок оферты).
+  - `GEMINI_API_KEY` в Vercel (бесплатно) — страховка AI-фоллбэка.
   - Каналы привлечения (см. roadmap, Неделя 3).
-- **PR #10** (Sprint 14 design completion + Sprint 15A, база —
-  `claude/complete-previous-tasks-rzcSp` = «main») открыт, в `main` НЕ
-  смержен. После merge — auto-deploy на Vercel + `db-push-with-retry.mjs`
-  применит Sprint 15A schema migration.
+- **PR #10** (Sprint 14 design completion + Sprint 15A + **Phase 1+2**,
+  база — `claude/complete-previous-tasks-rzcSp` = «main») открыт, в `main`
+  НЕ смержен. После merge — auto-deploy + `db-push-with-retry.mjs` применит
+  Sprint 15A migration + Phase 1+2 additive поля. Schema-check (Neon):
+  `SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='DealClause' AND column_name='agreedText') AS has_agreed, EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='ClauseAction' AND column_name='proposalId') AS has_proposal;`
 - **PR #8** (Sprint 15A.1, 5 deferred fixes, база = `sprint-8-ui-polish`)
   открыт. Ребейзнется на main после merge'а PR #10.
 - **PR #9 draft** (Sub-B spec — DECLINED/EXPIRED + two-sided Counter-AI
