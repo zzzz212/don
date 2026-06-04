@@ -451,13 +451,27 @@ model DocumentChunk {
 model Analysis {
   id         String   @id @default(cuid())
   documentId String   @unique
-  score      Int
-  summary    String
-  risks      String
+  score      Int      @default(0)
+  summary    String   @default("")
+  risks      String   @default("[]")
   metadata   String?
   createdAt  DateTime @default(now())
 
+  // Sprint 15A — durable async job tracking. status=COMPLETED is the
+  // default so every pre-existing Analysis row is treated as a finished
+  // job after migration without backfill. score/summary/risks defaults
+  // cover newly-created PENDING rows where the values are not yet known;
+  // the worker overwrites them on completion.
+  status       AnalysisStatus @default(COMPLETED)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  progress     Int            @default(100)
+  stage        String?
+  errorMessage String?
+
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([status, startedAt])
 }
 
 model GeneratedDocument {
@@ -1004,10 +1018,18 @@ model DealClause {
   // PENDING — no action yet, or only partial action.
   // AGREED — both participants AGREE'd this clause.
   // DISPUTED — at least one DISAGREE recorded.
-  // RESOLVED — was DISPUTED, now both participants AGREE.
+  // RESOLVED — a counter-proposal (PROPOSE_EDIT) was accepted by the
+  //   counterparty (ACCEPT_PROPOSAL); the agreed wording is in agreedText.
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  // Sprint 15A — AI negotiation moves cached. Null = not yet requested.
+  // Populated by POST /api/deals/.../clauses/.../suggest-moves. Shape:
+  // { moves: Array<{id:'A'|'B'|'C', title, body, proposedText?:string}> }
+  suggestedMoves Json?
+  // Snapshot of the accepted counter-proposal text once a DISPUTED clause
+  // is RESOLVED via the propose→accept loop (DR-3). Null until settlement.
+  agreedText  String?
 
   deal    Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
   actions ClauseAction[]
@@ -1019,11 +1041,15 @@ model ClauseAction {
   id            String   @id @default(cuid())
   clauseId      String
   participantId String
-  // "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT"
+  // "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT" | "ACCEPT_PROPOSAL"
   kind          String
-  // Free-text body. Empty for AGREE/DISAGREE, required for COMMENT and
-  // PROPOSE_EDIT.
+  // Free-text body. Empty for AGREE/DISAGREE/ACCEPT_PROPOSAL, required for
+  // COMMENT and PROPOSE_EDIT (the latter carries the proposed new text).
   body          String?
+  // Set only on ACCEPT_PROPOSAL — references the ClauseAction.id of the
+  // PROPOSE_EDIT being accepted. Plain nullable String, not an FK, so
+  // `prisma db push` stays additive and safe (foot-gun #2/#38 pattern).
+  proposalId    String?
   createdAt     DateTime @default(now())
 
   clause      DealClause      @relation(fields: [clauseId], references: [id], onDelete: Cascade)
@@ -1031,4 +1057,12 @@ model ClauseAction {
 
   @@index([clauseId, createdAt])
   @@index([participantId])
+}
+
+enum AnalysisStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

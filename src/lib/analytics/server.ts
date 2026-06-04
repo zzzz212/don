@@ -69,9 +69,15 @@ export type EventName =
   | "password_reset_requested"
   | "password_reset_completed"
   // Document analysis
+  | "analysis_started"
   | "analysis_completed"
   | "analysis_failed"
   | "ocr_used"
+  // Apply-fix observability: a risk cite was paraphrased so the report's
+  // apply-fix button is silently disabled (no fuzzy fallback by design,
+  // foot-gun #13). Lets us trend headline-feature degradation that 4xx
+  // Sentry filtering hides.
+  | "analyze.applyfix_unavailable"
   // Document generation
   | "document_generated"
   | "document_refined"
@@ -93,7 +99,14 @@ export type EventName =
   | "payment_failed"
   | "subscription_canceled"
   // Admin
-  | "admin_action_performed";
+  | "admin_action_performed"
+  // Deal Room funnel (DR-2)
+  | "deal_created"
+  | "deal_link_opened"
+  | "receiver_identified"
+  | "clause_agreed"
+  | "clause_disputed"
+  | "deal_agreed_complete";
 
 interface CaptureArgs {
   /** User cuid. Use "anonymous" for anonymous flows. */

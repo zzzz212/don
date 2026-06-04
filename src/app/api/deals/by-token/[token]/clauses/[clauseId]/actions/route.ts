@@ -3,14 +3,21 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getOrCreateDealSessionId } from "@/lib/deal-session";
 import { rateLimit } from "@/lib/rate-limit";
-import { reconcileClauseStatus } from "@/lib/deals";
+import {
+  reconcileClauseStatus,
+  latestAcceptedProposalText,
+  type ClauseActionInput,
+} from "@/lib/deals";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
+import { DEAL_FUNNEL_EVENTS, clauseEventFor } from "@/lib/analytics/deal-funnel";
 
 export const dynamic = "force-dynamic";
 
 const ActionSchema = z.object({
-  kind: z.enum(["AGREE", "DISAGREE", "COMMENT", "PROPOSE_EDIT"]),
+  kind: z.enum(["AGREE", "DISAGREE", "COMMENT", "PROPOSE_EDIT", "ACCEPT_PROPOSAL"]),
   body: z.string().trim().max(2000).optional(),
+  proposalId: z.string().trim().max(64).optional(),
 });
 
 export async function POST(
@@ -32,6 +39,9 @@ export async function POST(
     }
     if ((parsed.data.kind === "COMMENT" || parsed.data.kind === "PROPOSE_EDIT") && !parsed.data.body) {
       return NextResponse.json({ error: "Комментарий не может быть пустым" }, { status: 400 });
+    }
+    if (parsed.data.kind === "ACCEPT_PROPOSAL" && !parsed.data.proposalId) {
+      return NextResponse.json({ error: "Не указано принимаемое предложение" }, { status: 400 });
     }
 
     const clause = await prisma.dealClause.findFirst({
@@ -63,38 +73,65 @@ export async function POST(
         participantId: receiver.id,
         kind: parsed.data.kind,
         body: parsed.data.body ?? null,
+        proposalId: parsed.data.proposalId ?? null,
       },
     });
 
     const allActions = await prisma.clauseAction.findMany({
       where: { clauseId },
-      select: { participantId: true, kind: true, createdAt: true },
+      select: { id: true, participantId: true, kind: true, body: true, proposalId: true, createdAt: true },
     });
-    const newStatus = reconcileClauseStatus(
-      allActions.map((a) => ({
-        participantId: a.participantId,
-        kind: a.kind as "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT",
-        createdAt: a.createdAt,
-      })),
-      sender.id,
-      receiver.id
-    );
+    const reconciled: ClauseActionInput[] = allActions.map((a) => ({
+      id: a.id,
+      participantId: a.participantId,
+      kind: a.kind as ClauseActionInput["kind"],
+      body: a.body,
+      proposalId: a.proposalId,
+      createdAt: a.createdAt,
+    }));
+    const newStatus = reconcileClauseStatus(reconciled, sender.id, receiver.id);
+    // Snapshot the settled wording so the final document can export the
+    // agreed text. Otherwise leave any prior agreedText untouched.
+    const settledText =
+      newStatus === "RESOLVED" ? (latestAcceptedProposalText(reconciled) ?? undefined) : undefined;
     await prisma.dealClause.update({
       where: { id: clauseId },
-      data: { status: newStatus },
+      data: { status: newStatus, ...(settledText !== undefined ? { agreedText: settledText } : {}) },
     });
 
     // Sync deal.status with the current state of all clauses. Same logic
     // as the sender route — promote to AGREED when nothing is open,
     // demote back to ACTIVE if a previously-AGREED clause flips back.
     const stillOpen = await prisma.dealClause.count({
-      where: { dealId: clause.dealId, status: { not: "AGREED" } },
+      where: { dealId: clause.dealId, status: { notIn: ["AGREED", "RESOLVED"] } },
     });
     const desiredStatus = stillOpen === 0 ? "AGREED" : "ACTIVE";
     await prisma.deal.updateMany({
       where: { id: clause.dealId, status: { not: desiredStatus } },
       data: { status: desiredStatus },
     });
+
+    // Funnel: per-clause resolution + deal completion, receiver side.
+    // distinctId is the opaque session id (PII-free); the workspace group
+    // key is the deal's org so receiver-side events roll up to the owner's
+    // workspace rather than the anonymous session.
+    const clauseEvent = clauseEventFor(newStatus);
+    if (clauseEvent) {
+      void captureEvent({
+        userId: sessionId,
+        orgId: clause.deal.orgId,
+        event: clauseEvent,
+        properties: { role: "RECEIVER" },
+      });
+    }
+    if (desiredStatus === "AGREED") {
+      void captureEvent({
+        userId: sessionId,
+        orgId: clause.deal.orgId,
+        event: DEAL_FUNNEL_EVENTS.dealAgreedComplete,
+        properties: { role: "RECEIVER" },
+      });
+    }
 
     return NextResponse.json({ ok: true, clauseStatus: newStatus });
   } catch (error) {

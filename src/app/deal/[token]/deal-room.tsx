@@ -2,10 +2,20 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/skeleton";
+import { ClauseSkeleton } from "./clause-skeleton";
 import { ClauseCard, type ClauseView } from "./clause-card";
 import { IdentifyModal } from "./identify-modal";
 import { StatusBar } from "./status-bar";
+import {
+  reconcileClauseStatus,
+  type ClauseActionInput,
+} from "@/lib/deal-status";
+import { buttonClass } from "@/components/button";
+import { ReceiverCta } from "./receiver-cta";
+import { shouldShowReceiverCta } from "@/lib/deal-cta";
+import { formatLastSeen, isOnline } from "@/lib/deal-presence";
+import { mergeDealClauses } from "@/lib/deal-merge";
 
 interface DealView {
   id: string;
@@ -17,6 +27,7 @@ interface DealView {
     id: string;
     role: "SENDER" | "RECEIVER";
     name: string | null;
+    lastSeenAt: string | null;
   }>;
   clauses: ClauseView[];
 }
@@ -27,11 +38,49 @@ interface DealResponse {
   myRole: "SENDER" | "RECEIVER" | null;
 }
 
+function errorMessageFor(
+  code: number,
+  serverMessage?: string
+): {
+  code: number;
+  title: string;
+  body: string;
+  recoverable: boolean;
+} {
+  if (code === 404 || code === 410) {
+    return {
+      code,
+      title: "Ссылка устарела или удалена",
+      body: "Свяжитесь с отправителем — он перевыпустит приглашение.",
+      recoverable: false,
+    };
+  }
+  if (code === 429) {
+    return {
+      code,
+      title: "Слишком много действий подряд",
+      body: "Подождите минуту и попробуйте снова.",
+      recoverable: true,
+    };
+  }
+  return {
+    code,
+    title: "Не удалось открыть",
+    body: serverMessage ?? "Попробуйте обновить страницу.",
+    recoverable: true,
+  };
+}
+
 export function DealRoom({ token }: { token: string }) {
   const [deal, setDeal] = useState<DealView | null>(null);
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [myRole, setMyRole] = useState<"SENDER" | "RECEIVER" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<{
+    code: number;
+    title: string;
+    body: string;
+    recoverable: boolean;
+  } | null>(null);
   const [needsIdentify, setNeedsIdentify] = useState(false);
 
   const fetchDeal = useCallback(async () => {
@@ -40,7 +89,7 @@ export function DealRoom({ token }: { token: string }) {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data?.error ?? "Не удалось загрузить договор");
+      setErrorState(errorMessageFor(res.status, data?.error));
       return;
     }
     const data = (await res.json()) as DealResponse;
@@ -55,54 +104,199 @@ export function DealRoom({ token }: { token: string }) {
     }
   }, [token]);
 
+  // Background poll: refetch and MERGE (not blind-replace) so optimistic
+  // in-flight actions survive until the server echoes them. Distinct from
+  // fetchDeal (which canonicalises after the local user's own action and
+  // may surface errors / identify) — the poll stays silent on transient
+  // failures and never opens the identify modal.
+  const pollDeal = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/deals/by-token/${token}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return; // stay silent on transient poll failures
+      const data = (await res.json()) as DealResponse;
+      setDeal((current) => {
+        if (!current) return data.deal;
+        const senderId =
+          current.participants.find((p) => p.role === "SENDER")?.id ?? "";
+        const receiverId =
+          current.participants.find((p) => p.role === "RECEIVER")?.id ?? "";
+        return {
+          ...data.deal,
+          clauses: mergeDealClauses(
+            current.clauses,
+            data.deal.clauses,
+            senderId,
+            receiverId
+          ),
+        };
+      });
+    } catch {
+      // ignore — next tick retries
+    }
+  }, [token]);
+
   useEffect(() => {
     void fetchDeal();
   }, [fetchDeal]);
 
+  // Auto-refresh while the tab is visible and the deal is still open.
+  // Pauses on AGREED (nothing more to reconcile) and whenever the tab is
+  // hidden (avoids hammering deep-include GETs from background tabs).
+  useEffect(() => {
+    if (!deal || deal.status === "AGREED") return;
+    let handle: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (handle) return;
+      handle = setInterval(() => {
+        void pollDeal();
+      }, 4_500);
+    };
+    const stop = () => {
+      if (handle) {
+        clearInterval(handle);
+        handle = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [deal, pollDeal]);
+
   const onAction = useCallback(
     async (
       clauseId: string,
-      kind: "AGREE" | "DISAGREE" | "COMMENT",
-      body?: string
+      kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT" | "ACCEPT_PROPOSAL",
+      body?: string,
+      proposalId?: string
     ) => {
+      if (!deal || !myParticipantId) return;
+
+      // Snapshot before any mutation so we can rollback on POST failure.
+      const snapshot = deal;
+
+      // Build the synthetic action — same shape the server will produce
+      // when we refetch. Optimistic id is prefixed so it can't collide
+      // with real cuids.
+      const optimistic = {
+        id: `optimistic-${Date.now()}`,
+        kind,
+        body: body ?? null,
+        proposalId: proposalId ?? null,
+        createdAt: new Date().toISOString(),
+        participant: {
+          id: myParticipantId,
+          role: myRole ?? ("RECEIVER" as const),
+          guestName: null,
+        },
+      };
+
+      // Identify SENDER + RECEIVER ids for status reconciliation.
+      const senderId =
+        deal.participants.find((p) => p.role === "SENDER")?.id ?? "";
+      const receiverId =
+        deal.participants.find((p) => p.role === "RECEIVER")?.id ?? "";
+
+      // Mutate the deal locally — append the synthetic action and
+      // recompute the clause status.
+      setDeal({
+        ...deal,
+        clauses: deal.clauses.map((c) => {
+          if (c.id !== clauseId) return c;
+          const newActions = [...c.actions, optimistic];
+          // reconcileClauseStatus takes ClauseActionInput[] (participantId,
+          // kind, createdAt). Map the rich action shape into that.
+          const reconciled: ClauseActionInput[] = newActions.map((a) => ({
+            id: a.id,
+            participantId: a.participant.id,
+            kind: a.kind as ClauseActionInput["kind"],
+            body: a.body,
+            proposalId: a.proposalId ?? null,
+            createdAt: new Date(a.createdAt),
+          }));
+          return {
+            ...c,
+            actions: newActions,
+            status: reconcileClauseStatus(reconciled, senderId, receiverId),
+          };
+        }),
+      });
+
+      // POST in the background.
       const url =
-        myRole === "SENDER" && deal
+        myRole === "SENDER"
           ? `/api/deals/${deal.id}/clauses/${clauseId}/actions`
           : `/api/deals/by-token/${token}/clauses/${clauseId}/actions`;
       const res = await fetch(url, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind, body }),
+        body: JSON.stringify({ kind, body, proposalId }),
       });
+
       if (!res.ok) {
+        // Rollback to pre-mutation state, surface the error.
+        setDeal(snapshot);
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(data?.error ?? "Не удалось сохранить действие");
+        setErrorState(errorMessageFor(res.status, data?.error));
         return;
       }
+
+      // Server accepted — canonicalise (timestamps, ids, etc.).
       await fetchDeal();
     },
-    [token, fetchDeal, myRole, deal]
+    [deal, myParticipantId, myRole, token, fetchDeal]
   );
 
-  if (error) {
+  if (errorState) {
     return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <p className="font-serif text-2xl font-semibold text-foreground">
-          Не удалось открыть
+      <main className="mx-auto max-w-md px-5 py-24 text-center sm:px-10">
+        <p className="text-[10px] uppercase tracking-[0.28em] text-ink-quiet">
+          Что-то не так
         </p>
-        <p className="mt-2 text-sm text-ink-quiet">{error}</p>
-      </div>
+        <p className="mt-3 font-serif text-2xl font-semibold tracking-tight text-foreground">
+          {errorState.title}
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink-quiet">
+          {errorState.body}
+        </p>
+        {errorState.recoverable && (
+          <button
+            type="button"
+            onClick={() => {
+              setErrorState(null);
+              void fetchDeal();
+            }}
+            className={`${buttonClass({ variant: "ghost" })} mt-6`}
+          >
+            Обновить
+          </button>
+        )}
+      </main>
     );
   }
   if (!deal) {
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
-        <p className="mt-3 text-xs uppercase tracking-[0.2em] text-ink-quiet">
-          Открываем договор
-        </p>
-      </div>
+      <main className="paper-grain mx-auto max-w-5xl px-5 pt-8 sm:px-10">
+        <header className="border-b border-rule pb-8 mb-12">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-3 h-8 w-3/4" />
+          <Skeleton className="mt-6 h-3 w-1/2" />
+        </header>
+        <div className="space-y-10">
+          {[0, 1, 2].map((i) => (
+            <ClauseSkeleton key={i} />
+          ))}
+        </div>
+      </main>
     );
   }
 
@@ -116,6 +310,59 @@ export function DealRoom({ token }: { token: string }) {
   const disputedCount = deal.clauses.filter((c) => c.status === "DISPUTED")
     .length;
 
+  // Perspective chip — communicates which side of the deal the viewer is on.
+  const me = myParticipantId
+    ? deal.participants.find((p) => p.id === myParticipantId)
+    : null;
+  const chipLabel: string | null =
+    myRole === "SENDER"
+      ? "Вы — отправитель"
+      : myRole === "RECEIVER"
+        ? me?.name
+          ? `Открыто как ${me.name} (получатель)`
+          : "Открыто как гость"
+        : null;
+  const chipTone =
+    myRole === "SENDER" ? "bg-primary" : "bg-accent"; // terracotta for sender, sage for receiver
+
+  // Has the local receiver cast at least one AGREE/DISAGREE on any clause?
+  // Drives the post-vote CTA peak (see src/lib/deal-cta.ts).
+  const hasVoted = myParticipantId
+    ? deal.clauses.some((c) =>
+        c.actions.some(
+          (a) =>
+            a.participant.id === myParticipantId &&
+            (a.kind === "AGREE" || a.kind === "DISAGREE")
+        )
+      )
+    : false;
+  const showReceiverCta = shouldShowReceiverCta({
+    myRole,
+    hasVoted,
+    dealStatus: deal.status,
+  });
+
+  // Counterparty presence — the side the viewer is NOT. Soft signal from
+  // lastSeenAt (lags by the poll interval). null when never opened.
+  const counterpartyRole: "SENDER" | "RECEIVER" =
+    myRole === "RECEIVER" ? "SENDER" : "RECEIVER";
+  const counterparty = deal.participants.find(
+    (p) => p.role === counterpartyRole
+  );
+  // Date.now() in render trips react-hooks/purity, but the presence label
+  // is a soft, lagged signal that the 4.5s poll re-renders anyway — the
+  // render-time instability is benign and never observable to the user.
+  // eslint-disable-next-line react-hooks/purity
+  const presenceNow = Date.now();
+  const presenceLabel = formatLastSeen(
+    counterparty?.lastSeenAt ?? null,
+    presenceNow
+  );
+  const counterpartyOnline = isOnline(
+    counterparty?.lastSeenAt ?? null,
+    presenceNow
+  );
+
   return (
     <>
       <main className="paper-grain mx-auto max-w-5xl px-5 pb-32 pt-8 sm:px-10">
@@ -124,6 +371,15 @@ export function DealRoom({ token }: { token: string }) {
           <p className="text-[11px] uppercase tracking-[0.28em] text-ink-quiet">
             Переговоры по договору
           </p>
+          {chipLabel && (
+            <p className="mt-2 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-primary">
+              <span
+                aria-hidden="true"
+                className={`inline-block h-1.5 w-1.5 rounded-full ${chipTone}`}
+              />
+              {chipLabel}
+            </p>
+          )}
           <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {deal.title}
           </h1>
@@ -161,6 +417,19 @@ export function DealRoom({ token }: { token: string }) {
             {disputedCount > 0 && ` · ${disputedCount} спорных`}
             {deal.status === "AGREED" && " · договор согласован полностью"}
           </p>
+
+          {presenceLabel && (
+            <p className="mt-2 inline-flex items-center gap-2 text-[11px] italic text-ink-quiet">
+              <span
+                aria-hidden="true"
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  counterpartyOnline ? "bg-accent" : "bg-ink-quiet/40"
+                }`}
+              />
+              {counterpartyRole === "SENDER" ? "Отправитель" : "Контрагент"}{" "}
+              {presenceLabel}
+            </p>
+          )}
         </header>
 
         {/* ── Clauses — staggered fade-in, like turning the pages of a
@@ -181,11 +450,22 @@ export function DealRoom({ token }: { token: string }) {
               <ClauseCard
                 clause={c}
                 myParticipantId={myParticipantId}
+                myRole={myRole}
+                dealId={deal.id}
+                token={token}
                 onAction={onAction}
               />
             </motion.div>
           ))}
         </div>
+
+        {showReceiverCta && deal.status !== "AGREED" && (
+          <ReceiverCta variant="inline" />
+        )}
+
+        {showReceiverCta && deal.status === "AGREED" && (
+          <ReceiverCta variant="colophon" />
+        )}
 
         {/* Closing colophon — tiny brand mark at the bottom of the
             document, like a printer's mark on a legal opinion. */}

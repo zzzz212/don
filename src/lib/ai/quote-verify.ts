@@ -69,17 +69,39 @@ export function findVerbatimQuote(
   return contractText.slice(start, end);
 }
 
+/** Telemetry hook: invoked once per risk whose quote is long enough to
+ *  be a real citation but could not be located in the contract — the
+ *  apply-fix button will be silently disabled for it. Injected (not
+ *  imported) so this module stays pure and unit-testable without
+ *  pulling in the PostHog client. */
+export type ApplyFixUnavailable = (info: {
+  level: AnalysisRisk["level"];
+  clauseTitle: string;
+}) => void;
+
 /** Repair `originalText` on each risk so the report's apply-fix can
- *  match it. Risks whose quote can't be located are returned unchanged. */
+ *  match it. Risks whose quote can't be located are returned unchanged.
+ *  When `onUnavailable` is provided, it fires for each such paraphrased
+ *  cite (whitespace-recoverable and already-verbatim quotes never fire). */
 export function verifyRiskQuotes(
   contractText: string,
-  risks: AnalysisRisk[]
+  risks: AnalysisRisk[],
+  onUnavailable?: ApplyFixUnavailable
 ): AnalysisRisk[] {
   return risks.map((risk) => {
     const quote = risk.originalText;
+    // Empty / placeholder cites ("—", "Пункт отсутствует") are skipped,
+    // not reported: there was never a real anchor to apply against, so
+    // this is not a degradation of the apply-fix feature.
     if (!quote || quote.trim().length < MIN_QUOTE_LENGTH) return risk;
     const snapped = findVerbatimQuote(contractText, quote);
-    if (snapped && snapped !== quote) {
+    if (snapped === null) {
+      // The model paraphrased a real clause — apply-fix is now disabled
+      // for this risk with no other signal (4xx never reach Sentry).
+      onUnavailable?.({ level: risk.level, clauseTitle: risk.clauseTitle });
+      return risk;
+    }
+    if (snapped !== quote) {
       return { ...risk, originalText: snapped };
     }
     return risk;

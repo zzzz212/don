@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { getOrCreateDealSessionId } from "@/lib/deal-session";
 import { rateLimit } from "@/lib/rate-limit";
 import { reportError } from "@/lib/telemetry";
+import { captureEvent } from "@/lib/analytics/server";
+import { DEAL_FUNNEL_EVENTS, dealFunnelDistinctId } from "@/lib/analytics/deal-funnel";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +112,21 @@ export async function GET(
       // read-only view (myParticipantId stays null).
     }
 
+    // Funnel: fire once we have resolved the viewer's role. distinctId is
+    // the owner cuid for the sender/owner path, else the anonymous
+    // receiver's opaque participant id — never null+PII (foot-gun: PII-free
+    // distinctId). `role` distinguishes a sender/owner visit from a
+    // receiver claim so the open→engage step is measurable.
+    void captureEvent({
+      userId: dealFunnelDistinctId({
+        ownerId: isOwner ? deal.ownerId : null,
+        sessionId: myRole === "RECEIVER" ? myParticipantId : null,
+      }),
+      orgId: deal.orgId,
+      event: DEAL_FUNNEL_EVENTS.dealLinkOpened,
+      properties: { role: myRole ?? "anonymous" },
+    });
+
     return NextResponse.json({
       deal: {
         id: deal.id,
@@ -121,6 +138,10 @@ export async function GET(
           id: p.id,
           role: p.role,
           name: p.guestName ?? p.user?.name ?? null,
+          // Soft presence signal for the title-page header. Written on
+          // every GET (sender + claimed receiver), so it lags by the poll
+          // interval — never a heartbeat. Not PII (#50: only name leaks).
+          lastSeenAt: p.lastSeenAt ? p.lastSeenAt.toISOString() : null,
         })),
         clauses: deal.clauses,
       },

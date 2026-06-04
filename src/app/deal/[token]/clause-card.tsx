@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Check, X, MessageSquare } from "lucide-react";
 import { buttonClass } from "@/components/button";
+import { latestOpenProposal, type ClauseActionInput } from "@/lib/deals";
+import { NegotiationMoves } from "./negotiation-moves";
 
 export interface ClauseView {
   id: string;
@@ -21,6 +23,7 @@ export interface ClauseView {
     id: string;
     kind: string;
     body: string | null;
+    proposalId: string | null;
     createdAt: string;
     participant: {
       id: string;
@@ -57,14 +60,21 @@ function clauseLabel(ord: number): string {
 export function ClauseCard({
   clause,
   myParticipantId,
+  myRole,
+  dealId,
+  token,
   onAction,
 }: {
   clause: ClauseView;
   myParticipantId: string | null;
+  myRole: "SENDER" | "RECEIVER" | null;
+  dealId: string | null;
+  token: string;
   onAction: (
     clauseId: string,
-    kind: "AGREE" | "DISAGREE" | "COMMENT",
-    body?: string
+    kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT" | "ACCEPT_PROPOSAL",
+    body?: string,
+    proposalId?: string
   ) => Promise<void>;
 }) {
   const [commentDraft, setCommentDraft] = useState("");
@@ -77,6 +87,23 @@ export function ClauseCard({
 
   const comments = clause.actions.filter((a) => a.kind === "COMMENT");
   const statusLabel = STATUS_LABEL[clause.status];
+
+  // Latest counter-proposal awaiting acceptance. Only the OTHER party may
+  // accept (you cannot accept your own edit). Mirrors the settlement rule
+  // in reconcileClauseStatus.
+  const proposalActions: ClauseActionInput[] = clause.actions.map((a) => ({
+    id: a.id,
+    participantId: a.participant.id,
+    kind: a.kind as ClauseActionInput["kind"],
+    body: a.body,
+    proposalId: a.proposalId ?? null,
+    createdAt: new Date(a.createdAt),
+  }));
+  const openProposal = latestOpenProposal(proposalActions);
+  const canAcceptProposal =
+    !!openProposal &&
+    !!myParticipantId &&
+    openProposal.participantId !== myParticipantId;
 
   return (
     <article
@@ -144,6 +171,12 @@ export function ClauseCard({
               )}
             </div>
           )}
+          {!clause.theirSide && clause.yourSide && (
+            <p className="italic text-[12px] leading-[1.5] text-ink-quiet/70">
+              Counter-AI не сформирован для этого договора. Запустите повторный
+              анализ, чтобы получить позицию другой стороны.
+            </p>
+          )}
         </aside>
       </div>
 
@@ -155,9 +188,11 @@ export function ClauseCard({
               <button
                 type="button"
                 onClick={() => void onAction(clause.id, "AGREE")}
+                disabled={lastVote === "AGREE"}
+                aria-pressed={lastVote === "AGREE"}
                 className={
                   lastVote === "AGREE"
-                    ? buttonClass({ variant: "primary", size: "sm" })
+                    ? `${buttonClass({ variant: "primary", size: "sm" })} cursor-default opacity-90`
                     : buttonClass({ variant: "ghost", size: "sm" })
                 }
               >
@@ -167,9 +202,11 @@ export function ClauseCard({
               <button
                 type="button"
                 onClick={() => void onAction(clause.id, "DISAGREE")}
+                disabled={lastVote === "DISAGREE"}
+                aria-pressed={lastVote === "DISAGREE"}
                 className={
                   lastVote === "DISAGREE"
-                    ? buttonClass({ variant: "primary", size: "sm" })
+                    ? `${buttonClass({ variant: "primary", size: "sm" })} cursor-default opacity-90`
                     : buttonClass({ variant: "ghost", size: "sm" })
                 }
               >
@@ -208,6 +245,29 @@ export function ClauseCard({
             </ul>
           )}
 
+          {openProposal && (
+            <div className="mt-4 border-l-2 border-accent/60 bg-accent/[0.04] pl-4 pr-3 py-3">
+              <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-accent">
+                Предложена новая формулировка
+              </div>
+              <p className="mt-1.5 text-[13px] leading-[1.6] text-foreground whitespace-pre-line">
+                {openProposal.body}
+              </p>
+              {canAcceptProposal && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void onAction(clause.id, "ACCEPT_PROPOSAL", undefined, openProposal.id)
+                  }
+                  className={`${buttonClass({ variant: "primary", size: "sm" })} mt-2.5`}
+                >
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  Принять формулировку
+                </button>
+              )}
+            </div>
+          )}
+
           {myParticipantId && (
             <div className="mt-3 flex items-center gap-2">
               <input
@@ -239,6 +299,21 @@ export function ClauseCard({
             </div>
           )}
         </div>
+      )}
+      {clause.status === "DISPUTED" && myParticipantId && myRole && (
+        <NegotiationMoves
+          dealId={dealId}
+          token={token}
+          clauseId={clause.id}
+          myRole={myRole}
+          onApplyAccept={() => void onAction(clause.id, "AGREE")}
+          onApplyCompromise={(proposedText) =>
+            void onAction(clause.id, "PROPOSE_EDIT", proposedText)
+          }
+          onApplyStand={(rationale) =>
+            void onAction(clause.id, "COMMENT", rationale)
+          }
+        />
       )}
     </article>
   );

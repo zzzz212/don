@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/billing-reminders",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/restart-stuck-analyses",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

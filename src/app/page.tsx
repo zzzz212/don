@@ -266,7 +266,7 @@ export default function LandingPage() {
           <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
-                Sprint 14 · Deal Room
+                Новинка · Deal Room
               </p>
               <h2 className="mt-4 font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
                 Переговоры в одной комнате —{" "}
@@ -297,16 +297,6 @@ export default function LandingPage() {
                     </strong>{" "}
                     AI показывает обе стороны: что выгодно вам и что выгодно
                     им. Предлагает компромисс там, где это возможно.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 inline-block h-px w-4 bg-foreground/40 shrink-0" />
-                  <span>
-                    <strong className="font-semibold text-foreground">
-                      Аудит-трейл —
-                    </strong>{" "}
-                    кто что отметил и когда, для всех пунктов. Готов к
-                    подписанию когда оба согласовали.
                   </span>
                 </li>
               </ul>

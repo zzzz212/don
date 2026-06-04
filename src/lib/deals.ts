@@ -8,44 +8,13 @@ export function generateInviteToken(): string {
   return randomBytes(24).toString("hex");
 }
 
-export interface ClauseActionInput {
-  participantId: string;
-  kind: "AGREE" | "DISAGREE" | "COMMENT" | "PROPOSE_EDIT";
-  createdAt: Date;
-}
-
-export type ClauseStatus = "PENDING" | "AGREED" | "DISPUTED" | "RESOLVED";
-
-// Given the full action history for a single clause and the two
-// participant IDs (sender + receiver), determine the clause status.
-//
-// Rule: take each participant's most recent AGREE/DISAGREE (ignoring
-// COMMENT and PROPOSE_EDIT actions). If both AGREE → AGREED. If at
-// least one DISAGREE → DISPUTED. Otherwise → PENDING.
-//
-// RESOLVED is reserved for clauses that were DISPUTED but later both
-// AGREE'd — the reconciliation produces AGREED for that case; the
-// `RESOLVED` distinction is tracked separately in Sprint 15 (history).
-export function reconcileClauseStatus(
-  actions: ClauseActionInput[],
-  senderId: string,
-  receiverId: string
-): ClauseStatus {
-  const latestVote = (participantId: string): "AGREE" | "DISAGREE" | null => {
-    const votes = actions
-      .filter((a) => a.participantId === participantId)
-      .filter((a) => a.kind === "AGREE" || a.kind === "DISAGREE")
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    return (votes[0]?.kind as "AGREE" | "DISAGREE" | undefined) ?? null;
-  };
-
-  const senderVote = latestVote(senderId);
-  const receiverVote = latestVote(receiverId);
-
-  if (senderVote === "DISAGREE" || receiverVote === "DISAGREE") return "DISPUTED";
-  if (senderVote === "AGREE" && receiverVote === "AGREE") return "AGREED";
-  return "PENDING";
-}
+export {
+  reconcileClauseStatus,
+  latestOpenProposal,
+  latestAcceptedProposalText,
+  type ClauseActionInput,
+  type ClauseStatus,
+} from "./deal-status";
 
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
@@ -55,7 +24,11 @@ export interface CreateDealArgs {
   ownerId: string;
   orgId: string;
   documentId: string;
-  counterpartyEmail: string;
+  // Optional: when the sender shares the link manually (Telegram/WhatsApp)
+  // rather than by email, no address is collected. The guestEmail column
+  // is nullable (schema.prisma:987), so the RECEIVER row simply starts
+  // without one.
+  counterpartyEmail?: string;
   counterpartyName?: string;
   title?: string;
 }
@@ -159,7 +132,7 @@ export async function createDealFromDocument(
         participants: {
           create: [
             { role: "SENDER", userId: args.ownerId },
-            { role: "RECEIVER", guestEmail: args.counterpartyEmail, guestName: args.counterpartyName },
+            { role: "RECEIVER", guestEmail: args.counterpartyEmail ?? null, guestName: args.counterpartyName },
           ],
         },
         clauses: {

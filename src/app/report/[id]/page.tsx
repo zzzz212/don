@@ -32,6 +32,7 @@ import {
   RefreshCw,
   MoreHorizontal,
   Handshake,
+  Calendar,
 } from "lucide-react";
 
 interface NotarizationInfo {
@@ -360,6 +361,16 @@ export default function ReportPage({
                   label: "Отправить второй стороне",
                   icon: Handshake,
                   onClick: () => setDealOpen(true),
+                });
+              }
+              // ICS calendar export — always show so users discover the
+              // deadline-scan feature; route returns an empty VCALENDAR
+              // when no deadlines are present, which calendar apps handle.
+              if (analysis.documentId) {
+                overflow.push({
+                  label: "Скачать в календарь (.ics)",
+                  icon: Calendar,
+                  href: `/api/documents/${analysis.documentId}/deadlines.ics`,
                 });
               }
               overflow.push({

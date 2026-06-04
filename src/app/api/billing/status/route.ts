@@ -5,6 +5,7 @@ import { ensureActiveOrg, requireMembership, OrgAccessError } from "@/lib/org";
 import { reportError } from "@/lib/telemetry";
 import { getEffectiveUserPlan } from "@/lib/plans";
 import { checkTrialEligibility } from "@/lib/billing/trial";
+import { applyExpiryDowngrade } from "@/lib/billing";
 
 // GET /api/billing/status
 //   Returns the user's current plan/trial state plus the workspace's
@@ -29,6 +30,11 @@ export async function GET() {
     const orgId =
       session.user.activeOrgId ?? (await ensureActiveOrg(userId));
     const membership = await requireMembership(userId, orgId, "OWNER");
+
+    // Lazy expiry downgrade: no renewal cron yet, so a canceled sub whose
+    // period has elapsed is reconciled to FREE here, on the OWNER's own
+    // billing read, before we resolve the effective plan below.
+    await applyExpiryDowngrade(orgId);
 
     const [user, subscription, payments, trialEligibility] = await Promise.all([
       prisma.user.findUnique({

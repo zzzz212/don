@@ -45,6 +45,10 @@ yarn-error.log*
 # Claude Code per-project state (memory, worktrees, local settings)
 .claude/
 
+# Scratch workflow orchestration scripts (transient, not part of the codebase)
+.wf-*.mjs
+.split-*.cjs
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

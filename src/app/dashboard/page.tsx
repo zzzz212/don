@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/page-header";
+import { ActiveAnalysesStrip } from "@/components/active-analyses-strip";
 import { RiskBadge, type RiskLevel } from "@/components/risk-badge";
 import { UsageWidget } from "@/components/usage-widget";
 import { DocumentSearchBar } from "@/components/document-search-bar";
@@ -50,7 +51,12 @@ interface ActiveDealItem {
   status: string;
   inviteToken: string;
   clauseCount: number;
-  receiver: { guestName: string | null; guestEmail: string | null; lastSeenAt: string } | null;
+  receiver: {
+    guestName: string | null;
+    guestEmail: string | null;
+    lastSeenAt: string | null;
+  } | null;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -65,6 +71,20 @@ function timeAgo(date: string): string {
   if (days === 1) return "Вчера";
   if (days < 7) return `${days} дн назад`;
   return new Date(date).toLocaleDateString("ru-RU");
+}
+
+function receiverLine(receiver: ActiveDealItem["receiver"]): string {
+  if (!receiver?.lastSeenAt) return "Ссылка ещё не открыта";
+  const name = receiver.guestName ?? "гость";
+  return `${name} · открыто ${timeAgo(receiver.lastSeenAt)}`;
+}
+
+function sentinelTone(lastSeenAt: string | null | undefined): string {
+  if (!lastSeenAt) return "bg-primary"; // terracotta — needs attention
+  const seenMs = new Date(lastSeenAt).getTime();
+  const ageHours = (Date.now() - seenMs) / 3_600_000;
+  if (ageHours < 24) return "bg-success"; // sage — active dialogue
+  return "bg-foreground/30"; // neutral — opened but quiet
 }
 
 export default function DashboardPage() {
@@ -264,6 +284,8 @@ export default function DashboardPage() {
         }
       />
 
+      <ActiveAnalysesStrip />
+
       <div className="space-y-5 px-6 py-6 sm:px-8">
         {/* KPI strip — compact inline row instead of three full-width
             cards. Each metric is a single line: value (serif) + dim
@@ -297,28 +319,41 @@ export default function DashboardPage() {
             promoting an action that requires one. */}
         {!loading && activeDeals.length > 0 && (
           <section>
-            <h2 className="mb-3 font-serif text-xl font-semibold tracking-tight">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-ink-quiet">
               Активные сделки
+            </p>
+            <h2 className="mt-1 mb-4 font-serif text-xl font-semibold tracking-tight text-foreground">
+              Идут согласования
             </h2>
             <ul className="space-y-2">
               {activeDeals.map((d) => (
                 <li
                   key={d.id}
-                  className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-card-hover"
+                  className="flex items-center gap-4 rounded-xl border border-rule bg-card px-5 py-3.5 transition-colors hover:bg-card/80"
                 >
+                  <span
+                    aria-hidden="true"
+                    className={`mt-2 h-1.5 w-1.5 shrink-0 self-start rounded-full ${sentinelTone(
+                      d.receiver?.lastSeenAt
+                    )}`}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium text-foreground">
                       {d.title}
                     </div>
-                    <div className="mt-0.5 text-xs text-muted">
-                      Контрагент:{" "}
-                      {d.receiver?.guestName ?? d.receiver?.guestEmail ?? "ожидает открытия"}{" "}
-                      · {d.clauseCount} {d.clauseCount === 1 ? "пункт" : d.clauseCount < 5 ? "пункта" : "пунктов"}
+                    <div className="mt-0.5 text-xs text-ink-quiet">
+                      {receiverLine(d.receiver)} ·{" "}
+                      {d.clauseCount}{" "}
+                      {d.clauseCount === 1
+                        ? "пункт"
+                        : d.clauseCount < 5
+                          ? "пункта"
+                          : "пунктов"}
                     </div>
                   </div>
                   <Link
                     href={`/deal/${d.inviteToken}`}
-                    className="ml-4 shrink-0 text-sm font-semibold text-primary hover:underline"
+                    className="ml-auto shrink-0 text-sm font-semibold text-foreground transition-colors hover:text-primary underline-offset-4 hover:underline"
                   >
                     Открыть →
                   </Link>
@@ -336,7 +371,7 @@ export default function DashboardPage() {
             <div className="grid items-center gap-4 px-6 py-5 sm:grid-cols-[1fr_auto] sm:gap-8 sm:px-8 sm:py-6">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-ink-quiet">
-                  Sprint 14 · Deal Room
+                  Новинка · Deal Room
                 </p>
                 <h2 className="mt-1.5 font-serif text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                   Отправьте первый договор на согласование

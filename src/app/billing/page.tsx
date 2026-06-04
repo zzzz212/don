@@ -178,6 +178,8 @@ export default function BillingPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [trialActivating, setTrialActivating] = useState(false);
   const [trialError, setTrialError] = useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const reload = () => {
     setLoading(true);
@@ -226,6 +228,30 @@ export default function BillingPage() {
       setTrialError("Сеть недоступна.");
     } finally {
       setTrialActivating(false);
+    }
+  };
+
+  const handleCancelToggle = async (resume: boolean) => {
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      const r = await fetch("/api/billing/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume }),
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setCancelError(json.error ?? "Не удалось изменить подписку.");
+        return;
+      }
+      // Re-read so the badge / "действует до" / toggle reflect the new
+      // cancelAtPeriodEnd state.
+      reload();
+    } catch {
+      setCancelError("Сеть недоступна.");
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -342,6 +368,65 @@ export default function BillingPage() {
                     {formatDate(data.subscription.canceledAt)}. Доступ к функциям
                     тарифа сохраняется до{" "}
                     <strong>{formatDate(data.subscription.currentPeriodEnd)}</strong>.
+                  </div>
+                )}
+
+                {data.subscription && data.subscription.status === "ACTIVE" && (
+                  <div className="mt-5 border-t border-border pt-5">
+                    {cancelError && (
+                      <p className="mb-3 flex items-center gap-1.5 text-sm text-danger">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        {cancelError}
+                      </p>
+                    )}
+                    {data.subscription.cancelAtPeriodEnd ? (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-muted">
+                          Подписка будет отменена{" "}
+                          <strong className="text-foreground">
+                            {formatDate(data.subscription.currentPeriodEnd)}
+                          </strong>
+                          . До этой даты доступ сохраняется.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelToggle(true)}
+                          disabled={cancelLoading}
+                          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                        >
+                          {cancelLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Сохраняем...
+                            </>
+                          ) : (
+                            "Возобновить подписку"
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-muted">
+                          Вы можете отключить продление в любой момент — доступ
+                          сохранится до конца оплаченного периода.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelToggle(false)}
+                          disabled={cancelLoading}
+                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                        >
+                          {cancelLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Отменяем...
+                            </>
+                          ) : (
+                            "Отменить подписку"
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

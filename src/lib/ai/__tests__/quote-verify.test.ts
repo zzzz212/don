@@ -85,3 +85,41 @@ describe("verifyRiskQuotes", () => {
     expect(out.legalReference).toBe("ст. 1 ГК РФ");
   });
 });
+
+describe("verifyRiskQuotes — apply-fix telemetry hook", () => {
+  it("calls onUnavailable with level + clauseTitle when a quote is paraphrased", () => {
+    const calls: { level: string; clauseTitle: string }[] = [];
+    const para = "Арендатор платит аренду до пятого числа месяца";
+    verifyRiskQuotes(CONTRACT, [risk(para)], (info) => calls.push(info));
+    expect(calls).toEqual([{ level: "medium", clauseTitle: "Тест" }]);
+  });
+
+  it("does not call onUnavailable when the quote is recovered (whitespace-only mismatch)", () => {
+    const calls: unknown[] = [];
+    const recoverable =
+      "Арендатор обязан вносить арендную плату не позднее 5-го числа каждого месяца.";
+    verifyRiskQuotes(CONTRACT, [risk(recoverable)], () => calls.push(1));
+    expect(calls).toHaveLength(0);
+  });
+
+  it("does not call onUnavailable when the quote already appears verbatim", () => {
+    const calls: unknown[] = [];
+    const exact =
+      "Арендодатель вправе в одностороннем порядке расторгнуть договор.";
+    verifyRiskQuotes(CONTRACT, [risk(exact)], () => calls.push(1));
+    expect(calls).toHaveLength(0);
+  });
+
+  it("does not call onUnavailable for a too-short placeholder cite (skip-guard, not degradation)", () => {
+    const calls: unknown[] = [];
+    verifyRiskQuotes(CONTRACT, [risk("—")], () => calls.push(1));
+    expect(calls).toHaveLength(0);
+  });
+
+  it("works without a callback (back-compatible signature)", () => {
+    const recoverable =
+      "Арендатор обязан вносить арендную плату не позднее 5-го числа каждого месяца.";
+    const [out] = verifyRiskQuotes(CONTRACT, [risk(recoverable)]);
+    expect(CONTRACT.includes(out.originalText)).toBe(true);
+  });
+});
